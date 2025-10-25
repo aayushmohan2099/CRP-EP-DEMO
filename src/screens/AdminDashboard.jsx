@@ -1,3 +1,4 @@
+// src/screens/AdminDashboard.jsx
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button, ScrollView } from 'react-native';
 import gsApi from '../api/gsApi';
@@ -10,6 +11,7 @@ export default function AdminDashboard({ navigation }) {
     (async () => {
       const res = await gsApi.analyticsByDistrict();
       if (Array.isArray(res)) setDistricts(res);
+      else setDistricts([]);
     })();
   }, []);
 
@@ -27,7 +29,9 @@ export default function AdminDashboard({ navigation }) {
         </View>
       ))}
 
-      <Button title="Logout" onPress={logout} color='red' />
+      <View style={{ marginTop: 12 }}>
+        <Button title="Logout" onPress={logout} color='red' />
+      </View>
     </ScrollView>
   );
 }

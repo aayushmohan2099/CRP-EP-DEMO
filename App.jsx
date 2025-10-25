@@ -1,3 +1,4 @@
+// App.jsx
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -10,6 +11,7 @@ import VillageList from './src/screens/record/VillageList';
 import SHGList from './src/screens/record/SHGList';
 import BeneficiaryList from './src/screens/record/BeneficiaryList';
 import EnterpriseForm from './src/screens/record/EnterpriseForm';
+import ViewBeneficiary from './src/screens/record/ViewBeneficiary';
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +28,7 @@ export default function App(){
         <Stack.Screen name="SHGList" component={SHGList} />
         <Stack.Screen name="BeneficiaryList" component={BeneficiaryList} />
         <Stack.Screen name="EnterpriseForm" component={EnterpriseForm} />
+        <Stack.Screen name="ViewBeneficiary" component={ViewBeneficiary} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -1,3 +1,4 @@
+// src/screens/record/SHGList.jsx
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Button, FlatList } from 'react-native';
 import gsApi from '../../api/gsApi';
@@ -21,7 +22,7 @@ export default function SHGList({ navigation, route }) {
       <BackButton />
       <Text style={{ fontWeight:'bold' }}>{village.name}</Text>
       <TextInput placeholder="Search SHG" value={query} onChangeText={setQuery} style={{ borderWidth:1, padding:8, marginBottom:12 }} />
-      <FlatList data={filtered} keyExtractor={(i)=>i.id} renderItem={({item})=> (
+      <FlatList data={filtered} keyExtractor={(i)=>String(i.id)} renderItem={({item})=> (
         <View style={{ padding:8, borderBottomWidth:1 }}>
           <Text>{item.name} — Recorded: {item.recorded_count}</Text>
           <Button title="Fetch Beneficiaries" onPress={()=> navigation.navigate('BeneficiaryList', { shg: item, viewOnly })} />

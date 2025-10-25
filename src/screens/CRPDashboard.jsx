@@ -1,3 +1,4 @@
+// src/screens/CRPDashboard.jsx
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { getUser, clearUser } from '../utils/auth';
@@ -16,22 +17,8 @@ export default function CRPDashboard({ navigation }) {
         setUser(u || null);
         if (u && u.assigned_clf_id) {
           const res = await gsApi.panchayatsByClf(u.assigned_clf_id);
-          // Defensive handling: make sure res is an array
-          if (Array.isArray(res)) {
-            setPanchayats(res);
-          } else {
-            // If API returned an error diagnostic or wrapper, surface it
-            if (res && res.__parse_error) {
-              Alert.alert('Server error', 'Invalid server response: ' + (res.text ? res.text.slice(0,300) : ''));
-            } else if (res && res.__error) {
-              Alert.alert('Network error', res.message || 'Unknown network error');
-            } else if (res && res.error) {
-              Alert.alert('Server error', res.error);
-            } else {
-              // fallback: set empty array
-              setPanchayats([]);
-            }
-          }
+          if (Array.isArray(res)) setPanchayats(res);
+          else setPanchayats([]);
         } else {
           setPanchayats([]);
         }
@@ -45,10 +32,7 @@ export default function CRPDashboard({ navigation }) {
     })();
   }, []);
 
-  const logout = async () => {
-    await clearUser();
-    navigation.replace('Login');
-  };
+  const logout = async () => { await clearUser(); navigation.replace('Login'); };
 
   return (
     <ScrollView style={{ flex: 1, padding: 16 }}>
