@@ -12,7 +12,7 @@ export default function SplashScreen(){
     <View style={{ flex:1, alignItems:'center', justifyContent:'center' }}>
       <Image source={require('../../assets/logo.png')} style={{ width:160, height:160, marginBottom:20 }} />
       <ActivityIndicator size="large" />
-      <Text style={{ position:'absolute', bottom:20 }}>Powered by TechnoHorizon's RN Engine</Text>
+      <Text style={{ position:'absolute', bottom:20 }}>Powered by BDO's RN Engine</Text>
     </View>
   );
 }

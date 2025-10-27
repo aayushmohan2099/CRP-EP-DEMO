@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@nandorojo/heroicons": "^0.3.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-picker/picker": "^2.11.4",
     "@react-native/new-app-screen": "0.82.1",
@@ -21,6 +22,7 @@
     "react-native-image-picker": "^8.2.1",
     "react-native-safe-area-context": "^5.6.1",
     "react-native-screens": "^4.18.0",
+    "react-native-svg": "^15.14.0",
     "react-native-vector-icons": "^10.3.0"
   },
   "devDependencies": {
