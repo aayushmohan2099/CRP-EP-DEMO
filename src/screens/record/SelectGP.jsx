@@ -1,44 +1,45 @@
 // src/screens/record/SelectGP.jsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, FlatList, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, FlatList, Alert, TouchableOpacity, StyleSheet } from 'react-native';
 import gsApi from '../../api/gsApi';
 import { getUser } from '../../utils/auth';
+import LoaderModal from '../LoaderModal';
 
 export default function SelectGP({ navigation, route }) {
   const [query, setQuery] = useState('');
   const [panchayats, setPanchayats] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const pageSize = 2;
 
   useEffect(() => {
-    (async () => {
+    const fetchPanchayats = async () => {
       setLoading(true);
       try {
         const u = await getUser();
+        let data = [];
+
         if (u && u.assigned_clf_id && !route.params?.adminDistrictId) {
-          // ask server; if server gives usable list, use it; otherwise fallback to client join + compute counts
           const res = await gsApi.panchayatsByClf(u.assigned_clf_id);
-          if (Array.isArray(res) && res.length > 0 && res.every(p => p && (p.recorded_count !== undefined))) {
-            setPanchayats(res);
-          } else {
-            // fallback: client-side join
-            const mapping = await gsApi.list('PanchayatsUnderCLF') || [];
-            const allPanch = await gsApi.list('Panchayat') || [];
+          data = Array.isArray(res) ? res : [];
+
+          if (!data.length || !data.every(p => p.recorded_count !== undefined)) {
+            const mapping = (await gsApi.list('PanchayatsUnderCLF')) || [];
+            const allPanch = (await gsApi.list('Panchayat')) || [];
             const targetClf = String(u.assigned_clf_id).trim();
 
-            let matched = mapping.filter(row => Object.keys(row).some(k => {
-              const v = row[k];
-              return v !== undefined && v !== null && String(v).trim() === targetClf;
-            }));
-            if (matched.length === 0) {
-              matched = mapping.filter(row => Object.keys(row).some(k => {
-                const v = row[k];
-                return v !== undefined && v !== null && String(v).indexOf(targetClf) !== -1;
-              }));
+            let matched = mapping.filter(row =>
+              Object.keys(row).some(k => row[k] !== undefined && String(row[k]).trim() === targetClf)
+            );
+            if (!matched.length) {
+              matched = mapping.filter(row =>
+                Object.keys(row).some(k => row[k] !== undefined && String(row[k]).includes(targetClf))
+              );
             }
 
             const panchayatIds = new Set();
             matched.forEach(r => {
-              ['panchayat_id','panchayatid','panchayat','panchayatId','panchayat_id '].forEach(col => {
+              ['panchayat_id', 'panchayatid', 'panchayat', 'panchayatId', 'panchayat_id '].forEach(col => {
                 if (r[col]) String(r[col]).split(',').forEach(v => panchayatIds.add(String(v).trim()));
               });
               Object.keys(r).forEach(k => {
@@ -52,68 +53,45 @@ export default function SelectGP({ navigation, route }) {
 
             let final = allPanch.filter(p => p && p.id && panchayatIds.has(String(p.id).trim()));
 
-            // if server had panchayats but no counts, merge server data (if any) but compute counts client-side
             if (Array.isArray(res) && res.length > 0) {
-              // map res by id
               const byId = {};
               res.forEach(r => { if (r && r.id) byId[String(r.id)] = r; });
-              // use union of ids
               const unionIds = new Set(final.map(p => String(p.id)));
               Object.keys(byId).forEach(id => unionIds.add(id));
-              final = Array.from(unionIds).map(id => {
-                const p = (allPanch.find(x => String(x.id) === String(id))) || byId[id] || { id };
-                return p;
-              });
+              final = Array.from(unionIds).map(id => allPanch.find(x => String(x.id) === String(id)) || byId[id] || { id });
             }
 
-            // compute recorded_count per panchayat by summing villages' recorded_count
-            const withCounts = await Promise.all(final.map(async (p) => {
+            const withCounts = await Promise.all(final.map(async p => {
               try {
                 const villages = await gsApi.villagesByPanchayat(p.id);
-                // villages may already include recorded_count; otherwise compute per-village
-                let sum = 0;
-                if (Array.isArray(villages) && villages.length > 0) {
-                  sum = villages.reduce((acc, v) => acc + (Number(v.recorded_count || 0)), 0);
-                } else {
-                  // fallback: 0
-                  sum = 0;
-                }
-                return Object.assign({}, p, { recorded_count: sum });
-              } catch (err) {
-                return Object.assign({}, p, { recorded_count: 0 });
+                const sum = Array.isArray(villages) ? villages.reduce((acc, v) => acc + (Number(v.recorded_count || 0)), 0) : 0;
+                return { ...p, recorded_count: sum };
+              } catch {
+                return { ...p, recorded_count: 0 };
               }
             }));
 
-            if (withCounts.length > 0) setPanchayats(withCounts);
-            else {
-              Alert.alert('No Panchayats found', `Mapping rows: ${mapping.length}. Matched mapping rows: ${matched.length}.`);
-              setPanchayats([]);
-            }
+            data = withCounts;
           }
-        } else if (route.params?.adminDistrictId) {
-          const all = await gsApi.list('Panchayat') || [];
-          const filtered = (all || []).filter(p => String(p.district_id) === String(route.params.adminDistrictId));
-          // compute counts quickly
+        } else {
+          const all = (await gsApi.list('Panchayat')) || [];
+          const filtered = route.params?.adminDistrictId
+            ? all.filter(p => String(p.district_id) === String(route.params.adminDistrictId))
+            : all;
+
           const enriched = await Promise.all(filtered.map(async p => {
             try {
               const villages = await gsApi.villagesByPanchayat(p.id);
-              const sum = (Array.isArray(villages) ? villages.reduce((acc, v) => acc + (Number(v.recorded_count || 0)), 0) : 0);
-              return Object.assign({}, p, { recorded_count: sum });
-            } catch (e) { return Object.assign({}, p, { recorded_count: 0 }); }
+              const sum = Array.isArray(villages) ? villages.reduce((acc, v) => acc + (Number(v.recorded_count || 0)), 0) : 0;
+              return { ...p, recorded_count: sum };
+            } catch {
+              return { ...p, recorded_count: 0 };
+            }
           }));
-          setPanchayats(enriched);
-        } else {
-          const all = await gsApi.list('Panchayat') || [];
-          // compute counts for all (might be heavy; but used only when no clf)
-          const enriched = await Promise.all(all.map(async p => {
-            try {
-              const villages = await gsApi.villagesByPanchayat(p.id);
-              const sum = (Array.isArray(villages) ? villages.reduce((acc, v) => acc + (Number(v.recorded_count || 0)), 0) : 0);
-              return Object.assign({}, p, { recorded_count: sum });
-            } catch (e) { return Object.assign({}, p, { recorded_count: 0 }); }
-          }));
-          setPanchayats(enriched);
+          data = enriched;
         }
+
+        setPanchayats(data);
       } catch (err) {
         console.warn('SelectGP load error', err);
         Alert.alert('Error', String(err));
@@ -121,27 +99,119 @@ export default function SelectGP({ navigation, route }) {
       } finally {
         setLoading(false);
       }
-    })();
-  }, []);
+    };
 
-  const filtered = panchayats.filter(p => p && p.name && p.name.toLowerCase().includes(query.toLowerCase()));
+    fetchPanchayats();
+  }, [route.params]);
+
+  const filtered = panchayats.filter(p => p.name?.toLowerCase().includes(query.toLowerCase()));
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return (
-    <View style={{ flex:1, padding:12 }}>
-      <TextInput placeholder="Search Panchayat" value={query} onChangeText={setQuery} style={{ borderWidth:1, padding:8, marginBottom:12 }} />
-      {loading ? <ActivityIndicator style={{ marginTop:12 }} size="large" /> : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(i) => String(i.id)}
-          renderItem={({item}) => (
-            <View style={{ padding:8, borderBottomWidth:1 }}>
-              <Text>{item.name} — Recorded: {item.recorded_count ?? 0}</Text>
-              <Button title="Open" onPress={() => navigation.navigate('VillageList', { panchayat: item, viewOnly: route.params?.viewOnly })} />
+    <View style={{ flex: 1, padding: 12 }}>
+      <TextInput
+        placeholder="Search Panchayat"
+        value={query}
+        onChangeText={text => { setQuery(text); setPage(1); }}
+        style={styles.searchBar}
+      />
+
+      <LoaderModal visible={loading} message="Loading Panchayats..." />
+
+      {!loading && (
+        <>
+          <FlatList
+            data={paginated}
+            keyExtractor={item => String(item.id)}
+            renderItem={({ item }) => (
+              <View style={styles.listItem}>
+                <Text style={styles.listText}>
+                  {item.name} — Recorded: {item.recorded_count ?? 0}
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.openButton}
+                  onPress={() => navigation.navigate('VillageList', { panchayat: item, viewOnly: route.params?.viewOnly })}
+                >
+                  <Text style={styles.buttonText}>Open</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            ListEmptyComponent={<Text style={{ color: '#666', marginTop: 12 }}>No Panchayats found.</Text>}
+          />
+
+          {totalPages > 1 && (
+            <View style={styles.pagination}>
+              <TouchableOpacity
+                disabled={page <= 1}
+                onPress={() => setPage(prev => Math.max(prev - 1, 1))}
+                style={[styles.pageButton, page <= 1 && styles.disabledButton]}
+              >
+                <Text style={styles.buttonText}>Previous</Text>
+              </TouchableOpacity>
+
+              <Text style={{ alignSelf: 'center' }}>{page} / {totalPages}</Text>
+
+              <TouchableOpacity
+                disabled={page >= totalPages}
+                onPress={() => setPage(prev => Math.min(prev + 1, totalPages))}
+                style={[styles.pageButton, page >= totalPages && styles.disabledButton]}
+              >
+                <Text style={styles.buttonText}>Next</Text>
+              </TouchableOpacity>
             </View>
           )}
-          ListEmptyComponent={<Text style={{ color: '#666', marginTop: 12 }}>No Panchayats found.</Text>}
-        />
+        </>
       )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  searchBar: {
+    borderWidth: 1,
+    borderColor: '#EE6969',
+    padding: 8,
+    marginBottom: 12,
+    borderRadius: 6,
+    marginTop: 50,
+  },
+  listItem: {
+    flexDirection: 'row', // 🔥 make text & button on same line
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EE6969',
+    marginBottom: 4,
+  },
+  listText: {
+    flex: 1,
+    fontSize: 15,
+  },
+  openButton: {
+    backgroundColor: '#EE6969',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  pageButton: {
+    padding: 8,
+    backgroundColor: '#EE6969',
+    borderRadius: 6,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  pagination: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+});
