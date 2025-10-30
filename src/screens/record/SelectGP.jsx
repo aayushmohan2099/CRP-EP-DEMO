@@ -4,6 +4,7 @@ import { View, Text, TextInput, FlatList, Alert, TouchableOpacity, StyleSheet } 
 import gsApi from '../../api/gsApi';
 import { getUser } from '../../utils/auth';
 import LoaderModal from '../LoaderModal';
+import SearchBar from '../SearchBar';
 
 export default function SelectGP({ navigation, route }) {
   const [query, setQuery] = useState('');
@@ -110,12 +111,12 @@ export default function SelectGP({ navigation, route }) {
 
   return (
     <View style={{ flex: 1, padding: 12 }}>
-      <TextInput
-        placeholder="Search Panchayat"
-        value={query}
-        onChangeText={text => { setQuery(text); setPage(1); }}
-        style={styles.searchBar}
-      />
+      <SearchBar
+  placeholder="Search Panchayat"
+  value={query}
+  onChangeText={text => { setQuery(text); setPage(1); }}
+  style={{ marginTop: 50, marginBottom: 12 }}
+/>
 
       <LoaderModal visible={loading} message="Loading Panchayats..." />
 

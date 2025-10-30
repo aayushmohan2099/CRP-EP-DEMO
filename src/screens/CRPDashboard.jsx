@@ -1,3 +1,81 @@
+// // src/screens/CRPDashboard.jsx
+// import React, { useEffect, useState } from 'react';
+// import { View, Text, Button, ScrollView, ActivityIndicator, Alert } from 'react-native';
+// import { getUser, clearUser } from '../utils/auth';
+// import gsApi from '../api/gsApi';
+
+// export default function CRPDashboard({ navigation }) {
+//   const [user, setUser] = useState(null);
+//   const [panchayats, setPanchayats] = useState([]);
+//   const [loading, setLoading] = useState(true);
+
+//   useEffect(() => {
+//     (async () => {
+//       setLoading(true);
+//       try {
+//         const u = await getUser();
+//         setUser(u || null);
+//         if (u && u.assigned_clf_id) {
+//           const res = await gsApi.panchayatsByClf(u.assigned_clf_id);
+//           if (Array.isArray(res)) setPanchayats(res);
+//           else setPanchayats([]);
+//         } else {
+//           setPanchayats([]);
+//         }
+//       } catch (err) {
+//         console.warn('CRPDashboard load error', err);
+//         Alert.alert('Error', String(err));
+//         setPanchayats([]);
+//       } finally {
+//         setLoading(false);
+//       }
+//     })();
+//   }, []);
+
+//   const logout = async () => { await clearUser(); navigation.replace('Login'); };
+
+//   return (
+//     <ScrollView style={{ flex: 1, padding: 16 }}>
+//       <Text style={{ fontSize: 20 }}>Welcome {user ? user.username : ''}</Text>
+
+//       <Text style={{ marginTop: 12, fontWeight: 'bold' }}>Analytics (Your CLF)</Text>
+
+//       {loading ? (
+//         <View style={{ marginVertical: 20, alignItems: 'center' }}>
+//           <ActivityIndicator size="large" />
+//         </View>
+//       ) : (
+//         <>
+//           {panchayats.length === 0 ? (
+//             <Text style={{ marginVertical: 12, color: '#666' }}>No Panchayats found or no data recorded yet.</Text>
+//           ) : (
+//             panchayats.map(p => (
+//               <View key={p.id} style={{ padding: 8, borderBottomWidth: 1, borderColor: '#eee' }}>
+//                 <Text>{p.name} — Recorded: {p.recorded_count ?? 0}</Text>
+//               </View>
+//             ))
+//           )}
+//         </>
+//       )}
+
+//       <View style={{ marginTop: 20 }}>
+//         <Button title="Record new Beneficiary Enterprise" onPress={() => navigation.navigate('SelectGP')} />
+//       </View>
+
+//       <View style={{ marginTop: 12 }}>
+//         <Button title="View Recorded Beneficiaries" onPress={() => navigation.navigate('SelectGP', { viewOnly: true })} />
+//       </View>
+
+//       <View style={{ marginTop: 12 }}>
+//         <Button title="Logout" onPress={logout} color="red" />
+//       </View>
+
+//       <View style={{ height: 24 }} />
+//     </ScrollView>
+//   );
+// }
+
+
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
@@ -9,11 +87,14 @@ import {
   Modal,
   Dimensions,
   Animated,
+  Image,
 } from 'react-native';
 import { getUser, clearUser } from '../utils/auth';
 import gsApi from '../api/gsApi';
-import Icon from 'react-native-vector-icons/Feather';
+// import Icon from 'react-native-vector-icons/Feather';
 import LoaderModal from '../screens/LoaderModal'; // <-- Import here
+import HamburgerIcon from '../../assets/hamburger.png'; // adjust path
+
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -82,12 +163,19 @@ export default function CRPDashboard({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.userSection}>
-          <Icon name="user" size={28} color="#EE6969" style={{ marginRight: 8 }} />
+      
           <Text style={styles.userText}>{user ? user.username : 'User'}</Text>
         </View>
-        <TouchableOpacity onPress={() => setMenuOpen(true)}>
+        {/* <TouchableOpacity onPress={() => setMenuOpen(true)}>
           <Icon name="menu" size={28} color="#333" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
+        <TouchableOpacity onPress={() => setMenuOpen(true)}>
+  <Image
+    source={HamburgerIcon}
+    style={{ width: 28, height: 28, tintColor: '#333' }} // adjust size/color
+    resizeMode="contain"
+  />
+</TouchableOpacity>
       </View>
 
       {/* Slide-in Menu Modal */}
@@ -106,7 +194,6 @@ export default function CRPDashboard({ navigation }) {
           <Animated.View style={[styles.menu, { transform: [{ translateX: slideAnim }] }]}>
             <TouchableOpacity style={styles.menuItem} onPress={logout}>
               <View style={styles.menuRow}>
-                <Icon name="log-out" size={20} color="#EE6969" />
                 <Text style={styles.menuText}>Logout</Text>
               </View>
             </TouchableOpacity>
