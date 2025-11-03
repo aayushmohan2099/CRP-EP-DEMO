@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import LanguageToggle from '../components/LanguageToggle';
 
 // --- Default captcha generator ---
 function randomCaptcha() {
@@ -16,14 +17,60 @@ function randomCaptcha() {
   return { q: `${a} + ${b}`, ans: String(a + b) };
 }
 
+// --- Translation dictionary for frontend and backend messages ---
+const translations = {
+  en: {
+    loginTitle: 'Login',
+    username: 'Username',
+    password: 'Password',
+    role: 'Role',
+    captcha: 'Captcha',
+    enterUsername: 'Enter Username',
+    enterPassword: 'Enter Password',
+    enterCaptcha: 'Enter Answer',
+    logIn: 'Log In',
+    refresh: '↻',
+    invalidCredentials: 'Invalid credentials',
+    loginSuccess: 'Login successful!',
+    usernameRequired: 'Please enter username.',
+    passwordRequired: 'Please enter password.',
+    captchaIncorrect: 'Incorrect captcha.',
+    backendMessages: {
+      'User not found': 'User not found',
+      'Password expired': 'Password expired',
+      'Invalid credentials': 'Invalid credentials',
+    },
+  },
+  hi: {
+    loginTitle: 'लॉगिन',
+    username: 'उपयोगकर्ता नाम',
+    password: 'पासवर्ड',
+    role: 'भूमिका',
+    captcha: 'कैप्चा',
+    enterUsername: 'उपयोगकर्ता नाम दर्ज करें',
+    enterPassword: 'पासवर्ड दर्ज करें',
+    enterCaptcha: 'उत्तर दर्ज करें',
+    logIn: 'लॉग इन करें',
+    refresh: '↻',
+    invalidCredentials: 'अमान्य क्रेडेंशियल्स',
+    loginSuccess: 'सफलतापूर्वक लॉगिन!',
+    usernameRequired: 'कृपया उपयोगकर्ता नाम दर्ज करें।',
+    passwordRequired: 'कृपया पासवर्ड दर्ज करें।',
+    captchaIncorrect: 'कैप्चा गलत है।',
+    backendMessages: {
+      'User not found': 'उपयोगकर्ता नहीं मिला',
+      'Password expired': 'पासवर्ड समाप्त हो गया',
+      'Invalid credentials': 'अमान्य क्रेडेंशियल्स',
+    },
+  },
+};
+
 export default function LoginForm({
   onLogin,
   onSuccess,
   roles = ['CRP', 'Admin'],
   enableCaptcha = true,
   style = {},
-  title = 'Login',
-  buttonLabel = 'Log In',
 }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -31,34 +78,41 @@ export default function LoginForm({
   const [captcha, setCaptcha] = useState(randomCaptcha());
   const [captchaInput, setCaptchaInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [captchaLoading, setCaptchaLoading] = useState(false); // NEW
+  const [captchaLoading, setCaptchaLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState('');
+  const [lang, setLang] = useState('en'); // default language English
 
+  // --- Refresh captcha ---
   const refreshCaptcha = useCallback(() => {
     setCaptchaLoading(true);
     setTimeout(() => {
       setCaptcha(randomCaptcha());
       setCaptchaInput('');
       setCaptchaLoading(false);
-    }, 800); // short delay for loader
+    }, 800);
   }, []);
 
   useEffect(() => {
     if (enableCaptcha) refreshCaptcha();
   }, [enableCaptcha, refreshCaptcha]);
 
+  // --- Validate inputs ---
   const validate = () => {
     const newErrors = {};
-    if (!username.trim()) newErrors.username = 'Please enter username.';
-    if (!password.trim()) newErrors.password = 'Please enter password.';
+    const t = translations[lang];
+
+    if (!username.trim()) newErrors.username = t.usernameRequired;
+    if (!password.trim()) newErrors.password = t.passwordRequired;
     if (enableCaptcha && String(captchaInput).trim() !== String(captcha.ans)) {
-      newErrors.captcha = 'Incorrect captcha.';
+      newErrors.captcha = t.captchaIncorrect;
     }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  // --- Handle login submit ---
   const handleSubmit = async () => {
     setSuccess('');
     if (!validate()) return;
@@ -66,11 +120,16 @@ export default function LoginForm({
 
     try {
       const res = await onLogin(username, password, selectedRole);
+      const t = translations[lang];
+
       if (res?.success) {
-        setSuccess('Login successful!');
+        setSuccess(t.loginSuccess);
         setTimeout(() => onSuccess?.(res.user), 800);
       } else {
-        setErrors({ general: res?.message || 'Invalid credentials' });
+        // Map backend message to current language
+        const backendMsg =
+          t.backendMessages[res?.message] || t.invalidCredentials;
+        setErrors({ general: backendMsg });
       }
     } catch (err) {
       setErrors({ general: String(err) });
@@ -79,14 +138,33 @@ export default function LoginForm({
     }
   };
 
+  const t = translations[lang]; // current language translations
+
   return (
     <View style={[styles.container, style]}>
-      <Text style={styles.title}>{title}</Text>
+      {/* Language toggle */}
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10 }}>
+        {/* <TouchableOpacity
+          onPress={() => setLang('en')}
+          style={{ marginRight: 8, padding: 6, backgroundColor: lang === 'en' ? '#EE6969' : '#E8F5E9', borderRadius: 6 }}
+        >
+          <Text style={{ color: lang === 'en' ? '#fff' : '#000' }}>English</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setLang('hi')}
+          style={{ padding: 6, backgroundColor: lang === 'hi' ? '#EE6969' : '#E8F5E9', borderRadius: 6 }}
+        >
+          <Text style={{ color: lang === 'hi' ? '#fff' : '#000' }}>हिंदी</Text>
+        </TouchableOpacity> */}
+        <LanguageToggle language={lang} setLanguage={setLang} />
+      </View>
+
+      <Text style={styles.title}>{t.loginTitle}</Text>
 
       {/* Username */}
-      <Text style={styles.label}>Username</Text>
+      <Text style={styles.label}>{t.username}</Text>
       <TextInput
-        placeholder="Enter Username"
+        placeholder={t.enterUsername}
         placeholderTextColor="#999"
         value={username}
         autoCompleteType="off"
@@ -95,18 +173,15 @@ export default function LoginForm({
           setUsername(text);
           if (text.trim()) setErrors((prev) => ({ ...prev, username: '' }));
         }}
-        style={[
-          styles.input,
-          { borderColor: errors.username ? 'red' : '#ccc' },
-        ]}
+        style={[styles.input, { borderColor: errors.username ? 'red' : '#ccc' }]}
         autoCapitalize="none"
       />
       {errors.username && <Text style={styles.error}>{errors.username}</Text>}
 
       {/* Password */}
-      <Text style={styles.label}>Password</Text>
+      <Text style={styles.label}>{t.password}</Text>
       <TextInput
-        placeholder="Enter Password"
+        placeholder={t.enterPassword}
         placeholderTextColor="#999"
         value={password}
         autoCompleteType="off"
@@ -116,10 +191,7 @@ export default function LoginForm({
           if (text.trim()) setErrors((prev) => ({ ...prev, password: '' }));
         }}
         secureTextEntry
-        style={[
-          styles.input,
-          { borderColor: errors.password ? 'red' : '#ccc' },
-        ]}
+        style={[styles.input, { borderColor: errors.password ? 'red' : '#ccc' }]}
         autoCapitalize="none"
       />
       {errors.password && <Text style={styles.error}>{errors.password}</Text>}
@@ -127,7 +199,7 @@ export default function LoginForm({
       {/* Role selection */}
       {roles.length > 0 && (
         <View style={{ marginTop: 12 }}>
-          <Text style={styles.label}>Role</Text>
+          <Text style={styles.label}>{t.role}</Text>
           <View style={styles.roleRow}>
             {roles.map((role) => (
               <TouchableOpacity
@@ -145,7 +217,7 @@ export default function LoginForm({
                     selectedRole === role && styles.roleTextSelected,
                   ]}
                 >
-                  {role}
+                  {lang === 'hi' ? role === 'Admin' ? 'प्रशासक' : 'सीआरपी' : role}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -156,11 +228,13 @@ export default function LoginForm({
       {/* Captcha */}
       {enableCaptcha && (
         <View style={{ marginTop: 16 }}>
-          <Text style={styles.label}>Captcha: {captcha.q}</Text>
+          <Text style={styles.label}>
+            {t.captcha}: {captcha.q}
+          </Text>
           <View style={styles.captchaRow}>
             <View style={{ flex: 1, position: 'relative' }}>
               <TextInput
-                placeholder="Enter Answer"
+                placeholder={t.enterCaptcha}
                 placeholderTextColor="#999"
                 value={captchaInput}
                 autoCompleteType="off"
@@ -174,12 +248,11 @@ export default function LoginForm({
                   styles.input,
                   {
                     borderColor: errors.captcha ? 'red' : '#ccc',
-                    paddingRight: 35, // make space for loader
+                    paddingRight: 35,
                   },
                 ]}
                 autoCapitalize="none"
               />
-              {/* Loader INSIDE the captcha input field */}
               {captchaLoading && (
                 <ActivityIndicator
                   size="small"
@@ -193,7 +266,7 @@ export default function LoginForm({
               disabled={loading || captchaLoading}
               style={styles.refreshButton}
             >
-              <Text style={styles.refreshText}>↻</Text>
+              <Text style={styles.refreshText}>{t.refresh}</Text>
             </TouchableOpacity>
           </View>
           {errors.captcha && <Text style={styles.error}>{errors.captcha}</Text>}
@@ -210,11 +283,7 @@ export default function LoginForm({
         onPress={handleSubmit}
         disabled={loading}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.submitText}>{buttonLabel}</Text>
-        )}
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>{t.logIn}</Text>}
       </TouchableOpacity>
     </View>
   );

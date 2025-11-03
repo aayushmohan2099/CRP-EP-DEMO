@@ -415,7 +415,7 @@ export default function ViewBeneficiary({ navigation, route }) {
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Enterprise Details</Text>
         {loading ? (
-          <ActivityIndicator />
+          <ActivityIndicator color="#EE6969"/>
         ) : enterprise ? (
           <>
             {ENTERPRISE_FIELDS.map(key => {

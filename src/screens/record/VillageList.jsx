@@ -1,16 +1,29 @@
+// src/screens/VillageList.jsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+} from 'react-native';
 import gsApi from '../../api/gsApi';
 import BackButton from '../../components/BackButton';
 import LoaderModal from '../LoaderModal';
 import SearchBar from '../SearchBar';
+import BurgerMenu from '../BurgerMenu';
+import HamburgerIcon from '../../../assets/hamburger.png'; // adjust path
 
 export default function VillageList({ navigation, route }) {
   const { panchayat, viewOnly } = route.params;
+
   const [query, setQuery] = useState('');
   const [villages, setVillages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
 
+  // Fetch villages
   useEffect(() => {
     (async () => {
       try {
@@ -24,21 +37,61 @@ export default function VillageList({ navigation, route }) {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [panchayat.id]);
 
+  // Filtered villages
   const filtered = villages.filter(v =>
     v.name?.toLowerCase().includes(query.toLowerCase())
   );
 
+  // Burger menu items
+  const menuItems = [
+    {
+      label: 'Record New Beneficiary Detail',
+      onPress: () => {
+        navigation.popToTop(); // redirect to Dashboard
+      },
+    },
+    {
+      label: 'View Recorded Beneficiary',
+      onPress: () => {
+        navigation.popToTop(); // redirect to Dashboard
+      },
+    },
+    {
+      label: 'Logout',
+      color: '#EE6969',
+      onPress: async () => {
+        const { clearUser } = await import('../../utils/auth');
+        await clearUser();
+        navigation.replace('Login'); // navigate to login
+      },
+    },
+  ];
+
   return (
     <View style={{ flex: 1, padding: 12, marginTop: 50 }}>
       <LoaderModal visible={loading} message="Loading villages..." />
-      {/* <BackButton />
-      <Text style={{ fontWeight: 'bold', marginBottom: 10 }}>{panchayat.name}</Text> */}
-<View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-  <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{panchayat.name}</Text>
-  <BackButton />
-</View>
+
+      {/* HEADER */}
+      <View style={styles.header}>
+        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{panchayat.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <BackButton />
+          <TouchableOpacity
+            onPress={() => setMenuOpen(true)}
+            style={{ marginLeft: 12 }}
+          >
+            <Image
+              source={HamburgerIcon}
+              style={{ width: 28, height: 28, tintColor: '#333' }}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* SEARCH */}
       <SearchBar
         placeholder="Search Village"
         value={query}
@@ -46,6 +99,7 @@ export default function VillageList({ navigation, route }) {
         style={{ marginBottom: 12 }}
       />
 
+      {/* VILLAGE LIST */}
       <FlatList
         data={filtered}
         keyExtractor={i => String(i.id)}
@@ -69,11 +123,24 @@ export default function VillageList({ navigation, route }) {
           <Text style={{ color: '#666', marginTop: 12 }}>No villages found.</Text>
         }
       />
+
+      {/* BURGER MENU */}
+      <BurgerMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        menuItems={menuItems}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
   listItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',

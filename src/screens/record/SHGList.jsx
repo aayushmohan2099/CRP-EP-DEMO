@@ -1,53 +1,20 @@
-// // src/screens/record/SHGList.jsx
-// import React, { useEffect, useState } from 'react';
-// import { View, Text, TextInput, Button, FlatList } from 'react-native';
-// import gsApi from '../../api/gsApi';
-// import BackButton from '../../components/BackButton';
-
-// export default function SHGList({ navigation, route }) {
-//   const { village, viewOnly } = route.params;
-//   const [query, setQuery] = useState('');
-//   const [shgs, setShgs] = useState([]);
-
-//   useEffect(() => {
-//     (async ()=> {
-//       const res = await gsApi.shgsByVillage(village.id);
-//       setShgs(res || []);
-//     })();
-//   }, []);
-
-//   const filtered = shgs.filter(s => s.name && s.name.toLowerCase().includes(query.toLowerCase()));
-//   return (
-//     <View style={{ flex:1, padding:12 }}>
-//       <BackButton />
-//       <Text style={{ fontWeight:'bold' }}>{village.name}</Text>
-//       <TextInput placeholder="Search SHG" value={query} onChangeText={setQuery} style={{ borderWidth:1, padding:8, marginBottom:12 }} />
-//       <FlatList data={filtered} keyExtractor={(i)=>String(i.id)} renderItem={({item})=> (
-//         <View style={{ padding:8, borderBottomWidth:1 }}>
-//           <Text>{item.name} — Recorded: {item.recorded_count}</Text>
-//           <Button title="Fetch Beneficiaries" onPress={()=> navigation.navigate('BeneficiaryList', { shg: item, viewOnly })} />
-//         </View>
-//       )} />
-//     </View>
-//   );
-// }
-
-
 // src/screens/record/SHGList.jsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import gsApi from '../../api/gsApi';
 import BackButton from '../../components/BackButton';
 import LoaderModal from '../LoaderModal';
 import SearchBar from '../SearchBar';
+import BurgerMenu from '../BurgerMenu';
+import HamburgerIcon from '../../../assets/hamburger.png'; // adjust path
 
 export default function SHGList({ navigation, route }) {
   const { village, viewOnly } = route.params;
   const [query, setQuery] = useState('');
   const [shgs, setShgs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  // ✅ Fetch SHG data on mount
   useEffect(() => {
     const fetchSHGs = async () => {
       try {
@@ -61,24 +28,52 @@ export default function SHGList({ navigation, route }) {
         setLoading(false);
       }
     };
-
     fetchSHGs();
   }, [village.id]);
 
-  // ✅ Filter SHGs by search query
   const filtered = shgs.filter(s =>
     s.name?.toLowerCase().includes(query.toLowerCase())
   );
+
+  // Burger menu items
+  const menuItems = [
+    {
+      label: 'Record New Beneficiary Detail',
+      onPress: () => navigation.popToTop(),
+    },
+    {
+      label: 'View Recorded Beneficiary',
+      onPress: () => navigation.popToTop(),
+    },
+    {
+      label: 'Logout',
+      color: '#EE6969',
+      onPress: async () => {
+        const { clearUser } = await import('../../utils/auth');
+        await clearUser();
+        navigation.replace('Login');
+      },
+    },
+  ];
 
   return (
     <View style={styles.container}>
       {/* Loader */}
       <LoaderModal visible={loading} message="Fetching SHGs..." />
 
-      {/* Header row: Title + Back button */}
+      {/* Header row: Title + Back + Menu */}
       <View style={styles.headerRow}>
         <Text style={styles.title}>{village.name}</Text>
-        <BackButton />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <BackButton />
+          <TouchableOpacity onPress={() => setMenuOpen(true)} style={{ marginLeft: 12 }}>
+            <Image
+              source={HamburgerIcon}
+              style={{ width: 28, height: 28, tintColor: '#333' }}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search Bar */}
@@ -109,10 +104,15 @@ export default function SHGList({ navigation, route }) {
           </View>
         )}
         ListEmptyComponent={
-          !loading && (
-            <Text style={styles.emptyText}>No SHGs found.</Text>
-          )
+          !loading && <Text style={styles.emptyText}>No SHGs found.</Text>
         }
+      />
+
+      {/* Burger Menu */}
+      <BurgerMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        menuItems={menuItems}
       />
     </View>
   );

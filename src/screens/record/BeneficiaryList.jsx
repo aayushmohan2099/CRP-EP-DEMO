@@ -1,17 +1,29 @@
 // src/screens/record/BeneficiaryList.jsx
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+} from 'react-native';
 import gsApi from '../../api/gsApi';
 import BackButton from '../../components/BackButton';
 import LoaderModal from '../LoaderModal';
 import SearchBar from '../SearchBar';
+import BurgerMenu from '../BurgerMenu';
+import HamburgerIcon from '../../../assets/hamburger.png'; // adjust path
 import { useIsFocused } from '@react-navigation/native';
+import { clearUser } from '../../utils/auth';
 
 export default function BeneficiaryList({ navigation, route }) {
   const { shg, viewOnly } = route.params;
+
   const [query, setQuery] = useState('');
   const [beneficiaries, setBeneficiaries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
   const isFocused = useIsFocused();
 
   const loadBeneficiaries = useCallback(async () => {
@@ -27,28 +39,58 @@ export default function BeneficiaryList({ navigation, route }) {
     }
   }, [shg?.id, viewOnly]);
 
-  // Load once on mount
   useEffect(() => { loadBeneficiaries(); }, []);
-
-  // Reload when screen is focused
   useEffect(() => { if (isFocused) loadBeneficiaries(); }, [isFocused]);
 
   const filtered = beneficiaries.filter(b =>
     b.name?.toLowerCase().includes(query.toLowerCase())
   );
 
+  const menuItems = [
+    {
+      label: 'Record New Beneficiary',
+      onPress: () => {
+        navigation.popToTop(); // redirect to Dashboard
+        setMenuOpen(false);
+      },
+    },
+    {
+      label: 'View Recorded Beneficiary',
+      onPress: () => {
+        navigation.popToTop(); // redirect to Dashboard
+        setMenuOpen(false);
+      },
+    },
+    {
+      label: 'Logout',
+      color: '#EE6969',
+      onPress: async () => {
+        await clearUser();
+        navigation.replace('Login'); // navigate to login
+      },
+    },
+  ];
+
   return (
-    <View style={styles.container}>
-      {/* Loader */}
+    <View style={{ flex: 1, padding: 12, marginTop: 50, backgroundColor: '#fff' }}>
       <LoaderModal visible={loading} message="Fetching Beneficiaries..." />
 
-      {/* Header: SHG name + Back */}
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>{shg.name}</Text>
-        <BackButton />
+      {/* HEADER */}
+      <View style={styles.header}>
+        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{shg.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <BackButton />
+          <TouchableOpacity onPress={() => setMenuOpen(true)} style={{ marginLeft: 12 }}>
+            <Image
+              source={HamburgerIcon}
+              style={{ width: 28, height: 28, tintColor: '#333' }}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Search */}
+      {/* SEARCH */}
       <SearchBar
         placeholder="Search Beneficiary"
         value={query}
@@ -56,7 +98,7 @@ export default function BeneficiaryList({ navigation, route }) {
         style={{ marginBottom: 12 }}
       />
 
-      {/* Beneficiary List */}
+      {/* LIST */}
       <FlatList
         data={filtered}
         keyExtractor={item => String(item.id)}
@@ -105,32 +147,26 @@ export default function BeneficiaryList({ navigation, route }) {
           </View>
         )}
         ListEmptyComponent={
-          !loading && (
-            <Text style={styles.emptyText}>No beneficiaries found.</Text>
-          )
+          !loading && <Text style={{ color: '#666', marginTop: 12, textAlign: 'center' }}>No beneficiaries found.</Text>
         }
+      />
+
+      {/* BURGER MENU */}
+      <BurgerMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        menuItems={menuItems}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 12,
-    marginTop: 50,
-    backgroundColor: '#fff',
-  },
-  headerRow: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
-  },
-  title: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    color: '#333',
   },
   listItem: {
     flexDirection: 'row',
@@ -161,11 +197,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontWeight: '600',
-    textAlign: 'center',
-  },
-  emptyText: {
-    color: '#666',
-    marginTop: 12,
     textAlign: 'center',
   },
 });

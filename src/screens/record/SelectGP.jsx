@@ -1,18 +1,32 @@
 // src/screens/record/SelectGP.jsx
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, FlatList, Alert, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  Alert,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+} from 'react-native';
 import gsApi from '../../api/gsApi';
 import { getUser } from '../../utils/auth';
 import LoaderModal from '../LoaderModal';
 import SearchBar from '../SearchBar';
+import BackButton from '../../components/BackButton';
+import BurgerMenu from '../BurgerMenu';
+import HamburgerIcon from '../../../assets/hamburger.png'; // adjust path
 
 export default function SelectGP({ navigation, route }) {
   const [query, setQuery] = useState('');
   const [panchayats, setPanchayats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [menuOpen, setMenuOpen] = useState(false);
   const pageSize = 2;
 
+  // Fetch Panchayats
   useEffect(() => {
     const fetchPanchayats = async () => {
       setLoading(true);
@@ -109,14 +123,51 @@ export default function SelectGP({ navigation, route }) {
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+  // Burger menu items
+  const menuItems = [
+    {
+      label: 'Record New Beneficiary Detail',
+      onPress: () => navigation.popToTop(),
+    },
+    {
+      label: 'View Recorded Beneficiary',
+      onPress: () => navigation.popToTop(),
+    },
+    {
+      label: 'Logout',
+      color: '#EE6969',
+      onPress: async () => {
+        const { clearUser } = await import('../../utils/auth');
+        await clearUser();
+        navigation.replace('Login');
+      },
+    },
+  ];
+
   return (
     <View style={{ flex: 1, padding: 12 }}>
+      {/* HEADER */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 50 }}>
+        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>Select Panchayat</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <BackButton />
+          <TouchableOpacity onPress={() => setMenuOpen(true)} style={{ marginLeft: 12 }}>
+            <Image
+              source={HamburgerIcon}
+              style={{ width: 28, height: 28, tintColor: '#333' }}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* SEARCH */}
       <SearchBar
-  placeholder="Search Panchayat"
-  value={query}
-  onChangeText={text => { setQuery(text); setPage(1); }}
-  style={{ marginTop: 50, marginBottom: 12 }}
-/>
+        placeholder="Search Panchayat"
+        value={query}
+        onChangeText={text => { setQuery(text); setPage(1); }}
+        style={{ marginBottom: 12 }}
+      />
 
       <LoaderModal visible={loading} message="Loading Panchayats..." />
 
@@ -165,21 +216,20 @@ export default function SelectGP({ navigation, route }) {
           )}
         </>
       )}
+
+      {/* BURGER MENU */}
+      <BurgerMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        menuItems={menuItems}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  searchBar: {
-    borderWidth: 1,
-    borderColor: '#EE6969',
-    padding: 8,
-    marginBottom: 12,
-    borderRadius: 6,
-    marginTop: 50,
-  },
   listItem: {
-    flexDirection: 'row', // 🔥 make text & button on same line
+    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
