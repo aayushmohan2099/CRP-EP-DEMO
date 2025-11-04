@@ -161,7 +161,7 @@ export default function LoginForm({
 
       <Text style={styles.title}>{t.loginTitle}</Text>
 
-      {/* Username */}
+      {/* Username */}  
       <Text style={styles.label}>{t.username}</Text>
       <TextInput
         placeholder={t.enterUsername}

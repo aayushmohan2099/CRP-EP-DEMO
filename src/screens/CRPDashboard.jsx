@@ -83,12 +83,14 @@ import gsApi from '../api/gsApi';
 import LoaderModal from './LoaderModal';
 import HamburgerIcon from '../../assets/hamburger.png';
 import BurgerMenu from './BurgerMenu';
+import LanguageToggle from '../components/LanguageToggle'; // <- import the toggle component
 
 export default function CRPDashboard({ navigation }) {
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [language, setLanguage] = useState('en');
+  const [language, setLanguage] = useState('en'); // default language
+
   const translations = {
     en: {
       recordBeneficiaries: "Record New Beneficiaries Detail",
@@ -123,16 +125,26 @@ export default function CRPDashboard({ navigation }) {
   };
 
   const menuItems = [
-    { label: t.logout, onPress: async () => { await clearUser(); navigation.replace('Login'); }},
+    {
+      label: t.logout,
+      onPress: async () => {
+        await clearUser();
+        navigation.replace('Login');
+      },
+    },
   ];
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <Text style={styles.userText}>{user ? user.username : t.userPlaceholder}</Text>
-        <TouchableOpacity onPress={() => setMenuOpen(true)}>
-          <Image source={HamburgerIcon} style={{ width: 28, height: 28 }} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {/* Language toggle */}
+          <LanguageToggle language={language} setLanguage={setLanguage} />
+          <TouchableOpacity onPress={() => setMenuOpen(true)} style={{ marginLeft: 12 }}>
+            <Image source={HamburgerIcon} style={{ width: 28, height: 28 }} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <TouchableOpacity

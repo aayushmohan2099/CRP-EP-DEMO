@@ -35,10 +35,83 @@
 
 
 // src/api/gsApi.js
-const BASE_URL = 'https://script.google.com/macros/s/AKfycbxvHpET2s5JWkQl3zlZcKb7JjVzXeKKciX5wKV-UR6oT5gIDwKemxAakO3ul6OPo0UW/exec';
+// const BASE_URL = 'https://script.google.com/macros/s/AKfycbxvHpET2s5JWkQl3zlZcKb7JjVzXeKKciX5wKV-UR6oT5gIDwKemxAakO3ul6OPo0UW/exec';
+
+// async function call(action, params = {}) {
+//   const body = { ...params, action };
+//   console.log('[gsApi] POST body', JSON.stringify(body).slice(0, 3000));
+
+//   try {
+//     const res = await fetch(BASE_URL, {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify(body),
+//     });
+
+//     const text = await res.text();
+//     console.log(
+//       '[gsApi] POST',
+//       action,
+//       'status',
+//       res.status,
+//       'raw (first1k):',
+//       text && text.slice ? text.slice(0, 1000) : text
+//     );
+
+//     try {
+//       return JSON.parse(text);
+//     } catch (err) {
+//       return { __parse_error: true, status: res.status, text };
+//     }
+//   } catch (err) {
+//     console.log('[gsApi] POST error', String(err));
+//     return { __error: true, message: String(err) };
+//   }
+// }
+
+// export default {
+//   // CRUD endpoints
+//   list: (table, lang = 'en') => call('list', { table, lang }),
+//   read: (table, filterField, filterValue, lang = 'en') =>
+//     call('read', { table, filterField, filterValue, lang }),
+//   create: (table, payload) => call('create', { table, payload }),
+//   update: (table, payload) => call('update', { table, payload }),
+//   delete: (table, id) => call('delete', { table, id }),
+
+//   // Auth
+//   login: (username, password) => call('login', { username, password }),
+
+//   // Panchayat / Village / SHG
+//   panchayatsByClf: (clf_id, lang = 'en') =>
+//     call('panchayats_by_clf', { clf_id, lang }),
+//   villagesByPanchayat: (panchayat_id, lang = 'en') =>
+//     call('villages_by_panchayat', { panchayat_id, lang }),
+//   shgsByVillage: (village_id, lang = 'en') =>
+//     call('shgs_by_village', { village_id, lang }),
+//   beneficiariesByShg: (shg_id, recorded) =>
+//     call('beneficiaries_by_shg', { shg_id, recorded }),
+
+//   // Analytics
+//   analyticsByDistrict: () => call('analytics_by_district', {}),
+
+//   // Media upload
+//   uploadMedia: (files, folderId) =>
+//     call('upload_media', { payload: { files, folderId } }),
+
+//   // Fast idempotent save
+//   createOrUpdateEnterprise: (payload) =>
+//     call('create_or_update_enterprise', { payload }),
+// };
+
+
+// src/api/gsApi.js
+
+// ✅ New deployment URL and deployment ID
+const BASE_URL = 'https://script.google.com/macros/s/AKfycbzB2Hnp5As7ltS3p9z35_2j57BEAHP5jMnQQNKu7q1ELSCa3mAbDdvyAVXHYRHyZPsq/exec';
+const DEPLOYMENT_ID = 'AKfycbzB2Hnp5As7ltS3p9z35_2j57BEAHP5jMnQQNKu7q1ELSCa3mAbDdvyAVXHYRHyZPsq';
 
 async function call(action, params = {}) {
-  const body = { ...params, action };
+  const body = { ...params, action, deployment_id: DEPLOYMENT_ID };
   console.log('[gsApi] POST body', JSON.stringify(body).slice(0, 3000));
 
   try {

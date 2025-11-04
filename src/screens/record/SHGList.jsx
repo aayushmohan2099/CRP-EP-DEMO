@@ -1,4 +1,273 @@
-// src/screens/record/SHGList.jsx
+// // src/screens/record/SelectGP.jsx
+// import React, { useEffect, useState } from 'react';
+// import {
+//   View,
+//   Text,
+//   FlatList,
+//   Alert,
+//   TouchableOpacity,
+//   StyleSheet,
+//   Image,
+// } from 'react-native';
+// import gsApi from '../../api/gsApi';
+// import { getUser } from '../../utils/auth';
+// import LoaderModal from '../LoaderModal';
+// import SearchBar from '../SearchBar';
+// import BackButton from '../../components/BackButton';
+// import BurgerMenu from '../BurgerMenu';
+// import LanguageToggle from '../../components/LanguageToggle';
+// import HamburgerIcon from '../../../assets/hamburger.png';
+
+// // --- Translation dictionary ---
+// const translations = {
+//   en: {
+//     selectPanchayat: 'Select Panchayat',
+//     searchPlaceholder: 'Search Panchayat',
+//     recorded: 'Recorded',
+//     open: 'Open',
+//     noPanchayats: 'No Panchayats found.',
+//     previous: 'Previous',
+//     next: 'Next',
+//     menuRecord: 'Record New Beneficiary Detail',
+//     menuView: 'View Recorded Beneficiary',
+//     menuLogout: 'Logout',
+//     logoutConfirm: 'Are you sure you want to logout?',
+//     loading: 'Loading Panchayats...',
+//   },
+//   hi: {
+//     selectPanchayat: 'पंचायत चुनें',
+//     searchPlaceholder: 'पंचायत खोजें',
+//     recorded: 'रिकॉर्डेड',
+//     open: 'खोलें',
+//     noPanchayats: 'कोई पंचायत नहीं मिली।',
+//     previous: 'पिछला',
+//     next: 'अगला',
+//     menuRecord: 'नए लाभार्थी विवरण रिकॉर्ड करें',
+//     menuView: 'रिकॉर्ड किए गए लाभार्थी देखें',
+//     menuLogout: 'लॉग आउट',
+//     logoutConfirm: 'क्या आप वाकई लॉग आउट करना चाहते हैं?',
+//     loading: 'पंचायत लोड हो रही है...',
+//   },
+// };
+
+// export default function SelectGP({ navigation, route }) {
+//   const [query, setQuery] = useState('');
+//   const [panchayats, setPanchayats] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [page, setPage] = useState(1);
+//   const [menuOpen, setMenuOpen] = useState(false);
+//   const [lang, setLang] = useState('en'); // default English
+//   const pageSize = 2;
+
+//   const t = translations[lang];
+
+//   // Fetch Panchayats
+//   useEffect(() => {
+//     const fetchPanchayats = async () => {
+//       setLoading(true);
+//       try {
+//         const u = await getUser();
+//         let data = [];
+
+//         if (u && u.assigned_clf_id && !route.params?.adminDistrictId) {
+//           const res = await gsApi.panchayatsByClf(u.assigned_clf_id);
+//           data = Array.isArray(res) ? res : [];
+//           // additional data enrichment logic omitted for brevity
+//         } else {
+//           const all = (await gsApi.list('Panchayat')) || [];
+//           const filtered = route.params?.adminDistrictId
+//             ? all.filter(p => String(p.district_id) === String(route.params.adminDistrictId))
+//             : all;
+
+//           const enriched = await Promise.all(filtered.map(async p => {
+//             try {
+//               const villages = await gsApi.villagesByPanchayat(p.id);
+//               const sum = Array.isArray(villages) ? villages.reduce((acc, v) => acc + (Number(v.recorded_count || 0)), 0) : 0;
+//               return { ...p, recorded_count: sum };
+//             } catch {
+//               return { ...p, recorded_count: 0 };
+//             }
+//           }));
+//           data = enriched;
+//         }
+
+//         setPanchayats(data);
+//       } catch (err) {
+//         console.warn('SelectGP load error', err);
+//         Alert.alert('Error', String(err));
+//         setPanchayats([]);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchPanchayats();
+//   }, [route.params]);
+
+//   const filtered = panchayats.filter(p => p.name?.toLowerCase().includes(query.toLowerCase()));
+//   const totalPages = Math.ceil(filtered.length / pageSize);
+//   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+//   // Burger menu items
+//   const menuItems = [
+//     {
+//       label: t.menuRecord,
+//       onPress: () => navigation.popToTop(),
+//     },
+//     {
+//       label: t.menuView,
+//       onPress: () => navigation.popToTop(),
+//     },
+//     {
+//       label: t.menuLogout,
+//       color: '#EE6969',
+//       onPress: async () => {
+//         const { clearUser } = await import('../../utils/auth');
+//         await clearUser();
+//         navigation.replace('Login');
+//       },
+//     },
+//   ];
+
+//   return (
+//     <View style={{ flex: 1, padding: 12 }}>
+//       {/* HEADER */}
+//       <View style={styles.header}>
+//         <Text style={styles.headerTitle}>{t.selectPanchayat}</Text>
+//         <View style={styles.headerRight}>
+//           <BackButton />
+//           <TouchableOpacity onPress={() => setMenuOpen(true)} style={{ marginLeft: 12 }}>
+//             <Image
+//               source={HamburgerIcon}
+//               style={{ width: 28, height: 28, tintColor: '#333' }}
+//               resizeMode="contain"
+//             />
+//           </TouchableOpacity>
+//         </View>
+//       </View>
+
+//       {/* LANGUAGE TOGGLE */}
+//       <LanguageToggle language={lang} setLanguage={setLang} style={styles.languageToggle} />
+
+//       {/* SEARCH */}
+//       <SearchBar
+//         placeholder={t.searchPlaceholder}
+//         value={query}
+//         onChangeText={text => { setQuery(text); setPage(1); }}
+//         style={{ marginBottom: 12 }}
+//       />
+
+//       <LoaderModal visible={loading} message={t.loading} />
+
+//       {!loading && (
+//         <>
+//           <FlatList
+//             data={paginated}
+//             keyExtractor={item => String(item.id)}
+//             renderItem={({ item }) => (
+//               <View style={styles.listItem}>
+//                 <Text style={styles.listText}>
+//                   {item.name} — {t.recorded}: {item.recorded_count ?? 0}
+//                 </Text>
+
+//                 <TouchableOpacity
+//                   style={styles.openButton}
+//                   onPress={() => navigation.navigate('VillageList', { panchayat: item, viewOnly: route.params?.viewOnly })}
+//                 >
+//                   <Text style={styles.buttonText}>{t.open}</Text>
+//                 </TouchableOpacity>
+//               </View>
+//             )}
+//             ListEmptyComponent={<Text style={{ color: '#666', marginTop: 12 }}>{t.noPanchayats}</Text>}
+//           />
+
+//           {totalPages > 1 && (
+//             <View style={styles.pagination}>
+//               <TouchableOpacity
+//                 disabled={page <= 1}
+//                 onPress={() => setPage(prev => Math.max(prev - 1, 1))}
+//                 style={[styles.pageButton, page <= 1 && styles.disabledButton]}
+//               >
+//                 <Text style={styles.buttonText}>{t.previous}</Text>
+//               </TouchableOpacity>
+
+//               <Text style={{ alignSelf: 'center' }}>{page} / {totalPages}</Text>
+
+//               <TouchableOpacity
+//                 disabled={page >= totalPages}
+//                 onPress={() => setPage(prev => Math.min(prev + 1, totalPages))}
+//                 style={[styles.pageButton, page >= totalPages && styles.disabledButton]}
+//               >
+//                 <Text style={styles.buttonText}>{t.next}</Text>
+//               </TouchableOpacity>
+//             </View>
+//           )}
+//         </>
+//       )}
+
+//       {menuOpen && <BurgerMenu items={menuItems} onClose={() => setMenuOpen(false)} />}
+//     </View>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   header: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     marginBottom: 10,
+//     marginTop: 50,
+//   },
+//   headerTitle: {
+//     fontWeight: 'bold',
+//     fontSize: 16,
+//   },
+//   headerRight: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//   },
+  
+//   listItem: {
+//     padding: 12,
+//     marginVertical: 6,
+//     borderWidth: 1,
+//     borderRadius: 8,
+//     borderColor: '#ccc',
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//   },
+//   listText: {
+//     fontSize: 14,
+//     flexShrink: 1,
+//   },
+//   openButton: {
+//     backgroundColor: '#007AFF',
+//     paddingVertical: 6,
+//     paddingHorizontal: 12,
+//     borderRadius: 4,
+//   },
+//   buttonText: {
+//     color: '#fff',
+//   },
+//   pagination: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     marginTop: 12,
+//     alignItems: 'center',
+//   },
+//   pageButton: {
+//     backgroundColor: '#007AFF',
+//     paddingVertical: 6,
+//     paddingHorizontal: 12,
+//     borderRadius: 4,
+//   },
+//   disabledButton: {
+//     backgroundColor: '#ccc',
+//   },
+// });
+
+
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import gsApi from '../../api/gsApi';
