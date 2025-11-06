@@ -85,16 +85,59 @@
 
 
 // src/screens/LoginScreen.jsx
-import React from "react";
+// import React from "react";
+// import LoginForm from "../screens/LoginForm";
+// import gsApi from "../api/gsApi";
+// import { saveUser } from "../utils/auth";
+// import {
+//   View,
+//   StyleSheet,
+// } from 'react-native';
+
+// export default function LoginScreen({ navigation }) {
+//   const handleLogin = async (username, password) => {
+//     const res = await gsApi.login(username, password);
+//     return res; // must return { success, message, user }
+//   };
+
+//   const handleSuccess = async (user) => {
+//     await saveUser(user);
+//     const role = String(user.role || "").toLowerCase();
+//     if (role === "crp") navigation.replace("CRPDashboard");
+//     else navigation.replace("AdminDashboard");
+//   };
+
+//   return (
+//     <View style={styles.container}> 
+//     <LoginForm
+//       title="Enterprise Sakhi Registration"
+//       buttonLabel="Sign In"
+//       roles={["CRP", "Admin"]}
+//       enableCaptcha={true}
+//       onLogin={handleLogin}
+//       onSuccess={handleSuccess}
+//     />
+//     </View>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   container: {
+//    marginTop: 50,
+//   }})
+
+
+import React, { useContext } from "react";
 import LoginForm from "../screens/LoginForm";
 import gsApi from "../api/gsApi";
 import { saveUser } from "../utils/auth";
-import {
-  View,
-  StyleSheet,
-} from 'react-native';
+import { View, StyleSheet } from "react-native";
+import LanguageToggle from "../components/LanguageToggle"; // import toggle
+import { LanguageContext } from "../components/LanguageContext"; // import context
 
 export default function LoginScreen({ navigation }) {
+  const { language } = useContext(LanguageContext); // access global language
+
   const handleLogin = async (username, password) => {
     const res = await gsApi.login(username, password);
     return res; // must return { success, message, user }
@@ -108,20 +151,26 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}> 
-    <LoginForm
-      title="Enterprise Sakhi Registration"
-      buttonLabel="Sign In"
-      roles={["CRP", "Admin"]}
-      enableCaptcha={true}
-      onLogin={handleLogin}
-      onSuccess={handleSuccess}
-    />
+    <View style={styles.container}>
+      {/* Language toggle at the top */}
+      <LanguageToggle style={{ marginBottom: 20 }} />
+
+      <LoginForm
+        title="Enterprise Sakhi Registration"
+        buttonLabel="Sign In"
+        roles={["CRP", "Admin"]}
+        enableCaptcha={true}
+        onLogin={handleLogin}
+        onSuccess={handleSuccess}
+        language={language} // optional: pass language to LoginForm if needed for dynamic texts
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-   marginTop: 50,
-  }})
+    marginTop: 50,
+    paddingHorizontal: 16,
+  },
+});

@@ -268,21 +268,432 @@
 // });
 
 
-import React, { useEffect, useState } from 'react';
+// import React, { useEffect, useState } from 'react';
+// import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
+// import gsApi from '../../api/gsApi';
+// import BackButton from '../../components/BackButton';
+// import LoaderModal from '../LoaderModal';
+// import SearchBar from '../SearchBar';
+// import BurgerMenu from '../BurgerMenu';
+// import HamburgerIcon from '../../../assets/hamburger.png'; // adjust path
+
+// export default function SHGList({ navigation, route }) {
+//   const { village, viewOnly } = route.params;
+//   const [query, setQuery] = useState('');
+//   const [shgs, setShgs] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [menuOpen, setMenuOpen] = useState(false);
+
+//   useEffect(() => {
+//     const fetchSHGs = async () => {
+//       try {
+//         setLoading(true);
+//         const res = await gsApi.shgsByVillage(village.id);
+//         setShgs(res || []);
+//       } catch (err) {
+//         console.warn('Error fetching SHGs', err);
+//         setShgs([]);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+//     fetchSHGs();
+//   }, [village.id]);
+
+//   const filtered = shgs.filter(s =>
+//     s.name?.toLowerCase().includes(query.toLowerCase())
+//   );
+
+//   // Burger menu items
+//   const menuItems = [
+//     {
+//       label: 'Record New Beneficiary Detail',
+//       onPress: () => navigation.popToTop(),
+//     },
+//     {
+//       label: 'View Recorded Beneficiary',
+//       onPress: () => navigation.popToTop(),
+//     },
+//     {
+//       label: 'Logout',
+//       color: '#EE6969',
+//       onPress: async () => {
+//         const { clearUser } = await import('../../utils/auth');
+//         await clearUser();
+//         navigation.replace('Login');
+//       },
+//     },
+//   ];
+
+//   return (
+//     <View style={styles.container}>
+//       {/* Loader */}
+//       <LoaderModal visible={loading} message="Fetching SHGs..." />
+
+//       {/* Header row: Title + Back + Menu */}
+//       <View style={styles.headerRow}>
+//         <Text style={styles.title}>{village.name}</Text>
+//         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+//           <BackButton />
+//           <TouchableOpacity onPress={() => setMenuOpen(true)} style={{ marginLeft: 12 }}>
+//             <Image
+//               source={HamburgerIcon}
+//               style={{ width: 28, height: 28, tintColor: '#333' }}
+//               resizeMode="contain"
+//             />
+//           </TouchableOpacity>
+//         </View>
+//       </View>
+
+//       {/* Search Bar */}
+//       <SearchBar
+//         placeholder="Search SHG"
+//         value={query}
+//         onChangeText={setQuery}
+//         style={{ marginBottom: 12 }}
+//       />
+
+//       {/* SHG List */}
+//       <FlatList
+//         data={filtered}
+//         keyExtractor={item => String(item.id)}
+//         renderItem={({ item }) => (
+//           <View style={styles.listItem}>
+//             <Text style={styles.listText}>
+//               {item.name} — Recorded: {item.recorded_count ?? 0}
+//             </Text>
+//             <TouchableOpacity
+//               style={styles.openButton}
+//               onPress={() =>
+//                 navigation.navigate('BeneficiaryList', { shg: item, viewOnly })
+//               }
+//             >
+//               <Text style={styles.buttonText}>Beneficiaries</Text>
+//             </TouchableOpacity>
+//           </View>
+//         )}
+//         ListEmptyComponent={
+//           !loading && <Text style={styles.emptyText}>No SHGs found.</Text>
+//         }
+//       />
+
+//       {/* Burger Menu */}
+//       <BurgerMenu
+//         visible={menuOpen}
+//         onClose={() => setMenuOpen(false)}
+//         menuItems={menuItems}
+//       />
+//     </View>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//     padding: 12,
+//     marginTop: 50,
+//     backgroundColor: '#fff',
+//   },
+//   headerRow: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     marginBottom: 10,
+//   },
+//   title: {
+//     fontWeight: 'bold',
+//     fontSize: 16,
+//     color: '#333',
+//   },
+//   listItem: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     paddingVertical: 8,
+//     paddingHorizontal: 6,
+//     borderBottomWidth: 1,
+//     borderBottomColor: '#EE6969',
+//     marginBottom: 4,
+//   },
+//   listText: {
+//     flex: 1,
+//     fontSize: 15,
+//     color: '#222',
+//   },
+//   openButton: {
+//     backgroundColor: '#EE6969',
+//     paddingVertical: 6,
+//     paddingHorizontal: 12,
+//     borderRadius: 6,
+//   },
+//   buttonText: {
+//     color: '#fff',
+//     fontWeight: '600',
+//   },
+//   emptyText: {
+//     color: '#666',
+//     marginTop: 12,
+//     textAlign: 'center',
+//   },
+// });
+
+
+
+// import React, { useEffect, useState } from 'react';
+// import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
+// import gsApi from '../../api/gsApi';
+// import BackButton from '../../components/BackButton';
+// import LoaderModal from '../LoaderModal';
+// import SearchBar from '../SearchBar';
+// import BurgerMenu from '../BurgerMenu';
+// import HamburgerIcon from '../../../assets/hamburger.png'; // adjust path
+
+// export default function SHGList({ navigation, route }) {
+//   const { village, viewOnly } = route.params;
+//   const [query, setQuery] = useState('');
+//   const [shgs, setShgs] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [menuOpen, setMenuOpen] = useState(false);
+//   const [language, setLanguage] = useState('en'); // 'en' or 'hi'
+
+//   // Translation dictionary
+//   const t = {
+//     en: {
+//       searchPlaceholder: 'Search SHG',
+//       beneficiaries: 'Beneficiaries',
+//       noSHG: 'No SHGs found.',
+//       fetching: 'Fetching SHGs...',
+//       toggleLang: 'HI',
+//     },
+//     hi: {
+//       searchPlaceholder: 'एसएचजी खोजें',
+//       beneficiaries: 'लाभार्थी',
+//       noSHG: 'कोई SHG नहीं मिला।',
+//       fetching: 'SHG लोड हो रहा है...',
+//       toggleLang: 'EN',
+//     },
+//   };
+
+//   useEffect(() => {
+//     const fetchSHGs = async () => {
+//       try {
+//         setLoading(true);
+//         const res = await gsApi.shgsByVillage(village.id);
+//         setShgs(res || []);
+//       } catch (err) {
+//         console.warn('Error fetching SHGs', err);
+//         setShgs([]);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+//     fetchSHGs();
+//   }, [village.id]);
+
+//   const filtered = shgs.filter(s =>
+//     s.name?.toLowerCase().includes(query.toLowerCase())
+//   );
+
+//   const menuItems = [
+//     {
+//       label: 'Record New Beneficiary Detail',
+//       onPress: () => navigation.popToTop(),
+//     },
+//     {
+//       label: 'View Recorded Beneficiary',
+//       onPress: () => navigation.popToTop(),
+//     },
+//     {
+//       label: 'Logout',
+//       color: '#EE6969',
+//       onPress: async () => {
+//         const { clearUser } = await import('../../utils/auth');
+//         await clearUser();
+//         navigation.replace('Login');
+//       },
+//     },
+//   ];
+
+//   return (
+//     <View style={styles.container}>
+//       {/* Loader */}
+//       <LoaderModal visible={loading} message={t[language].fetching} />
+
+//       {/* Header row */}
+//       <View style={styles.headerRow}>
+//         <BackButton />
+//         <Text style={styles.title}>{village.name}</Text>
+//         <View style={styles.rightHeader}>
+//           {/* Hamburger */}
+//           <TouchableOpacity onPress={() => setMenuOpen(true)} style={{ marginRight: 8 }}>
+//             <Image
+//               source={HamburgerIcon}
+//               style={{ width: 28, height: 28, tintColor: '#333' }}
+//               resizeMode="contain"
+//             />
+//           </TouchableOpacity>
+
+//           {/* Language toggle */}
+//           <TouchableOpacity
+//             onPress={() => setLanguage(language === 'en' ? 'hi' : 'en')}
+//             style={styles.langButton}
+//           >
+//             <Text style={styles.langText}>{t[language].toggleLang}</Text>
+//           </TouchableOpacity>
+//         </View>
+//       </View>
+
+//       {/* Search Bar */}
+//       <SearchBar
+//         placeholder={t[language].searchPlaceholder}
+//         value={query}
+//         onChangeText={setQuery}
+//         style={{ marginBottom: 12 }}
+//       />
+
+//       {/* SHG List */}
+//       <FlatList
+//         data={filtered}
+//         keyExtractor={item => String(item.id)}
+//         renderItem={({ item }) => (
+//           <View style={styles.listItem}>
+//             <Text style={styles.listText}>
+//               {item.name} — Recorded: {item.recorded_count ?? 0}
+//             </Text>
+//             <TouchableOpacity
+//               style={styles.openButton}
+//               onPress={() =>
+//                 navigation.navigate('BeneficiaryList', { shg: item, viewOnly })
+//               }
+//             >
+//               <Text style={styles.buttonText}>{t[language].beneficiaries}</Text>
+//             </TouchableOpacity>
+//           </View>
+//         )}
+//         ListEmptyComponent={
+//           !loading && <Text style={styles.emptyText}>{t[language].noSHG}</Text>
+//         }
+//       />
+
+//       {/* Burger Menu */}
+//       <BurgerMenu
+//         visible={menuOpen}
+//         onClose={() => setMenuOpen(false)}
+//         menuItems={menuItems}
+//       />
+//     </View>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//     padding: 12,
+//     marginTop: 50,
+//     backgroundColor: '#fff',
+//   },
+//   headerRow: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     justifyContent: 'space-between',
+//     marginBottom: 10,
+//   },
+//   title: {
+//     fontWeight: 'bold',
+//     fontSize: 16,
+//     color: '#333',
+//     textAlign: 'center',
+//     flex: 1,
+//   },
+//   rightHeader: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//   },
+//   langButton: {
+//     paddingVertical: 4,
+//     paddingHorizontal: 8,
+//     borderWidth: 1,
+//     borderColor: '#333',
+//     borderRadius: 6,
+//     backgroundColor: '#f0f0f0',
+//   },
+//   langText: {
+//     fontSize: 12,
+//     fontWeight: 'bold',
+//   },
+//   listItem: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     paddingVertical: 8,
+//     paddingHorizontal: 6,
+//     borderBottomWidth: 1,
+//     borderBottomColor: '#EE6969',
+//     marginBottom: 4,
+//   },
+//   listText: {
+//     flex: 1,
+//     fontSize: 15,
+//     color: '#222',
+//   },
+//   openButton: {
+//     backgroundColor: '#EE6969',
+//     paddingVertical: 6,
+//     paddingHorizontal: 12,
+//     borderRadius: 6,
+//   },
+//   buttonText: {
+//     color: '#fff',
+//     fontWeight: '600',
+//   },
+//   emptyText: {
+//     color: '#666',
+//     marginTop: 12,
+//     textAlign: 'center',
+//   },
+// });
+
+
+// src/screens/SHGList.jsx
+import React, { useEffect, useState, useContext } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import gsApi from '../../api/gsApi';
 import BackButton from '../../components/BackButton';
 import LoaderModal from '../LoaderModal';
 import SearchBar from '../SearchBar';
 import BurgerMenu from '../BurgerMenu';
-import HamburgerIcon from '../../../assets/hamburger.png'; // adjust path
+import HamburgerIcon from '../../../assets/hamburger.png';
+import { LanguageContext } from '../../components/LanguageContext';
+import LanguageToggle from '../../components/LanguageToggle';
 
 export default function SHGList({ navigation, route }) {
   const { village, viewOnly } = route.params;
+  const { language } = useContext(LanguageContext);
+
   const [query, setQuery] = useState('');
   const [shgs, setShgs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Translations
+  const translations = {
+    en: {
+      searchPlaceholder: 'Search SHG',
+      beneficiaries: 'Beneficiaries',
+      noSHG: 'No SHGs found.',
+      fetching: 'Fetching SHGs...',
+      headerTitle: 'SHG List', // header title in English
+    },
+    hi: {
+      searchPlaceholder: 'एसएचजी खोजें',
+      beneficiaries: 'लाभार्थी',
+      noSHG: 'कोई SHG नहीं मिला।',
+      fetching: 'SHG लोड हो रहा है...',
+      headerTitle: 'एसएचजी सूची', // header title in Hindi
+    },
+  };
+
+  const t = translations[language] || translations.en;
 
   useEffect(() => {
     const fetchSHGs = async () => {
@@ -304,16 +715,9 @@ export default function SHGList({ navigation, route }) {
     s.name?.toLowerCase().includes(query.toLowerCase())
   );
 
-  // Burger menu items
   const menuItems = [
-    {
-      label: 'Record New Beneficiary Detail',
-      onPress: () => navigation.popToTop(),
-    },
-    {
-      label: 'View Recorded Beneficiary',
-      onPress: () => navigation.popToTop(),
-    },
+    { label: 'Record New Beneficiary Detail', onPress: () => navigation.popToTop() },
+    { label: 'View Recorded Beneficiary', onPress: () => navigation.popToTop() },
     {
       label: 'Logout',
       color: '#EE6969',
@@ -328,14 +732,18 @@ export default function SHGList({ navigation, route }) {
   return (
     <View style={styles.container}>
       {/* Loader */}
-      <LoaderModal visible={loading} message="Fetching SHGs..." />
+      <LoaderModal visible={loading} message={t.fetching} />
 
-      {/* Header row: Title + Back + Menu */}
+      {/* Header */}
       <View style={styles.headerRow}>
-        <Text style={styles.title}>{village.name}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <BackButton />
-          <TouchableOpacity onPress={() => setMenuOpen(true)} style={{ marginLeft: 12 }}>
+         <View style={{gap: 4
+                          }}><LanguageToggle style={{ marginRight: 10 }} /><BackButton /></View>
+        {/* <BackButton /> */}
+        {/* Centered header title that switches with language */}
+        <Text style={styles.title}>{t.headerTitle}</Text>
+        <View style={styles.rightHeader}>
+          {/* <LanguageToggle style={{ marginRight: 10 }} /> */}
+          <TouchableOpacity onPress={() => setMenuOpen(true)} style={{ marginRight: 8 }}>
             <Image
               source={HamburgerIcon}
               style={{ width: 28, height: 28, tintColor: '#333' }}
@@ -347,7 +755,7 @@ export default function SHGList({ navigation, route }) {
 
       {/* Search Bar */}
       <SearchBar
-        placeholder="Search SHG"
+        placeholder={t.searchPlaceholder}
         value={query}
         onChangeText={setQuery}
         style={{ marginBottom: 12 }}
@@ -360,21 +768,19 @@ export default function SHGList({ navigation, route }) {
         renderItem={({ item }) => (
           <View style={styles.listItem}>
             <Text style={styles.listText}>
-              {item.name} — Recorded: {item.recorded_count ?? 0}
+              {item.name} — {t.beneficiaries}: {item.recorded_count ?? 0}
             </Text>
             <TouchableOpacity
               style={styles.openButton}
-              onPress={() =>
-                navigation.navigate('BeneficiaryList', { shg: item, viewOnly })
-              }
+              onPress={() => navigation.navigate('BeneficiaryList', { shg: item, viewOnly })}
             >
-              <Text style={styles.buttonText}>Beneficiaries</Text>
+              <Text style={styles.buttonText}>{t.beneficiaries}</Text>
             </TouchableOpacity>
           </View>
         )}
-        ListEmptyComponent={
-          !loading && <Text style={styles.emptyText}>No SHGs found.</Text>
-        }
+        ListEmptyComponent={!loading && (
+          <Text style={styles.emptyText}>{t.noSHG}</Text>
+        )}
       />
 
       {/* Burger Menu */}
@@ -388,23 +794,18 @@ export default function SHGList({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 12,
-    marginTop: 50,
-    backgroundColor: '#fff',
+  container: { flex: 1, padding: 12, marginTop: 50, backgroundColor: '#fff' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, position: 'relative' },
+  title: { 
+    position: 'absolute', 
+    left: 0, 
+    right: 0, 
+    textAlign: 'center', 
+    fontWeight: 'bold', 
+    fontSize: 16, 
+    color: '#333' 
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  title: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    color: '#333',
-  },
+  rightHeader: { flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' },
   listItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -415,24 +816,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#EE6969',
     marginBottom: 4,
   },
-  listText: {
-    flex: 1,
-    fontSize: 15,
-    color: '#222',
-  },
-  openButton: {
-    backgroundColor: '#EE6969',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  emptyText: {
-    color: '#666',
-    marginTop: 12,
-    textAlign: 'center',
-  },
+  listText: { flex: 1, fontSize: 15, color: '#222' },
+  openButton: { backgroundColor: '#EE6969', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
+  buttonText: { color: '#fff', fontWeight: '600' },
+  emptyText: { color: '#666', marginTop: 12, textAlign: 'center' },
 });
