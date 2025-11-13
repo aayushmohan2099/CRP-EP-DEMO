@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button, ScrollView } from 'react-native';
 import gsApi from '../api/gsApi';
-import { clearUser } from '../utils/auth';
+import { clearUser } from '../../utils/auth';
 
 export default function AdminDashboard({ navigation }) {
   const [districts, setDistricts] = useState([]);
