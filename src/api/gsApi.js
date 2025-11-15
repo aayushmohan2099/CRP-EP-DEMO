@@ -219,8 +219,8 @@ async function login(username, password) {
 }
 
 // Get all districts
-async function getDistricts() {
-  const res = await fetch(`${BASE_URL}/api/v1/lookups/districts/`, {
+async function getDistricts(page_num) {
+  const res = await fetch(`${BASE_URL}/api/v1/lookups/districts/?page=${page_num}`, {
     method: 'GET',
     headers: DEFAULT_HEADERS,
   });
@@ -228,24 +228,32 @@ async function getDistricts() {
 }
 
 // // Get blocks by district ID
-async function getBlocksByDistrict(districtId) {
-  const res = await fetch(`${BASE_URL}/api/v1/lookups/blocks/${districtId}/`, {
+async function getBlocksByDistrict(districtId, page_num) {
+  const res = await fetch(`${BASE_URL}/api/v1/lookups/blocks/${districtId}/?page=${page_num}`, {
     method: 'GET',
     headers: DEFAULT_HEADERS,
   });
   return handleResponse(res);
 }
 
-async function getPanchayatsByBlock(blockId) {
-  const res = await fetch(`${BASE_URL}/api/v1/lookups/panchayats/${blockId}/`, {
+async function getPanchayatsByBlock(blockId , page_num) {
+  const res = await fetch(`${BASE_URL}/api/v1/lookups/panchayats/${blockId}/?page=${page_num}`, {
     method: 'GET',
     headers: DEFAULT_HEADERS,
   });
   return handleResponse(res);
 }
 
-async function getVillagesByPanchayat(panchayatId) {
-  const res = await fetch(`${BASE_URL}/api/v1/lookups/villages/${panchayatId}/`, {
+async function getVillagesByPanchayat(panchayatId , page_num) {
+  const res = await fetch(`${BASE_URL}/api/v1/lookups/villages/${panchayatId}/?page=${page_num}`, {
+    method: 'GET',
+    headers: DEFAULT_HEADERS,
+  });
+  return handleResponse(res);
+}
+const shreeDuttGanj = 3101392;
+async function getShgByPanchayat() {
+  const res = await fetch(`${BASE_URL}/api/v1/lookups/shg-list/${shreeDuttGanj}/`, {
     method: 'GET',
     headers: DEFAULT_HEADERS,
   });
@@ -256,5 +264,6 @@ export default {
   getDistricts,
   getBlocksByDistrict,
   getPanchayatsByBlock,
-  getVillagesByPanchayat
+  getVillagesByPanchayat,
+  getShgByPanchayat
 };

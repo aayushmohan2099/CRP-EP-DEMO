@@ -332,7 +332,7 @@ export default function BeneficiaryList({ navigation, route }) {
                   </TouchableOpacity>
                 </>
               ) : (
-                <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('EnterpriseForm', { beneficiary: item })}>
+                <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('EnterpriseFormNew', { beneficiary: item })}>
                   <Text style={styles.buttonText}>{t.record}</Text>
                 </TouchableOpacity>
               )}

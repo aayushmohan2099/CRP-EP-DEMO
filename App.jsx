@@ -50,6 +50,7 @@ import SelectDistrict from './src/screens/screensProductionApp/SelectDistrict';
 import BlockList from './src/screens/screensProductionApp/BlockList';
 import SelectGP from './src/screens/screensProductionApp/SelectGP';
 import SelectVillage from './src/screens/screensProductionApp/SelectVillages'
+import SelectShg from './src/screens/screensProductionApp/SelectShg';
 // import LoginScreen from './src/screens/LoginScreen';
 // import CRPDashboard from './src/screens/CRPDashboard';
 // import AdminDashboard from './src/screens/AdminDashboard';
@@ -78,6 +79,7 @@ export default function App() {
 <Stack.Screen name="BlockList" component={BlockList} />
 <Stack.Screen name="SelectGP" component={SelectGP} />
 <Stack.Screen name="SelectVillages" component={SelectVillage} />
+<Stack.Screen name="SelectShg" component={SelectShg} />
           {/* <Stack.Screen name="DistrictList" component={DistrictList} /> */}
           {/* <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="CRPDashboard" component={CRPDashboard} />

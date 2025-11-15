@@ -76,7 +76,8 @@ export default function AdminDashboard({ navigation }) {
     setLoading(true);
 
     try {
-        let res = await gsApi.getDistricts();
+        page_num = 1;
+        let res = await gsApi.getDistricts(page_num);
 
         console.log('Raw districts response:', res);
 
