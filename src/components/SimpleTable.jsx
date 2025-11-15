@@ -1,4 +1,3 @@
-// src/components/SimpleTable.jsx
 import React from 'react';
 import { FlatList, TouchableOpacity, Text } from 'react-native';
 

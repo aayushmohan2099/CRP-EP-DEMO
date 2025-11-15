@@ -10,14 +10,12 @@ import {
 import { LanguageContext } from "../../components/LanguageContext";
 import LanguageToggle from "../../components/LanguageToggle";
 
-// --- Default captcha generator ---
 function randomCaptcha() {
   const a = Math.floor(Math.random() * 9) + 1;
   const b = Math.floor(Math.random() * 9) + 1;
   return { q: `${a} + ${b}`, ans: String(a + b) };
 }
 
-// --- Translation dictionary ---
 const translations = {
   en: {
     loginTitle: "Login",
@@ -101,21 +99,16 @@ export default function LoginForm({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Fake login handler
   const handleSubmit = async () => {
     setSuccess("");
     if (!validate()) return;
     setLoading(true);
-
-    // ⏳ Simulate API delay
     setTimeout(() => {
       setLoading(false);
       setSuccess(t.loginSuccess);
 
-      // Optional callback for parent
       onSuccess?.({ username, role: selectedRole });
 
-      // ✅ Navigate after success
       setTimeout(() => {
         if (navigation) {
           if (selectedRole === "Admin") {
@@ -131,8 +124,6 @@ export default function LoginForm({
   return (
     <View style={[styles.container, containerStyle]}>
       <Text style={styles.title}>{t.loginTitle}</Text>
-
-      {/* Username */}
       <Text style={styles.label}>{t.username}</Text>
       <TextInput
         placeholder={t.enterUsername}

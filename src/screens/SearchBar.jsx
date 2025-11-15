@@ -1,4 +1,3 @@
-// components/SearchBar.jsx
 import React from 'react';
 import { TextInput, StyleSheet } from 'react-native';
 
@@ -8,7 +7,7 @@ export default function SearchBar({ value, onChangeText, placeholder, style }) {
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      style={[styles.input, style]} // merge default and custom styles
+      style={[styles.input, style]} 
     />
   );
 }

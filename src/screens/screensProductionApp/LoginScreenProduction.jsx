@@ -9,16 +9,14 @@ export default function LoginScreen({ navigation }) {
   const { language } = useContext(LanguageContext);
   const [loading, setLoading] = useState(false);
 
-  // 🟢 Mock login function
+  
   const handleLogin = async (username, password, role) => {
     setLoading(true);
 
-    // Simulate network delay
+   
     await new Promise((r) => setTimeout(r, 800));
 
     setLoading(false);
-
-    // Simple validation
     if (!username || !password || !role) {
       Alert.alert("Error", "Please enter username, password, and select a role");
       return { success: false };
@@ -34,7 +32,7 @@ export default function LoginScreen({ navigation }) {
     };
   };
 
-  // 🟢 Handle successful login
+
   const handleSuccess = async (user) => {
     await saveUser(user);
 
@@ -49,10 +47,7 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Language Toggle */}
       <LanguageToggle style={{ marginBottom: 20 }} />
-
-      {/* Login Form */}
       <LoginForm
         title="Enterprise Sakhi Registration"
         buttonLabel="Sign In"

@@ -52,26 +52,7 @@ export default function AdminDashboard({ navigation }) {
     })();
   }, []);
 
-  // Handle "View Beneficiaries"
-//   const handleViewBeneficiaries = async () => {
-//     setLoading(true);
-//     try {
-//       const districts = await gsApi.getDistricts();
-
-//       if (!districts || !Array.isArray(districts) || districts.length === 0) {
-//         Alert.alert(t.errorFetchingDistricts, 'No districts found.');
-//         setLoading(false);
-//         return;
-//       }
-
-//       setLoading(false);
-//       navigation.navigate('DistrictList', { districts });
-//     } catch (err) {
-//       console.error('Error fetching districts:', err);
-//       Alert.alert(t.errorFetchingDistricts, err.message || 'Unknown error.');
-//       setLoading(false);
-//     }
-//   };
+ 
     const handleViewBeneficiaries = async () => {
     setLoading(true);
 
@@ -102,7 +83,6 @@ export default function AdminDashboard({ navigation }) {
         }
         }
 
-        // API returns object with `results` array
         if (res && Array.isArray(res.results)) {
         districts = res.results;
         } else {
@@ -116,7 +96,6 @@ export default function AdminDashboard({ navigation }) {
         return;
         }
 
-        // Navigate with districts array
         navigation.navigate('SelectDistrict', { districts });
     } catch (err) {
         console.error('Error fetching districts:', err);
@@ -137,7 +116,6 @@ export default function AdminDashboard({ navigation }) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.userText}>{user ? user.username : t.userPlaceholder}</Text>
 
@@ -150,7 +128,6 @@ export default function AdminDashboard({ navigation }) {
         </View>
       </View>
 
-      {/* Record Beneficiaries */}
       <TouchableOpacity
         style={styles.primaryButton}
         onPress={() => navigation.navigate('SelectDistrict')}
@@ -158,7 +135,6 @@ export default function AdminDashboard({ navigation }) {
         <Text style={styles.primaryButtonText}>{t.recordBeneficiaries}</Text>
       </TouchableOpacity>
 
-      {/* View Beneficiaries */}
       <TouchableOpacity
         style={styles.secondaryButton}
         onPress={handleViewBeneficiaries}
@@ -167,10 +143,9 @@ export default function AdminDashboard({ navigation }) {
         <Text style={styles.secondaryButtonText}>{t.viewBeneficiaries}</Text>
       </TouchableOpacity>
 
-      {/* Loader */}
+     
       <LoaderModal visible={loading} message={t.loadingDistricts} />
 
-      {/* Burger Menu */}
       <BurgerMenu visible={menuOpen} onClose={() => setMenuOpen(false)} menuItems={menuItems} />
     </ScrollView>
   );
