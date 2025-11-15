@@ -253,7 +253,7 @@ export default function BeneficiaryList({ navigation, route }) {
   const loadBeneficiaries = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await gsApi.beneficiariesByShg(shg.id, viewOnly ? 'true' : 'false');
+      const res = await gsApi.beneficiariesByShg(shg.id, viewOnly ? 'true' : 'false', { cache: true });
       setBeneficiaries(Array.isArray(res) ? res : []);
     } catch (err) {
       console.warn('loadBeneficiaries', err);
