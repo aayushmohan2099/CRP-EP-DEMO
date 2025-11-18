@@ -1,3 +1,4 @@
+// .\src\screens\LoaderModal.jsx
 import React from 'react';
 import { Modal, View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 

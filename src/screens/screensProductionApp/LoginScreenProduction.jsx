@@ -1,47 +1,58 @@
-import React, { useContext, useState } from "react";
-import { View, StyleSheet, Alert } from "react-native";
-import LoginForm from "../screensProductionApp/LoginFormProduction";
-import { saveUser } from "../../utils/auth";
-import LanguageToggle from "../../components/LanguageToggle";
-import { LanguageContext } from "../../components/LanguageContext";
+import React, { useContext, useState } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
+import LoginForm from './LoginFormProduction';
+import { saveUser } from '../../utils/auth';
+import LanguageToggle from '../../components/LanguageToggle';
+import { LanguageContext } from '../../components/LanguageContext';
+import gsApi, { setAuthToken } from '../../api/gsApi';
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreenProduction({ navigation }) {
   const { language } = useContext(LanguageContext);
   const [loading, setLoading] = useState(false);
 
-  
   const handleLogin = async (username, password, role) => {
     setLoading(true);
-
-   
-    await new Promise((r) => setTimeout(r, 800));
-
-    setLoading(false);
-    if (!username || !password || !role) {
-      Alert.alert("Error", "Please enter username, password, and select a role");
-      return { success: false };
+    try {
+      const res = await gsApi.login(username, password);
+      if (!res || !res.access || !res.user) {
+        return {
+          success: false,
+          message: 'Invalid response from server. Please try again.',
+        };
+      }
+      return {
+        success: true,
+        message: 'Login successful',
+        access: res.access,
+        refresh: res.refresh,
+        user: res.user,
+      };
+    } catch (err) {
+      const msg =
+        err?.data?.detail ||
+        err?.data?.non_field_errors?.[0] ||
+        err?.message ||
+        'Login failed. Please check your credentials.';
+      return { success: false, message: msg };
+    } finally {
+      setLoading(false);
     }
-
-    return {
-      success: true,
-      message: "Login successful",
-      user: {
-        username,
-        role,
-      },
-    };
   };
 
+  const handleSuccess = async (userPayload) => {
+    // Persist + prime auth header (access + refresh)
+    if (userPayload.access) {
+      setAuthToken(userPayload.access, userPayload.refresh);
+    }
+    await saveUser(userPayload);
 
-  const handleSuccess = async (user) => {
-    await saveUser(user);
-
-    const role = String(user.role || "").toLowerCase();
-
-    if (role === "crp") navigation.replace("CRPDashboard");
-    else if (role === "admin") navigation.replace("AdminDashboard");
-    else {
-      Alert.alert("Error", "Unknown role. Cannot navigate.");
+    const role = String(userPayload.role || '').toLowerCase();
+    if (role === 'crp') {
+      navigation.replace('CRPDashboard');
+    } else if (role === 'admin') {
+      navigation.replace('AdminDashboard');
+    } else {
+      Alert.alert('Error', 'Unknown role. Please select CRP or Admin.');
     }
   };
 
@@ -49,14 +60,11 @@ export default function LoginScreen({ navigation }) {
     <View style={styles.container}>
       <LanguageToggle style={{ marginBottom: 20 }} />
       <LoginForm
-        title="Enterprise Sakhi Registration"
-        buttonLabel="Sign In"
-        roles={["CRP", "Admin"]}
         enableCaptcha={true}
+        roles={['CRP', 'Admin']}
         onLogin={handleLogin}
         onSuccess={handleSuccess}
         language={language}
-        loading={loading}
       />
     </View>
   );
@@ -67,6 +75,6 @@ const styles = StyleSheet.create({
     marginTop: 50,
     paddingHorizontal: 16,
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
   },
 });

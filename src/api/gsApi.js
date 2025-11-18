@@ -1,184 +1,3 @@
-// // src/api/gsApi.js
-// const BASE_URL = 'https://script.google.com/macros/s/AKfycbxvHpET2s5JWkQl3zlZcKb7JjVzXeKKciX5wKV-UR6oT5gIDwKemxAakO3ul6OPo0UW/exec';
-
-import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
-
-// async function call(action, params = {}) {
-//   const body = Object.assign({}, params, { action });
-//   console.log('[gsApi] POST body', JSON.stringify(body).slice(0, 3000));
-//   try {
-//     const res = await fetch(BASE_URL, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify(body),
-//     });
-//     const text = await res.text();
-//     console.log('[gsApi] POST', action, 'status', res.status, 'raw (first1k):', text && text.slice ? text.slice(0, 1000) : text);
-//     try { return JSON.parse(text); } catch (err) { return { __parse_error: true, status: res.status, text }; }
-//   } catch (err) { console.log('[gsApi] POST error', String(err)); return { __error: true, message: String(err) }; }
-// }
-
-// export default {
-//   list: (table) => call('list', { table }),
-//   read: (table, filterField, filterValue) => call('read', { table, filterField, filterValue }),
-//   create: (table, payload) => call('create', { table, payload }), // payload as object
-//   update: (table, payload) => call('update', { table, payload }),
-//   delete: (table, id) => call('delete', { table, id }),
-//   login: (username, password) => call('login', { username, password }),
-//   panchayatsByClf: (clf_id) => call('panchayats_by_clf', { clf_id }),
-//   villagesByPanchayat: (panchayat_id) => call('villages_by_panchayat', { panchayat_id }),
-//   shgsByVillage: (village_id) => call('shgs_by_village', { village_id }),
-//   beneficiariesByShg: (shg_id, recorded) => call('beneficiaries_by_shg', { shg_id, recorded }),
-//   analyticsByDistrict: () => call('analytics_by_district', {}),
-//   uploadMedia: (files, folderId) => call('upload_media', { payload: { files, folderId } }),
-//   // fast idempotent save endpoint (server returns saved single record and rowNumber)
-//   createOrUpdateEnterprise: (payload) => call('create_or_update_enterprise', { payload }),
-// };
-
-
-// src/api/gsApi.js
-// const BASE_URL = 'https://script.google.com/macros/s/AKfycbxvHpET2s5JWkQl3zlZcKb7JjVzXeKKciX5wKV-UR6oT5gIDwKemxAakO3ul6OPo0UW/exec';
-
-// async function call(action, params = {}) {
-//   const body = { ...params, action };
-//   console.log('[gsApi] POST body', JSON.stringify(body).slice(0, 3000));
-
-//   try {
-//     const res = await fetch(BASE_URL, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify(body),
-//     });
-
-//     const text = await res.text();
-//     console.log(
-//       '[gsApi] POST',
-//       action,
-//       'status',
-//       res.status,
-//       'raw (first1k):',
-//       text && text.slice ? text.slice(0, 1000) : text
-//     );
-
-//     try {
-//       return JSON.parse(text);
-//     } catch (err) {
-//       return { __parse_error: true, status: res.status, text };
-//     }
-//   } catch (err) {
-//     console.log('[gsApi] POST error', String(err));
-//     return { __error: true, message: String(err) };
-//   }
-// }
-
-// export default {
-//   // CRUD endpoints
-//   list: (table, lang = 'en') => call('list', { table, lang }),
-//   read: (table, filterField, filterValue, lang = 'en') =>
-//     call('read', { table, filterField, filterValue, lang }),
-//   create: (table, payload) => call('create', { table, payload }),
-//   update: (table, payload) => call('update', { table, payload }),
-//   delete: (table, id) => call('delete', { table, id }),
-
-//   // Auth
-//   login: (username, password) => call('login', { username, password }),
-
-//   // Panchayat / Village / SHG
-//   panchayatsByClf: (clf_id, lang = 'en') =>
-//     call('panchayats_by_clf', { clf_id, lang }),
-//   villagesByPanchayat: (panchayat_id, lang = 'en') =>
-//     call('villages_by_panchayat', { panchayat_id, lang }),
-//   shgsByVillage: (village_id, lang = 'en') =>
-//     call('shgs_by_village', { village_id, lang }),
-//   beneficiariesByShg: (shg_id, recorded) =>
-//     call('beneficiaries_by_shg', { shg_id, recorded }),
-
-//   // Analytics
-//   analyticsByDistrict: () => call('analytics_by_district', {}),
-
-//   // Media upload
-//   uploadMedia: (files, folderId) =>
-//     call('upload_media', { payload: { files, folderId } }),
-
-//   // Fast idempotent save
-//   createOrUpdateEnterprise: (payload) =>
-//     call('create_or_update_enterprise', { payload }),
-// };
-
-
-// src/api/gsApi.js
-
-// ✅ New deployment URL and deployment ID
-// const BASE_URL = 'https://script.google.com/macros/s/AKfycbzB2Hnp5As7ltS3p9z35_2j57BEAHP5jMnQQNKu7q1ELSCa3mAbDdvyAVXHYRHyZPsq/exec';
-// const DEPLOYMENT_ID = 'AKfycbzB2Hnp5As7ltS3p9z35_2j57BEAHP5jMnQQNKu7q1ELSCa3mAbDdvyAVXHYRHyZPsq';
-
-// async function call(action, params = {}) {
-//   const body = { ...params, action, deployment_id: DEPLOYMENT_ID };
-//   console.log('[gsApi] POST body', JSON.stringify(body).slice(0, 3000));
-
-//   try {
-//     const res = await fetch(BASE_URL, {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify(body),
-//     });
-
-//     const text = await res.text();
-//     console.log(
-//       '[gsApi] POST',
-//       action,
-//       'status',
-//       res.status,
-//       'raw (first1k):',
-//       text && text.slice ? text.slice(0, 1000) : text
-//     );
-
-//     try {
-//       return JSON.parse(text);
-//     } catch (err) {
-//       return { __parse_error: true, status: res.status, text };
-//     }
-//   } catch (err) {
-//     console.log('[gsApi] POST error', String(err));
-//     return { __error: true, message: String(err) };
-//   }
-// }
-
-// export default {
-//   // CRUD endpoints
-//   list: (table, lang = 'en') => call('list', { table, lang }),
-//   read: (table, filterField, filterValue, lang = 'en') =>
-//     call('read', { table, filterField, filterValue, lang }),
-//   create: (table, payload) => call('create', { table, payload }),
-//   update: (table, payload) => call('update', { table, payload }),
-//   delete: (table, id) => call('delete', { table, id }),
-
-//   // Auth
-//   login: (username, password) => call('login', { username, password }),
-
-//   // Panchayat / Village / SHG
-//   panchayatsByClf: (clf_id, lang = 'en') =>
-//     call('panchayats_by_clf', { clf_id, lang }),
-//   villagesByPanchayat: (panchayat_id, lang = 'en') =>
-//     call('villages_by_panchayat', { panchayat_id, lang }),
-//   shgsByVillage: (village_id, lang = 'en') =>
-//     call('shgs_by_village', { village_id, lang }),
-//   beneficiariesByShg: (shg_id, recorded) =>
-//     call('beneficiaries_by_shg', { shg_id, recorded }),
-
-//   // Analytics
-//   analyticsByDistrict: () => call('analytics_by_district', {}),
-
-//   // Media upload
-//   uploadMedia: (files, folderId) =>
-//     call('upload_media', { payload: { files, folderId } }),
-
-//   // Fast idempotent save
-//   createOrUpdateEnterprise: (payload) =>
-//     call('create_or_update_enterprise', { payload }),
-// };
-
-
 // src/api/gsApi.js
 
 const BASE_URL = 'http://66.116.207.88:8088';
@@ -189,81 +8,363 @@ const DEFAULT_HEADERS = {
   'X-API-KEY': 'wFR8IpSeNMawCF4RPLXit1POGuQAJTSmRexBBOwO',
 };
 
-// Handle API responses safely
+let AUTH_TOKEN = null;
+let REFRESH_TOKEN = null;
+
+// ========== TOKEN HELPERS ==========
+
+export function setAuthToken(accessToken, refreshToken) {
+  AUTH_TOKEN = accessToken || null;
+  // keep backwards compatibility: old calls with 1 arg still work
+  if (typeof refreshToken !== 'undefined') {
+    REFRESH_TOKEN = refreshToken || null;
+  }
+}
+
+export function getAuthToken() {
+  return AUTH_TOKEN;
+}
+
+export function getRefreshToken() {
+  return REFRESH_TOKEN;
+}
+
+export function clearAuthTokens() {
+  AUTH_TOKEN = null;
+  REFRESH_TOKEN = null;
+}
+
+function buildUrl(path) {
+  if (!path.startsWith('/')) path = '/' + path;
+  return BASE_URL + path;
+}
+
 async function handleResponse(response) {
   const text = await response.text();
-
   if (!text) {
     if (!response.ok) throw { status: response.status, data: null };
     return null;
   }
-
   try {
     const data = JSON.parse(text);
     if (!response.ok) throw { status: response.status, data };
     return data;
   } catch (err) {
-    if (response.ok) return text; // fallback raw text
+    if (response.ok) return text;
     throw err;
   }
 }
 
-// Login (optional)
-async function login(username, password) {
-  const res = await fetch(`${BASE_URL}login/`, {
+// Standard headers (X-API-ID/KEY + Authorization, unless caller overrides)
+function authHeaders(extra = {}) {
+  const h = { ...DEFAULT_HEADERS, ...extra };
+  if (AUTH_TOKEN) {
+    h['Authorization'] = `Bearer ${AUTH_TOKEN}`;
+  }
+  return h;
+}
+
+// ========== CENTRAL REQUEST WITH AUTO-REFRESH ==========
+
+async function refreshAccessTokenOnce() {
+  if (!REFRESH_TOKEN) {
+    throw { status: 401, data: { detail: 'No refresh token available' } };
+  }
+
+  const res = await fetch(buildUrl('/api/v1/auth/refresh/'), {
     method: 'POST',
-    headers: DEFAULT_HEADERS,
+    headers: {
+      'Content-Type': 'application/json',
+      // backend reads this as request.COOKIES['ps_refresh']
+      Cookie: `ps_refresh=${REFRESH_TOKEN}`,
+    },
+  });
+
+  try {
+    const data = await handleResponse(res);
+    if (!data || !data.access) {
+      throw { status: res.status, data: data || null };
+    }
+    AUTH_TOKEN = data.access;
+    if (data.refresh) {
+      REFRESH_TOKEN = data.refresh;
+    }
+    return AUTH_TOKEN;
+  } catch (err) {
+    // if refresh fails, clear tokens so app can force re-login
+    clearAuthTokens();
+    throw err;
+  }
+}
+
+/**
+ * Centralised request helper.
+ * path      - "/api/v1/...."
+ * options   - { method, body, headers, useAuth, retryOnAuthFail }
+ */
+async function request(
+  path,
+  {
+    method = 'GET',
+    body = null,
+    headers = {},
+    useAuth = true,
+    retryOnAuthFail = true,
+  } = {}
+) {
+  const url = buildUrl(path);
+
+  const makeFetch = async () => {
+    const finalHeaders = useAuth ? authHeaders(headers) : { ...headers };
+    const res = await fetch(url, {
+      method,
+      headers: finalHeaders,
+      body: body != null ? JSON.stringify(body) : undefined,
+    });
+    return handleResponse(res);
+  };
+
+  try {
+    return await makeFetch();
+  } catch (err) {
+    const status = err?.status;
+    const detail =
+      typeof err?.data?.detail === 'string'
+        ? err.data.detail.toLowerCase()
+        : '';
+
+    const isTokenExpired =
+      status === 401 &&
+      detail.includes('invalid or expired access token') &&
+      REFRESH_TOKEN;
+
+    if (useAuth && retryOnAuthFail && isTokenExpired) {
+      await refreshAccessTokenOnce();
+      return makeFetch();
+    }
+
+    throw err;
+  }
+}
+
+// ========== AUTH ==========
+
+export async function login(username, password) {
+  const res = await fetch(buildUrl('/api/v1/auth/login/'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      // no X-API headers and no Authorization for login
+    },
     body: JSON.stringify({ username, password }),
   });
   return handleResponse(res);
 }
 
-// Get all districts
-async function getDistricts(page_num) {
-  const res = await fetch(`${BASE_URL}/api/v1/lookups/districts/?page=${page_num}`, {
+// ========== LOOKUPS (Admin hierarchy) ==========
+
+export async function getDistricts(page = 1, search = '') {
+  const qs = new URLSearchParams();
+  qs.append('page', String(page));
+  if (search) qs.append('search', search);
+  return request(`/api/v1/lookups/districts/?${qs.toString()}`, {
     method: 'GET',
-    headers: DEFAULT_HEADERS,
   });
-  return handleResponse(res);
 }
 
-// // Get blocks by district ID
-async function getBlocksByDistrict(districtId, page_num) {
-  const res = await fetch(`${BASE_URL}/api/v1/lookups/blocks/${districtId}/?page=${page_num}`, {
+export async function getBlocksByDistrict(districtId, page = 1, search = '') {
+  const qs = new URLSearchParams();
+  qs.append('page', String(page));
+  if (search) qs.append('search', search);
+  return request(`/api/v1/lookups/blocks/${districtId}/?${qs.toString()}`, {
     method: 'GET',
-    headers: DEFAULT_HEADERS,
   });
-  return handleResponse(res);
 }
 
-async function getPanchayatsByBlock(blockId , page_num) {
-  const res = await fetch(`${BASE_URL}/api/v1/lookups/panchayats/${blockId}/?page=${page_num}`, {
+export async function getPanchayatsByBlock(blockId, page = 1, search = '') {
+  const qs = new URLSearchParams();
+  qs.append('page', String(page));
+  if (search) qs.append('search', search);
+  return request(`/api/v1/lookups/panchayats/${blockId}/?${qs.toString()}`, {
     method: 'GET',
-    headers: DEFAULT_HEADERS,
   });
-  return handleResponse(res);
 }
 
-async function getVillagesByPanchayat(panchayatId , page_num) {
-  const res = await fetch(`${BASE_URL}/api/v1/lookups/villages/${panchayatId}/?page=${page_num}`, {
+export async function getVillagesByPanchayat(
+  panchayatId,
+  page = 1,
+  search = ''
+) {
+  const qs = new URLSearchParams();
+  qs.append('page', String(page));
+  if (search) qs.append('search', search);
+  return request(`/api/v1/lookups/villages/${panchayatId}/?${qs.toString()}`, {
     method: 'GET',
-    headers: DEFAULT_HEADERS,
   });
-  return handleResponse(res);
 }
-const shreeDuttGanj = 3101392;
-async function getShgByPanchayat() {
-  const res = await fetch(`${BASE_URL}/api/v1/lookups/shg-list/${shreeDuttGanj}/`, {
+
+// ========== epSakhi helper APIs ==========
+
+// CRP detail by MasterUser.id
+export async function getCrpDetailByUserId(userId) {
+  return request(`/api/v1/crp-detail/id/${userId}/`, {
     method: 'GET',
-    headers: DEFAULT_HEADERS,
   });
-  return handleResponse(res);
 }
-export default {
+
+// Panchayats mapped to CRP (by MasterUser.id)
+export async function getPanchayatsUnderCrpByUserId(userId) {
+  return request(`/api/v1/panchayats-under-crp/id/${userId}/`, {
+    method: 'GET',
+  });
+}
+
+// Recorded beneficiaries (generic list with filters / group_by)
+export async function getRecordedBeneficiaries(params = {}) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === '') return;
+    qs.append(k, String(v));
+  });
+  const path = `/api/v1/recorded-beneficiaries/${
+    qs.toString() ? '?' + qs.toString() : ''
+  }`;
+  return request(path, { method: 'GET' });
+}
+
+// Create a recorded beneficiary (used when enterprise form is submitted)
+export async function createRecordedBeneficiary(payload) {
+  return request('/api/v1/recorded-beneficiaries/', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+// UPSRLM Shg list by block
+export async function getUpsrlmShgList(blockId, params = {}) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === '') return;
+    qs.append(k, String(v));
+  });
+  const path = `/api/v1/upsrlm-shg-list/${blockId}/${
+    qs.toString() ? '?' + qs.toString() : ''
+  }`;
+  return request(path, { method: 'GET' });
+}
+
+// UPSRLM SHG members
+export async function getUpsrlmShgMembers(shgCode, params = {}) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === '') return;
+    qs.append(k, String(v));
+  });
+  const path = `/api/v1/upsrlm-shg-members/${shgCode}/${
+    qs.toString() ? '?' + qs.toString() : ''
+  }`;
+  return request(path, { method: 'GET' });
+}
+
+// Only recorded beneficiaries under an SHG
+export async function getEpsakhiListByShg(shgCode, params = {}) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === '') return;
+    qs.append(k, String(v));
+  });
+  const path = `/api/v1/epsakhi-list/${shgCode}/${
+    qs.toString() ? '?' + qs.toString() : ''
+  }`;
+  return request(path, { method: 'GET' });
+}
+
+// Beneficiary + enterprise detail bundle by member_code
+export async function getEpsakhiDetailByMember(memberCode, params = {}) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === '') return;
+    qs.append(k, String(v));
+  });
+  const path = `/api/v1/epsakhi-detail/${memberCode}/${
+    qs.toString() ? '?' + qs.toString() : ''
+  }`;
+  return request(path, { method: 'GET' });
+}
+
+// ========== Enterprise forms (Existing / New) ==========
+
+// NOTE: payload for ExistingEnterprise can include nested:
+//  - loan_details:    [ { institution_name, loan_amount, date_taken, repayment_status }, ... ]
+//  - support_detail:  { ...EnterpriseSupportDetail fields... }
+//  - training_reqs:   [ { ...EnterpriseTrainingReq fields... }, ... ]
+//  - media:           { ...EnterpriseMedia fields... }
+//
+// Backend serializer wires these into Enterprise* tables and sets enterprise_id internally.
+
+export async function createExistingEnterprise(payload) {
+  return request('/api/v1/existing-enterprise/', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export async function updateExistingEnterprise(id, payload) {
+  return request(`/api/v1/existing-enterprise/${id}/`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export async function createNewEnterprise(payload) {
+  return request('/api/v1/new-enterprise/', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export async function updateNewEnterprise(id, payload) {
+  return request(`/api/v1/new-enterprise/${id}/`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export async function updateRecordedBeneficiary(id, payload) {
+  return request(`/api/v1/recorded-beneficiaries/${id}/`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+const api = {
+  // auth
   login,
+  setAuthToken,
+  getAuthToken,
+  getRefreshToken,
+  clearAuthTokens,
+  // lookups
   getDistricts,
   getBlocksByDistrict,
   getPanchayatsByBlock,
   getVillagesByPanchayat,
-  getShgByPanchayat
+  // epsakhi helpers
+  getCrpDetailByUserId,
+  getPanchayatsUnderCrpByUserId,
+  getUpsrlmShgList,
+  getUpsrlmShgMembers,
+  getEpsakhiListByShg,
+  getEpsakhiDetailByMember,
+  // enterprise
+  createExistingEnterprise,
+  updateExistingEnterprise,
+  createNewEnterprise,
+  updateNewEnterprise,
+  // recorded beneficiary
+  createRecordedBeneficiary,
+  getRecordedBeneficiaries,
+  updateRecordedBeneficiary,
 };
+
+export default api;

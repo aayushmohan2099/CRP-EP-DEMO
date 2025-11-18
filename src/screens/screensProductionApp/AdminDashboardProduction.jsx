@@ -4,149 +4,170 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  Image,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { getUser, clearUser } from '../../utils/auth';
 import gsApi from '../../api/gsApi';
-import LoaderModal from '../../screens/LoaderModal';
-import BurgerMenu from '../../screens/BurgerMenu';
+import LoaderModal from '../LoaderModal';
+import BurgerMenu from '../BurgerMenu';
 import LanguageToggle from '../../components/LanguageToggle';
 import { LanguageContext } from '../../components/LanguageContext';
-import HamburgerIcon from '../../../assets/hamburger.png';
+import { clearAllTemp } from '../../utils/tempStore';
 
-export default function AdminDashboard({ navigation }) {
+export default function AdminDashboardProduction({ navigation }) {
   const [user, setUser] = useState(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [districtAnalytics, setDistrictAnalytics] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const { language } = useContext(LanguageContext);
 
   const translations = {
     en: {
-      recordBeneficiaries: 'Record New Beneficiaries Detail',
-      viewBeneficiaries: 'View Recorded Beneficiaries',
+      headerTitle: 'Admin Dashboard',
       logout: 'Logout',
-      loadingDistricts: 'Fetching districts...',
-      errorFetchingDistricts: 'Error fetching districts. Please try again.',
-      userPlaceholder: 'User',
+      loading: 'Fetching district analytics...',
+      totalLabel: 'Total beneficiaries recorded',
+      openHierarchy: 'View block / GP / village hierarchy',
     },
     hi: {
-      recordBeneficiaries: 'नए लाभार्थियों का विवरण रिकॉर्ड करें',
-      viewBeneficiaries: 'रिकॉर्ड किए गए लाभार्थियों देखें',
+      headerTitle: 'एडमिन डैशबोर्ड',
       logout: 'लॉग आउट',
-      loadingDistricts: 'जिलों को लाया जा रहा है...',
-      errorFetchingDistricts: 'जिलों को लाने में त्रुटि। कृपया पुनः प्रयास करें।',
-      userPlaceholder: 'उपयोगकर्ता',
+      loading: 'जिला एनालिटिक्स प्राप्त किए जा रहे हैं...',
+      totalLabel: 'कुल लाभार्थी रिकॉर्डेड',
+      openHierarchy: 'ब्लॉक / जीपी / गांव सूची देखें',
     },
   };
 
   const t = translations[language] || translations.en;
 
-  // Load user on mount
   useEffect(() => {
     (async () => {
       const u = await getUser();
-      setUser(u || null);
+      if (!u) {
+        navigation.replace('Login');
+        return;
+      }
+      setUser(u);
+      if (u.access) {
+        gsApi.setAuthToken?.(u.access);
+      }
+      await loadDistrictAnalytics();
     })();
   }, []);
 
- 
-    const handleViewBeneficiaries = async () => {
-    setLoading(true);
-
+  const loadDistrictAnalytics = async () => {
     try {
-        page_num = 1;
-        let res = await gsApi.getDistricts(page_num);
+      setLoading(true);
+      // group_by=district_id from recorded-beneficiaries
+      const res = await gsApi.getRecordedBeneficiaries({
+        group_by: 'district_id',
+        page_size: 1000,
+      });
+      const data = Array.isArray(res?.results) ? res.results : Array.isArray(res) ? res : [];
+      const rows = data.map((row) => ({
+        district_id: row.group?.district_id ?? row.district_id,
+        count: row.count ?? 0,
+      }));
 
-        console.log('Raw districts response:', res);
+      // Enrich with district names
+      const lookup = await gsApi.getDistricts(1, '');
+      const lookupRows = Array.isArray(lookup?.results)
+        ? lookup.results
+        : Array.isArray(lookup)
+        ? lookup
+        : [];
+      const nameById = {};
+      lookupRows.forEach((d) => {
+        nameById[d.district_id] = d.district_name_en;
+      });
 
-        let districts = [];
+      const merged = rows.map((r) => ({
+        ...r,
+        district_name_en: nameById[r.district_id] || `District ${r.district_id}`,
+      }));
 
-        if (typeof res === 'string') {
-        res = res.trim();
-        if (res.startsWith('{') || res.startsWith('[')) {
-            try {
-            res = JSON.parse(res);
-            } catch (err) {
-            console.error('JSON parse error:', err, 'Raw:', res);
-            Alert.alert(t.errorFetchingDistricts, 'Invalid JSON response received.');
-            setLoading(false);
-            return;
-            }
-        } else {
-            console.error('Non-JSON response:', res);
-            Alert.alert(t.errorFetchingDistricts, 'Response is not valid JSON.');
-            setLoading(false);
-            return;
-        }
-        }
-
-        if (res && Array.isArray(res.results)) {
-        districts = res.results;
-        } else {
-        districts = [];
-        }
-
-        setLoading(false);
-
-        if (districts.length === 0) {
-        Alert.alert(t.errorFetchingDistricts, 'No districts found.');
-        return;
-        }
-
-        navigation.navigate('SelectDistrict', { districts });
+      setDistrictAnalytics(merged);
     } catch (err) {
-        console.error('Error fetching districts:', err);
-        Alert.alert(t.errorFetchingDistricts, err.message || 'Unknown error.');
-        setLoading(false);
+      console.error('Admin analytics error', err);
+    } finally {
+      setLoading(false);
     }
-    };
+  };
+
+  const total = districtAnalytics.reduce((acc, r) => acc + (r.count || 0), 0);
+
+  const handleLogout = async () => {
+    clearAllTemp();
+    await clearUser();
+    gsApi.setAuthToken?.(null);
+    navigation.replace('Login');
+  };
 
   const menuItems = [
     {
       label: t.logout,
-      onPress: async () => {
-        await clearUser();
-        navigation.replace('Login');
-      },
+      color: '#EE6969',
+      onPress: handleLogout,
     },
   ];
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <LoaderModal visible={loading} message={t.loading} />
+
       <View style={styles.header}>
-        <Text style={styles.userText}>{user ? user.username : t.userPlaceholder}</Text>
-
+        <LanguageToggle />
         <View style={styles.headerRight}>
-          <LanguageToggle />
-
-          <TouchableOpacity onPress={() => setMenuOpen(true)} style={{ marginLeft: 12 }}>
-            <Image source={HamburgerIcon} style={styles.hamburgerIcon} />
+          <Text style={styles.userText}>{user?.username || 'Admin'}</Text>
+          <TouchableOpacity
+            style={{ marginLeft: 12 }}
+            onPress={() => setMenuOpen(true)}
+          >
+            <Text style={{ fontSize: 26 }}>☰</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <TouchableOpacity
-        style={styles.primaryButton}
-        onPress={() => navigation.navigate('SelectDistrict')}
-      >
-        <Text style={styles.primaryButtonText}>{t.recordBeneficiaries}</Text>
-      </TouchableOpacity>
+      <Text style={styles.title}>{t.headerTitle}</Text>
 
-      <TouchableOpacity
-        style={styles.secondaryButton}
-        onPress={handleViewBeneficiaries}
-        disabled={loading}
-      >
-        <Text style={styles.secondaryButtonText}>{t.viewBeneficiaries}</Text>
-      </TouchableOpacity>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t.totalLabel}</Text>
+        <Text style={styles.totalNumber}>{total}</Text>
+      </View>
 
-     
-      <LoaderModal visible={loading} message={t.loadingDistricts} />
+      <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
+        District-wise analytics
+      </Text>
+      {districtAnalytics.map((row) => (
+        <TouchableOpacity
+          key={row.district_id}
+          style={styles.analyticsRow}
+          onPress={() =>
+            navigation.navigate('BlockList', {
+              adminDistrictId: row.district_id,
+            })
+          }
+        >
+          <Text style={styles.analyticsName}>{row.district_name_en}</Text>
+          <Text style={styles.analyticsValue}>{row.count}</Text>
+        </TouchableOpacity>
+      ))}
 
-      <BurgerMenu visible={menuOpen} onClose={() => setMenuOpen(false)} menuItems={menuItems} />
+      <View style={{ marginTop: 30 }}>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => navigation.navigate('SelectDistrict')}
+        >
+          <Text style={styles.secondaryButtonText}>{t.openHierarchy}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <BurgerMenu
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        menuItems={menuItems}
+      />
     </ScrollView>
   );
 }
@@ -162,7 +183,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   headerRight: {
     flexDirection: 'row',
@@ -172,21 +193,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  hamburgerIcon: {
-    width: 28,
-    height: 28,
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 8,
+    marginBottom: 8,
+    textAlign: 'left',
+    color: '#EE6969',
   },
-  primaryButton: {
-    backgroundColor: '#EE6969',
-    padding: 12,
-    borderRadius: 6,
+  card: {
+    padding: 16,
+    borderRadius: 10,
+    backgroundColor: '#F9ECEC',
     alignItems: 'center',
-    marginBottom: 12,
   },
-  primaryButtonText: {
-    color: '#fff',
+  cardTitle: {
+    fontSize: 14,
+    color: '#555',
+  },
+  totalNumber: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#EE6969',
+    marginTop: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
     fontWeight: '600',
   },
+  analyticsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  analyticsName: { fontSize: 14, flex: 1, paddingRight: 8 },
+  analyticsValue: { fontSize: 14, fontWeight: '600', color: '#333' },
   secondaryButton: {
     borderColor: '#EE6969',
     borderWidth: 1,
