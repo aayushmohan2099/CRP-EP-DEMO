@@ -10,10 +10,18 @@ import {
   StyleSheet,
   Modal,
   Alert,
+  Image,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import gsApi from '../../api/gsApi';
+import {
+  getShgListForPanchayat,
+  getCrpPanchayats,
+  getCrpDetail,
+} from '../../utils/tempStore';
 
 /**
  * Section-wise field grouping for collapsible UI
@@ -98,7 +106,15 @@ const formSections = [
   {
     key: 'media',
     title: '8) Media Upload',
-    fields: ['photo_enterprise', 'photo_entrepreneur', 'photo_product', 'certificate_docs'],
+    // IMPORTANT: these map directly to EnterpriseMedia model fields
+    fields: [
+      'photo_entrepreneur',
+      'photo_enterprise',
+      'open_box_photo',
+      'close_box_photo',
+      'others',
+      'certificates',
+    ],
   },
   {
     key: 'declaration',
@@ -235,9 +251,49 @@ const computeAgeFromDob = (dobStr) => {
   return age;
 };
 
+// ===== Camera permission helper (for Android) =====
+const requestCameraPermissionIfNeeded = async () => {
+  if (Platform.OS !== 'android') return true;
+
+  try {
+    const hasPermission = await PermissionsAndroid.check(
+      PermissionsAndroid.PERMISSIONS.CAMERA
+    );
+    if (hasPermission) return true;
+
+    const status = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.CAMERA,
+      {
+        title: 'Camera Permission',
+        message: 'We need access to your camera to capture photos.',
+        buttonPositive: 'OK',
+        buttonNegative: 'Cancel',
+        buttonNeutral: 'Ask Me Later',
+      }
+    );
+
+    return status === PermissionsAndroid.RESULTS.GRANTED;
+  } catch (e) {
+    console.warn('Camera permission error', e);
+    return false;
+  }
+};
+
+// Helper: normalize SHG object to location fields
+function extractLocationFromShg(shg) {
+  if (!shg) return null;
+  // support both UPSRLM camelCase and snake_case from other sources
+  const district_id = shg.districtId ?? shg.district_id ?? null;
+  const block_id = shg.blockId ?? shg.block_id ?? null;
+  const panchayat_id = shg.panchayatId ?? shg.panchayat_id ?? null;
+  const village_id = shg.villageId ?? shg.village_id ?? null;
+  const lokos_shg_code = shg.code ?? shg.shg_code ?? shg.lokos_shg_code ?? null;
+  return { district_id, block_id, panchayat_id, village_id, lokos_shg_code };
+}
+
 export default function ExistingEnterpriseForm({ route, navigation }) {
   const recordedBenef = route?.params?.recordedBenef || null; // BeneficiaryRecorded row (if already created)
-  const beneficiary = route?.params?.beneficiary || null;      // UPSRLM member row
+  const beneficiary = route?.params?.beneficiary || null; // UPSRLM member row
   const existingEnterprise = route?.params?.existingEnterprise || null;
   const lokosShgCode =
     route?.params?.lokos_shg_code ||
@@ -245,6 +301,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     route?.params?.tempShg?.code ||
     route?.params?.shg?.code ||
     null;
+  const tempShg = route?.params?.tempShg || null;
   const crpUserId =
     route?.params?.crpUserId ||
     route?.params?.user_id ||
@@ -298,7 +355,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     government_subsidy: '',
     subsidy_department: '',
     subsidy_scheme: '',
-    loan_details: [],          // nested loans array for UI only
+    loan_details: [], // nested loans array for UI only
     financial_coordination: '',
     training_received: '',
     training_details: '',
@@ -317,21 +374,27 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     required_support_other: '',
     expansion_plan: [],
     expansion_plan_other: '',
-    photo_enterprise: '',
-    photo_entrepreneur: '',
-    photo_product: '',
     declaration_confirmed: false,
     declaration_date: '',
     verifier_name: '',
-    // If editing, hydrate from existingEnterprise
+    // If editing, hydrate from existingEnterprise (only overlapping keys)
     ...(existingEnterprise || {}),
   });
 
-  const [certDocs, setCertDocs] = useState([]);
   const [loans, setLoans] = useState([]);
   const [yearPickerVisible, setYearPickerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // NEW: media state (multiple files per field)
+  const [mediaFiles, setMediaFiles] = useState({
+    photo_entrepreneur: [],
+    photo_enterprise: [],
+    open_box_photo: [],
+    close_box_photo: [],
+    others: [],
+    certificates: [],
+  });
 
   // Collapsible sections state (all open by default)
   const [openSections, setOpenSections] = useState(
@@ -400,58 +463,65 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     updateLoans(updated);
   };
 
-  // Media helpers – currently we only store local URIs on the client.
-  // We DO NOT send these to backend yet because backend expects real file upload (multipart).
-  const addCertificateDoc = () => {
-    const name = `certificate_${certDocs.length + 1}.pdf`;
-    setCertDocs((prev) => [...prev, name]);
+  // MEDIA HELPERS (multiple files per field)
+
+  const addMediaAsset = (fieldKey, asset) => {
+    if (!asset?.uri) return;
+    setMediaFiles((prev) => ({
+      ...prev,
+      [fieldKey]: [...(prev[fieldKey] || []), asset],
+    }));
   };
 
-  const removeCertificateDoc = (index) => {
-    setCertDocs((prev) => prev.filter((_, i) => i !== index));
+  const removeMediaAsset = (fieldKey, index) => {
+    setMediaFiles((prev) => ({
+      ...prev,
+      [fieldKey]: (prev[fieldKey] || []).filter((_, i) => i !== index),
+    }));
   };
 
-  const pickAndUpload = async (fieldKey) => {
+  const pickMedia = async (fieldKey) => {
     try {
       setUploading(true);
       const result = await launchImageLibrary({
         mediaType: 'photo',
         quality: 0.7,
+        selectionLimit: 0, // allow multiple selection if supported
       });
 
-      if (result.didCancel) {
-        return;
-      }
+      if (result.didCancel) return;
       if (result.errorCode) {
         console.warn('ImagePicker error:', result.errorMessage || result.errorCode);
         Alert.alert('Error', 'Failed to pick image. Please try again.');
         return;
       }
 
-      const asset = result.assets && result.assets[0];
-      if (!asset?.uri) return;
-
-      // Store local URI ONLY for now (preview). Do not upload to backend yet.
-      setExistingForm((f) => ({ ...f, [fieldKey]: asset.uri }));
+      const assets = result.assets || [];
+      assets.forEach((asset) => addMediaAsset(fieldKey, asset));
     } catch (e) {
-      console.error('pickAndUpload error', e);
+      console.error('pickMedia error', e);
       Alert.alert('Error', 'Unable to pick image from gallery.');
     } finally {
       setUploading(false);
     }
   };
 
-  const takePhotoAndUploadLocal = async (fieldKey) => {
+  const takeMediaPhoto = async (fieldKey) => {
     try {
+      // ✅ ensure CAMERA permission on Android
+      const ok = await requestCameraPermissionIfNeeded();
+      if (!ok) {
+        Alert.alert('Permission required', 'Camera permission is required to capture photos.');
+        return;
+      }
+
       setUploading(true);
       const result = await launchCamera({
         mediaType: 'photo',
         quality: 0.7,
       });
 
-      if (result.didCancel) {
-        return;
-      }
+      if (result.didCancel) return;
       if (result.errorCode) {
         console.warn('Camera error:', result.errorMessage || result.errorCode);
         Alert.alert('Error', 'Failed to capture image. Please try again.');
@@ -459,12 +529,9 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       }
 
       const asset = result.assets && result.assets[0];
-      if (!asset?.uri) return;
-
-      // Store local URI ONLY for now (preview). Do not upload to backend yet.
-      setExistingForm((f) => ({ ...f, [fieldKey]: asset.uri }));
+      if (asset) addMediaAsset(fieldKey, asset);
     } catch (e) {
-      console.error('takePhotoAndUploadLocal error', e);
+      console.error('takeMediaPhoto error', e);
       Alert.alert('Error', 'Unable to capture image from camera.');
     } finally {
       setUploading(false);
@@ -643,7 +710,66 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     'financial_coordination',
   ];
 
+  const renderMediaField = (k) => {
+    const labelMap = {
+      photo_entrepreneur: 'Photo – Entrepreneur',
+      photo_enterprise: 'Photo – Enterprise',
+      open_box_photo: 'Photo – Open Box',
+      close_box_photo: 'Photo – Close Box',
+      others: 'Photo – Others',
+      certificates: 'Certificates (image scans)',
+    };
+    const label = labelMap[k] || k;
+    const files = mediaFiles[k] || [];
+
+    return (
+      <View key={k} style={{ marginBottom: 10 }}>
+        <Text style={styles.label}>{label}</Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
+          <TouchableOpacity
+            style={styles.smallBtn}
+            onPress={() => pickMedia(k)}
+          >
+            <Text style={styles.smallBtnText}>Pick</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.smallBtn}
+            onPress={() => takeMediaPhoto(k)}
+          >
+            <Text style={styles.smallBtnText}>Camera</Text>
+          </TouchableOpacity>
+        </View>
+        {files.length === 0 ? (
+          <Text style={{ color: '#666', fontSize: 12 }}>(none selected)</Text>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {files.map((asset, idx) => (
+              <View key={`${k}-${idx}`} style={styles.thumbWrapper}>
+                <Image
+                  source={{ uri: asset.uri }}
+                  style={styles.thumb}
+                  resizeMode="cover"
+                />
+                <TouchableOpacity
+                  style={styles.thumbRemove}
+                  onPress={() => removeMediaAsset(k, idx)}
+                >
+                  <Text style={{ color: '#fff', fontSize: 10 }}>×</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+        <Text style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
+          You can select multiple images; they will be grouped into rows on
+          server (1 per column per row).
+        </Text>
+      </View>
+    );
+  };
+
   const renderField = (k) => {
+    // Dropdown-like fields
     if (k === 'enterprise_type')
       return renderPickerWithSpecify(
         'Enterprise Type (उद्यम प्रकार)',
@@ -1536,88 +1662,18 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       );
     }
 
-    if (k === 'certificate_docs') {
-      return (
-        <View key={k} style={{ marginBottom: 10 }}>
-          <Text style={styles.label}>Certificate Documents</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity
-              style={styles.smallBtn}
-              onPress={addCertificateDoc}
-            >
-              <Text style={styles.smallBtnText}>Add Document</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={{ marginTop: 8 }}>
-            {certDocs.length === 0 ? (
-              <Text style={{ color: '#666' }}>(none)</Text>
-            ) : (
-              certDocs.map((item, index) => (
-                <View
-                  key={`cert-doc-${index}`}
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 6,
-                  }}
-                >
-                  <Text style={{ flex: 1 }} numberOfLines={1}>
-                    {item}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => removeCertificateDoc(index)}
-                    style={{ padding: 6 }}
-                  >
-                    <Text style={{ color: '#EE6969' }}>Remove</Text>
-                  </TouchableOpacity>
-                </View>
-              ))
-            )}
-          </View>
-        </View>
-      );
-    }
-
+    // MEDIA FIELDS (multi-file)
     if (
-      ['photo_enterprise', 'photo_entrepreneur', 'photo_product'].includes(k)
+      [
+        'photo_entrepreneur',
+        'photo_enterprise',
+        'open_box_photo',
+        'close_box_photo',
+        'others',
+        'certificates',
+      ].includes(k)
     ) {
-      const current = existingForm[k] || '';
-      const labelMap = {
-        photo_enterprise: 'Photo Enterprise (local only)',
-        photo_entrepreneur: 'Photo Entrepreneur (local only)',
-        photo_product: 'Photo Product (local only)',
-      };
-      return (
-        <View key={k} style={{ marginBottom: 10 }}>
-          <Text style={styles.label}>{labelMap[k]}</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity
-              style={styles.smallBtn}
-              onPress={() => pickAndUpload(k)}
-            >
-              <Text style={styles.smallBtnText}>Pick</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.smallBtn}
-              onPress={() => takePhotoAndUploadLocal(k)}
-            >
-              <Text style={styles.smallBtnText}>Camera</Text>
-            </TouchableOpacity>
-          </View>
-          {current ? (
-            <Text
-              style={{ color: '#333', marginTop: 6 }}
-              numberOfLines={1}
-            >
-              {current}
-            </Text>
-          ) : null}
-          <Text style={{ fontSize: 11, color: '#999', marginTop: 2 }}>
-            (Note: photos are not uploaded to server yet; backend expects multipart files.)
-          </Text>
-        </View>
-      );
+      return renderMediaField(k);
     }
 
     if (k === 'declaration_confirmed') {
@@ -1655,6 +1711,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       );
     }
 
+    // Default text field
     return (
       <View key={k} style={{ marginBottom: 8 }}>
         <Text style={styles.label}>{k.replace(/_/g, ' ')}</Text>
@@ -1683,10 +1740,175 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     );
   };
 
+  // ----------------- Fallback helpers for recorded beneficiary creation -----------------
+  async function findShgAcrossCachedPanchayats(shgCode) {
+    if (!shgCode) return null;
+    try {
+      // First try temp cache by panchayat (if CRP panchayats available)
+      const gps = getCrpPanchayats ? getCrpPanchayats() || [] : [];
+      for (const gp of gps) {
+        const pid = gp?.panchayat_id || gp?.panchayatId;
+        if (!pid) continue;
+        const cached = getShgListForPanchayat(pid) || [];
+        const found = cached.find((s) => {
+          const code = s.code ?? s.shg_code ?? s.lokos_shg_code ?? s.code;
+          return String(code) === String(shgCode);
+        });
+        if (found) return extractLocationFromShg(found);
+      }
+      // Not found in local cache
+      return null;
+    } catch (e) {
+      console.warn('findShgAcrossCachedPanchayats error', e);
+      return null;
+    }
+  }
+
   // ---------- SUBMIT FLOW ----------
   // 1) Create RecordedBeneficiary from UPSRLM row (if not already created)
   // 2) Create/Update ExistingEnterprise with recorded_benef_id
   // 3) Patch RecordedBeneficiary.enterprise_id with created enterprise id
+  // 4) Create child rows: loans, support, training, media
+  const ensureRecordedBeneficiary = async () => {
+    let recordedBenefId =
+      recordedBenef?.TH_urid || recordedBenef?.TH_URID || recordedBenef?.id || null;
+
+    if (recordedBenefId) return recordedBenefId;
+
+    // If not present, create one from UPSRLM beneficiary row
+    if (!beneficiary) {
+      throw new Error(
+        'Beneficiary data missing. Cannot create recorded beneficiary.'
+      );
+    }
+
+    const addr =
+      Array.isArray(beneficiary.member_addresses) &&
+      beneficiary.member_addresses.length > 0
+        ? beneficiary.member_addresses[0]
+        : null;
+
+    const phone =
+      Array.isArray(beneficiary.member_phones) &&
+      beneficiary.member_phones.length > 0
+        ? beneficiary.member_phones[0]
+        : null;
+
+    const addressText =
+      (addr?.address_line1 && String(addr.address_line1).trim()) ||
+      (addr?.address_line2 && String(addr.address_line2).trim()) ||
+      '';
+
+    const age = computeAgeFromDob(beneficiary.dob);
+
+    // Primary mapping from member row
+    let district_id = addr?.district_id ?? addr?.districtId ?? null;
+    let block_id = addr?.block_id ?? addr?.blockId ?? null;
+    let panchayat_id = addr?.panchayat_id ?? addr?.panchayatId ?? null;
+    let village_id = addr?.village_id ?? addr?.villageId ?? null;
+    let member_mobile = phone?.phone_no ?? phone?.mobile ?? phone?.number ?? null;
+    let marital_status = beneficiary.marital_status ?? beneficiary.maritalStatus ?? '';
+    let father_husband_name = beneficiary.father_husband ?? beneficiary.father_husband_name ?? beneficiary.relation_name ?? '';
+
+    // lokos_shg_code may be present in local tempShg or member; try those first
+    let lokos_shg_code = lokosShgCode || beneficiary.shg_code || beneficiary.lokos_shg_code || null;
+
+    // If any critical location fields missing, try to extract from tempShg (passed in route)
+    if ((!district_id || !block_id || !panchayat_id || !village_id || !lokos_shg_code) && tempShg) {
+      const loc = extractLocationFromShg(tempShg);
+      if (loc) {
+        district_id = district_id || loc.district_id || null;
+        block_id = block_id || loc.block_id || null;
+        panchayat_id = panchayat_id || loc.panchayat_id || null;
+        village_id = village_id || loc.village_id || null;
+        lokos_shg_code = lokos_shg_code || loc.lokos_shg_code || null;
+      }
+    }
+
+    // If still missing, try cached SHG lists for CRP panchayats
+    if ((!district_id || !block_id || !panchayat_id || !village_id || !lokos_shg_code) && (beneficiary.shg_code || lokos_shg_code)) {
+      const fallback = await findShgAcrossCachedPanchayats(beneficiary.shg_code || lokos_shg_code);
+      if (fallback) {
+        district_id = district_id || fallback.district_id || null;
+        block_id = block_id || fallback.block_id || null;
+        panchayat_id = panchayat_id || fallback.panchayat_id || null;
+        village_id = village_id || fallback.village_id || null;
+        lokos_shg_code = lokos_shg_code || fallback.lokos_shg_code || null;
+      }
+    }
+
+    // As a last resort, if block_id can be inferred from CRP detail, try on-demand fetch for that panchayat
+    if ((!district_id || !block_id || !panchayat_id || !village_id) && lokos_shg_code) {
+      try {
+        const crpDetail = getCrpDetail ? getCrpDetail() : null;
+        const cbid = crpDetail?.block_id ?? crpDetail?.blockId ?? null;
+        if (cbid) {
+          // try to find in block's SHG list (panchayat filter omitted to get broader results)
+          const shgRes = await gsApi.getUpsrlmShgList(cbid, { page_size: 5000 });
+          const shgRows = Array.isArray(shgRes?.data)
+            ? shgRes.data
+            : Array.isArray(shgRes?.results)
+            ? shgRes.results
+            : Array.isArray(shgRes)
+            ? shgRes
+            : [];
+          const found = shgRows.find((s) => {
+            const code = s.code ?? s.shg_code ?? s.lokos_shg_code ?? s.code;
+            return String(code) === String(lokos_shg_code);
+          });
+          if (found) {
+            const loc = extractLocationFromShg(found);
+            district_id = district_id || loc.district_id || null;
+            block_id = block_id || loc.block_id || null;
+            panchayat_id = panchayat_id || loc.panchayat_id || null;
+            village_id = village_id || loc.village_id || null;
+            lokos_shg_code = lokos_shg_code || loc.lokos_shg_code || null;
+          }
+        }
+      } catch (e) {
+        // ignore failures here — we already tried other fallbacks
+        console.warn('on-demand SHG list fallback failed', e);
+      }
+    }
+
+    // created_by fallback: prefer crpUserId (passed from route), else beneficiary.created_by
+    const created_by = crpUserId || beneficiary.created_by || beneficiary.createdBy || null;
+
+    const recordedPayload = {
+      lokos_member_code: beneficiary.member_code || beneficiary.nic_member_code || null,
+      applicant_name: beneficiary.member_name || '',
+      age: age,
+      gender: beneficiary.gender || '',
+      marital_status: marital_status,
+      father_husband_name: father_husband_name,
+      category: beneficiary.social_category || beneficiary.socialCategory || '',
+      education: beneficiary.education || '',
+      address: addressText,
+      district_id: district_id || null,
+      block_id: block_id || null,
+      panchayat_id: panchayat_id || null,
+      village_id: village_id || null,
+      mobile: member_mobile || null,
+      email: beneficiary.email || null,
+      lokos_shg_code: lokos_shg_code || null,
+      // enterprise_id will be set after enterprise is created
+      created_by: created_by,
+    };
+
+    const recRes = await gsApi.createRecordedBeneficiary(recordedPayload);
+
+    recordedBenefId =
+      recRes?.TH_urid || recRes?.TH_URID || recRes?.id || null;
+
+    if (!recordedBenefId) {
+      throw new Error(
+        'Recorded beneficiary created but ID missing in response.'
+      );
+    }
+
+    return recordedBenefId;
+  };
+
   const handleSubmit = async () => {
     if (!existingForm.enterprise_name) {
       Alert.alert('Validation', 'Please enter enterprise name.');
@@ -1697,73 +1919,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       setLoading(true);
 
       // ----- Step 1: ensure we have a Recorded Beneficiary ID -----
-      let recordedBenefId =
-        recordedBenef?.TH_urid ||
-        recordedBenef?.TH_URID ||
-        recordedBenef?.id ||
-        null;
-
-      // If not present, create one from UPSRLM beneficiary row
-      if (!recordedBenefId) {
-        if (!beneficiary) {
-          throw new Error(
-            'Beneficiary data missing. Cannot create recorded beneficiary.'
-          );
-        }
-
-        const addr =
-          Array.isArray(beneficiary.member_addresses) &&
-          beneficiary.member_addresses.length > 0
-            ? beneficiary.member_addresses[0]
-            : null;
-
-        const phone =
-          Array.isArray(beneficiary.member_phones) &&
-          beneficiary.member_phones.length > 0
-            ? beneficiary.member_phones[0]
-            : null;
-
-        const addressText =
-          (addr?.address_line1 && String(addr.address_line1).trim()) ||
-          (addr?.address_line2 && String(addr.address_line2).trim()) ||
-          '';
-
-        const age = computeAgeFromDob(beneficiary.dob);
-
-        const recordedPayload = {
-          lokos_member_code: beneficiary.member_code || null,
-          applicant_name: beneficiary.member_name || '',
-          age: age,
-          gender: beneficiary.gender || '',
-          marital_status: beneficiary.marital_status || '',
-          father_husband_name: beneficiary.father_husband || '',
-          category: beneficiary.social_category || '',
-          education: beneficiary.education || '',
-          address: addressText,
-          district_id: addr?.district_id || null,
-          block_id: addr?.block_id || null,
-          panchayat_id: addr?.panchayat_id || null,
-          village_id: addr?.village_id || null,
-          mobile: phone?.phone_no || null,
-          email: beneficiary.email || null,
-          lokos_shg_code: lokosShgCode,
-          // enterprise_id will be set after enterprise is created
-          created_by: crpUserId,
-        };
-
-        const recRes = await gsApi.createRecordedBeneficiary(
-          recordedPayload
-        );
-
-        recordedBenefId =
-          recRes?.TH_urid || recRes?.TH_URID || recRes?.id || null;
-
-        if (!recordedBenefId) {
-          throw new Error(
-            'Recorded beneficiary created but ID missing in response.'
-          );
-        }
-      }
+      const recordedBenefId = await ensureRecordedBeneficiary();
 
       // ----- Step 2: create/update ExistingEnterprise, linked to recorded_benef_id -----
       const mainPayload = {
@@ -1861,12 +2017,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
         verifier_name: existingForm.verifier_name || '',
       };
 
-      // IMPORTANT:
-      // For now we DO NOT send nested loan_details, support_detail, training_reqs or media
-      // because backend is expecting enterprise_id on those nested serializers and real file
-      // uploads for photos. Sending them causes 400 errors ("enterprise_id required", "not a file").
-      // Once backend is updated for writable nested + multipart, we can wire them back.
-
+      // IMPORTANT: we do NOT send nested children here (Option B).
       const payload = {
         ...mainPayload,
       };
@@ -1878,9 +2029,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
           payload
         );
       } else {
-        enterpriseRes = await gsApi.createExistingEnterprise(
-          payload
-        );
+        enterpriseRes = await gsApi.createExistingEnterprise(payload);
       }
 
       const enterpriseId =
@@ -1904,10 +2053,146 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
         }
       } catch (e) {
         console.error('Failed to update recorded beneficiary enterprise_id', e);
-        Alert.alert(
-          'Warning',
-          'Enterprise saved, but failed to link it with recorded beneficiary.'
-        );
+        // keep going; not fatal
+      }
+
+      // ----- Step 4: Create loan details via /enterprise-loan-details/ -----
+      if (loans && loans.length) {
+        for (const l of loans) {
+          const institution_name =
+            l.institution === 'Others'
+              ? l.institutionOther || 'Others'
+              : l.institution || '';
+          const loan_amount = l.amount ? parseFloat(l.amount) : null;
+          const repayment_status =
+            l.repayment === 'Others'
+              ? l.repaymentOther || 'Others'
+              : l.repayment || '';
+
+          // date_taken not captured in UI; leave null
+          try {
+            await gsApi.createEnterpriseLoanDetail({
+              enterprise_id: enterpriseId,
+              institution_name,
+              loan_amount,
+              date_taken: null,
+              repayment_status,
+            });
+          } catch (e) {
+            console.warn('createEnterpriseLoanDetail failed', e);
+          }
+        }
+      }
+
+      // ----- Step 5: Create support detail via /enterprise-support-details/ -----
+      const reqSupportArray = Array.isArray(existingForm.required_support)
+        ? existingForm.required_support
+        : [];
+      const required_support_bool = reqSupportArray.length > 0;
+
+      const supportPayload = {
+        enterprise_id: enterpriseId,
+        department_name: existingForm.subsidy_department || null,
+        scheme_name: existingForm.subsidy_scheme || null,
+        date_taken: null,
+        institutional_support: !!existingForm.institutional_support,
+        mentorship_support: false,
+        required_support: required_support_bool,
+        what_req_support: reqSupportArray.join(', '),
+        is_skill_training_needed: reqSupportArray.includes('Training'),
+        is_entrepreneurship_training_needed: reqSupportArray.includes(
+          'Training'
+        ),
+        is_financial_assistance_needed: reqSupportArray.includes('Finance'),
+        is_market_branding_needed: reqSupportArray.includes(
+          'Advertisement / Promotion'
+        ),
+        is_infrastructure_needed: reqSupportArray.includes('Equipment'),
+        is_digital_emarket_needed: reqSupportArray.includes('E-commerce'),
+        other_support: existingForm.required_support_other || '',
+      };
+
+      try {
+        if (
+          supportPayload.department_name ||
+          supportPayload.scheme_name ||
+          required_support_bool
+        ) {
+          await gsApi.createEnterpriseSupportDetail(supportPayload);
+        }
+      } catch (e) {
+        console.warn('createEnterpriseSupportDetail failed', e);
+      }
+
+      // ----- Step 6: Create training requirement via /enterprise-training-reqs/ -----
+      if (existingForm.additional_training_required === 'Yes') {
+        const hasTrainingData =
+          existingForm.training_skill_name ||
+          existingForm.training_type ||
+          existingForm.training_institution;
+        if (hasTrainingData) {
+          try {
+            await gsApi.createEnterpriseTrainingReq({
+              enterprise_id: enterpriseId,
+              skill_name: existingForm.training_skill_name || '',
+              training_type: existingForm.training_type || '',
+              any_specific_scheme: null,
+              any_specific_department: existingForm.training_institution || '',
+            });
+          } catch (e) {
+            console.warn('createEnterpriseTrainingReq failed', e);
+          }
+        }
+      }
+
+      // ----- Step 7: Media upload via /enterprise-media/ (multipart, grouped rows) -----
+      const m = mediaFiles;
+      const arrs = {
+        photo_entrepreneur: m.photo_entrepreneur || [],
+        photo_enterprise: m.photo_enterprise || [],
+        open_box_photo: m.open_box_photo || [],
+        close_box_photo: m.close_box_photo || [],
+        others: m.others || [],
+        certificates: m.certificates || [],
+      };
+
+      const maxLen = Math.max(
+        arrs.photo_entrepreneur.length,
+        arrs.photo_enterprise.length,
+        arrs.open_box_photo.length,
+        arrs.close_box_photo.length,
+        arrs.others.length,
+        arrs.certificates.length
+      );
+
+      const fileKeys = Object.keys(arrs);
+
+      const toFilePart = (asset) => ({
+        uri: asset.uri,
+        name: asset.fileName || 'upload.jpg',
+        type: asset.type || 'image/jpeg',
+      });
+
+      for (let i = 0; i < maxLen; i++) {
+        const formData = new FormData();
+        formData.append('enterprise_id', enterpriseId);
+
+        let hasAnyFile = false;
+        for (const key of fileKeys) {
+          const arr = arrs[key];
+          if (i < arr.length && arr[i]) {
+            hasAnyFile = true;
+            formData.append(key, toFilePart(arr[i]));
+          }
+        }
+
+        if (!hasAnyFile) continue;
+
+        try {
+          await gsApi.uploadEnterpriseMedia(formData);
+        } catch (e) {
+          console.warn('uploadEnterpriseMedia failed for index', i, e);
+        }
       }
 
       Alert.alert('Success', 'Existing enterprise saved successfully.', [
@@ -2078,5 +2363,30 @@ const styles = StyleSheet.create({
   sectionBody: {
     padding: 8,
     backgroundColor: '#FFF',
+  },
+
+  // Media thumbnails
+  thumbWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginRight: 8,
+    position: 'relative',
+  },
+  thumb: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbRemove: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

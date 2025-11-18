@@ -5,10 +5,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SplashScreen from './src/screens/screensProductionApp/SplashScreenProduction';
 import LoginScreen from './src/screens/screensProductionApp/LoginScreenProduction';
 import AdminDashboard from './src/screens/screensProductionApp/AdminDashboardProduction';
-import SelectDistrict from './src/screens/screensProductionApp/SelectDistrict';
-import BlockList from './src/screens/screensProductionApp/BlockList';
-import SelectGP from './src/screens/screensProductionApp/SelectGP';
-import SelectVillage from './src/screens/screensProductionApp/SelectVillages';
 
 import CRPDashboard from './src/screens/screensProductionApp/CRPDashboardProduction';
 import CRPRecordFlow from './src/screens/screensProductionApp/CRPRecordFlowProduction';
@@ -39,10 +35,7 @@ export default function App() {
 
           {/* Admin flow (existing hierarchy reused) */}
           <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
-          <Stack.Screen name="SelectDistrict" component={SelectDistrict} />
-          <Stack.Screen name="BlockList" component={BlockList} />
-          <Stack.Screen name="SelectGP" component={SelectGP} />
-          <Stack.Screen name="SelectVillages" component={SelectVillage} />
+
         </Stack.Navigator>
       </NavigationContainer>
     </LanguageProvider>

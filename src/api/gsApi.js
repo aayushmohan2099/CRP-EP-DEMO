@@ -98,7 +98,7 @@ async function refreshAccessTokenOnce() {
 }
 
 /**
- * Centralised request helper.
+ * Centralised JSON request helper.
  * path      - "/api/v1/...."
  * options   - { method, body, headers, useAuth, retryOnAuthFail }
  */
@@ -120,6 +120,60 @@ async function request(
       method,
       headers: finalHeaders,
       body: body != null ? JSON.stringify(body) : undefined,
+    });
+    return handleResponse(res);
+  };
+
+  try {
+    return await makeFetch();
+  } catch (err) {
+    const status = err?.status;
+    const detail =
+      typeof err?.data?.detail === 'string'
+        ? err.data.detail.toLowerCase()
+        : '';
+
+    const isTokenExpired =
+      status === 401 &&
+      detail.includes('invalid or expired access token') &&
+      REFRESH_TOKEN;
+
+    if (useAuth && retryOnAuthFail && isTokenExpired) {
+      await refreshAccessTokenOnce();
+      return makeFetch();
+    }
+
+    throw err;
+  }
+}
+
+/**
+ * Multipart request helper (for file uploads).
+ * - DOES NOT set Content-Type explicitly (so fetch can add boundary).
+ */
+async function requestMultipart(
+  path,
+  {
+    method = 'POST',
+    body = null, // FormData
+    headers = {},
+    useAuth = true,
+    retryOnAuthFail = true,
+  } = {}
+) {
+  const url = buildUrl(path);
+
+  const makeFetch = async () => {
+    const baseHeaders = useAuth ? authHeaders(headers) : { ...headers };
+    // Ensure we don't override Content-Type for multipart
+    if (baseHeaders['Content-Type']) {
+      delete baseHeaders['Content-Type'];
+    }
+
+    const res = await fetch(url, {
+      method,
+      headers: baseHeaders,
+      body,
     });
     return handleResponse(res);
   };
@@ -206,8 +260,9 @@ export async function getVillagesByPanchayat(
 // ========== epSakhi helper APIs ==========
 
 // CRP detail by MasterUser.id
-export async function getCrpDetailByUserId(userId) {
-  return request(`/api/v1/crp-detail/id/${userId}/`, {
+export async function getCrpDetailByUserId(userId, fields = null) {
+  const query = fields ? `?fields=${encodeURIComponent(fields)}` : '';
+  return request(`/api/v1/crp-detail/id/${userId}/${query}`, {
     method: 'GET',
   });
 }
@@ -294,14 +349,6 @@ export async function getEpsakhiDetailByMember(memberCode, params = {}) {
 
 // ========== Enterprise forms (Existing / New) ==========
 
-// NOTE: payload for ExistingEnterprise can include nested:
-//  - loan_details:    [ { institution_name, loan_amount, date_taken, repayment_status }, ... ]
-//  - support_detail:  { ...EnterpriseSupportDetail fields... }
-//  - training_reqs:   [ { ...EnterpriseTrainingReq fields... }, ... ]
-//  - media:           { ...EnterpriseMedia fields... }
-//
-// Backend serializer wires these into Enterprise* tables and sets enterprise_id internally.
-
 export async function createExistingEnterprise(payload) {
   return request('/api/v1/existing-enterprise/', {
     method: 'POST',
@@ -337,6 +384,40 @@ export async function updateRecordedBeneficiary(id, payload) {
   });
 }
 
+// ========== Enterprise child models (Option B) ==========
+
+// Loan details
+export async function createEnterpriseLoanDetail(payload) {
+  return request('/api/v1/enterprise-loan-details/', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+// Support detail
+export async function createEnterpriseSupportDetail(payload) {
+  return request('/api/v1/enterprise-support-details/', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+// Training requirements
+export async function createEnterpriseTrainingReq(payload) {
+  return request('/api/v1/enterprise-training-reqs/', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+// Media upload (multipart)
+export async function uploadEnterpriseMedia(formData) {
+  return requestMultipart('/api/v1/enterprise-media/', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
 const api = {
   // auth
   login,
@@ -356,7 +437,7 @@ const api = {
   getUpsrlmShgMembers,
   getEpsakhiListByShg,
   getEpsakhiDetailByMember,
-  // enterprise
+  // enterprise main
   createExistingEnterprise,
   updateExistingEnterprise,
   createNewEnterprise,
@@ -365,6 +446,11 @@ const api = {
   createRecordedBeneficiary,
   getRecordedBeneficiaries,
   updateRecordedBeneficiary,
+  // enterprise child models
+  createEnterpriseLoanDetail,
+  createEnterpriseSupportDetail,
+  createEnterpriseTrainingReq,
+  uploadEnterpriseMedia,
 };
 
 export default api;

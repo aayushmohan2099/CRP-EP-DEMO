@@ -1,3 +1,4 @@
+// src/screens/epsakhi/CRPDashboardProduction.jsx
 import React, { useEffect, useState, useContext } from 'react';
 import {
   View,
@@ -6,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { getUser, clearUser } from '../../utils/auth';
 import gsApi from '../../api/gsApi';
@@ -15,8 +17,6 @@ import {
   setCrpPanchayats,
   getCrpPanchayats,
   setCrpRecordedBeneficiaries,
-  getCrpRecordedBeneficiaries,
-  setShgListForBlock,
   clearAllTemp,
 } from '../../utils/tempStore';
 import LoaderModal from '../LoaderModal';
@@ -30,6 +30,8 @@ export default function CRPDashboardProduction({ navigation }) {
   const [analytics, setAnalytics] = useState([]);
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [crpName, setCrpName] = useState('');
 
   const translations = {
     en: {
@@ -66,6 +68,49 @@ export default function CRPDashboardProduction({ navigation }) {
     return null;
   };
 
+  // Detect token-expired / unauthorized error
+  const isAuthExpiredError = (err) => {
+    const status = err?.status || err?.response?.status;
+    const detail =
+      err?.data?.detail ||
+      err?.response?.data?.detail ||
+      err?.message ||
+      '';
+
+    if (status === 401) return true;
+    if (
+      typeof detail === 'string' &&
+      (detail.toLowerCase().includes('token') ||
+        detail.toLowerCase().includes('credentials') ||
+        detail.toLowerCase().includes('auth'))
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  const handleLogout = async () => {
+    clearAllTemp();
+    await clearUser();
+    gsApi.setAuthToken?.(null);
+    navigation.replace('Login');
+  };
+
+  const handleSessionExpired = () => {
+    Alert.alert(
+      'Session expired',
+      'Your session has expired. Please log in again.',
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            handleLogout();
+          },
+        },
+      ]
+    );
+  };
+
   useEffect(() => {
     (async () => {
       const u = await getUser();
@@ -77,7 +122,7 @@ export default function CRPDashboardProduction({ navigation }) {
       setUser(u);
 
       if (u.access) {
-        gsApi.setAuthToken?.(u.access);
+        gsApi.setAuthToken?.(u.access, u.refresh);
       }
 
       await bootstrapCrpData(u);
@@ -97,14 +142,34 @@ export default function CRPDashboardProduction({ navigation }) {
         return;
       }
 
-      // 1) CRP detail (for block_id)
+      // 1) CRP detail (for block_id and name)
       let detail = getCrpDetail();
       if (!detail) {
-        const res = await gsApi.getCrpDetailByUserId(userId);
+        const res = await gsApi.getCrpDetailByUserId(
+          userId,
+          'id,name,block_id'
+        );
         // CRP detail API returns direct object:
         // { id, name, block_id, ... }
         detail = res;
         setCrpDetail(detail);
+      }
+      // Ensure we have a name even if detail came from tempStore
+      if (!detail?.name) {
+        try {
+          const resNameOnly = await gsApi.getCrpDetailByUserId(
+            userId,
+            'name'
+          );
+          detail = { ...detail, ...resNameOnly };
+          setCrpDetail(detail);
+        } catch (e) {
+          // non-fatal; just proceed without name
+        }
+      }
+
+      if (detail?.name) {
+        setCrpName(detail.name);
       }
 
       const blockId = detail?.block_id;
@@ -138,37 +203,23 @@ export default function CRPDashboardProduction({ navigation }) {
 
       if (!panchayatIds.length) {
         setAnalytics([]);
+        setCrpRecordedBeneficiaries([]);
         return;
       }
 
       // 3) Recorded beneficiaries for those panchayats
-      let recorded = getCrpRecordedBeneficiaries();
-      if (!recorded.length) {
-        const res = await gsApi.getRecordedBeneficiaries({
-          panchayat_multi: panchayatIds.join(','),
-          page_size: 5000,
-        });
-        // recorded-beneficiaries API is DRF style: { count, next, previous, results: [...] }
-        recorded = Array.isArray(res?.results)
-          ? res.results
-          : Array.isArray(res)
-          ? res
-          : [];
-        setCrpRecordedBeneficiaries(recorded);
-      }
-
-      // 4) Also cache SHG list for CRP's block (used later in flow)
-      const shgList = await gsApi.getUpsrlmShgList(blockId, { page_size: 5000 });
-      // SHG list API response:
-      // { meta: {...}, data: [ { blockId, code, name, panchayatId, villageId, ... }, ... ] }
-      const shgRows = Array.isArray(shgList?.data)
-        ? shgList.data
-        : Array.isArray(shgList?.results)
-        ? shgList.results
-        : Array.isArray(shgList)
-        ? shgList
+      //    Always fetch fresh so analytics + record flow stay up-to-date
+      let recorded = [];
+      const res = await gsApi.getRecordedBeneficiaries({
+        panchayat_multi: panchayatIds.join(','),
+        page_size: 5000,
+      });
+      recorded = Array.isArray(res?.results)
+        ? res.results
+        : Array.isArray(res)
+        ? res
         : [];
-      setShgListForBlock(blockId, shgRows);
+      setCrpRecordedBeneficiaries(recorded);
 
       // Build analytics per Panchayat
       const countsByPanchayat = {};
@@ -188,17 +239,14 @@ export default function CRPDashboardProduction({ navigation }) {
       setAnalytics(analyticsRows);
     } catch (err) {
       console.error('CRP analytics error', err);
+      if (isAuthExpiredError(err)) {
+        handleSessionExpired();
+        return;
+      }
       Alert.alert('Error', 'Failed to load CRP analytics. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogout = async () => {
-    clearAllTemp();
-    await clearUser();
-    gsApi.setAuthToken?.(null);
-    navigation.replace('Login');
   };
 
   const menuItems = [
@@ -215,10 +263,25 @@ export default function CRPDashboardProduction({ navigation }) {
   );
 
   const headerUsername =
-    user?.user?.username || user?.username || 'CRP';
+    crpName ||
+    user?.user?.username ||
+    user?.username ||
+    'CRP';
+
+  const onRefresh = async () => {
+    if (!user) return;
+    setRefreshing(true);
+    await bootstrapCrpData(user);
+    setRefreshing(false);
+  };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       <LoaderModal visible={loading} message={t.loading} />
 
       <View style={styles.header}>
@@ -237,6 +300,11 @@ export default function CRPDashboardProduction({ navigation }) {
       </View>
 
       <Text style={styles.title}>{t.headerTitle}</Text>
+
+      {/* ❤️ Heartwarming message before dashboard counter */}
+      <Text style={styles.greetingText}>
+        Welcome {headerUsername}, thank you for your work!
+      </Text>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>{t.totalLabel}</Text>
@@ -310,6 +378,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'left',
     color: '#EE6969',
+  },
+  greetingText: {
+    fontSize: 16,
+    marginBottom: 12,
+    color: '#444',
   },
   card: {
     padding: 16,

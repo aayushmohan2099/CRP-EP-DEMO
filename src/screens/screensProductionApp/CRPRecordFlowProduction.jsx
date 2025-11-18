@@ -1,3 +1,4 @@
+// src/screens/epsakhi/CRPRecordFlowProduction.jsx
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -12,6 +13,7 @@ import {
   getCrpDetail,
   getCrpPanchayats,
   getCrpRecordedBeneficiaries,
+  setCrpRecordedBeneficiaries,
   getShgListForPanchayat,
   setShgListForPanchayat,
 } from '../../utils/tempStore';
@@ -33,18 +35,57 @@ export default function CRPRecordFlowProduction({ navigation }) {
   const [selectedShg, setSelectedShg] = useState(null);
 
   const [blockId, setBlockId] = useState(null);
+  const [crpUserId, setCrpUserId] = useState(null); // for created_by
 
   const [query, setQuery] = useState('');
   const [benefQuery, setBenefQuery] = useState('');
 
-  const recorded = getCrpRecordedBeneficiaries() || [];
+  // RECORDED BENEFICIARIES STATE (kept in sync with server)
+  const [recorded, setRecorded] = useState(getCrpRecordedBeneficiaries() || []);
 
   useEffect(() => {
     const gps = getCrpPanchayats() || [];
     setPanchayats(gps);
 
     const detail = getCrpDetail();
-    setBlockId(detail?.block_id || null);
+    setBlockId(detail?.block_id || detail?.blockId || null);
+
+    // Try to derive a stable CRP user identifier for created_by
+    const derivedUserId =
+      detail?.master_user_id ||
+      detail?.masterUserId ||
+      detail?.user_id ||
+      detail?.userId ||
+      detail?.username ||
+      detail?.login_id ||
+      null;
+    setCrpUserId(derivedUserId);
+
+    // Refresh recorded beneficiaries for all CRP panchayats
+    const panchayatIds = gps.map((p) => p.panchayat_id).filter(Boolean);
+    if (panchayatIds.length) {
+      (async () => {
+        try {
+          const res = await gsApi.getRecordedBeneficiaries({
+            panchayat_multi: panchayatIds.join(','),
+            page_size: 5000,
+          });
+          const recList = Array.isArray(res?.results)
+            ? res.results
+            : Array.isArray(res)
+            ? res
+            : [];
+          setRecorded(recList);
+          try {
+            setCrpRecordedBeneficiaries?.(recList);
+          } catch (e) {
+            // ignore if setter not available
+          }
+        } catch (err) {
+          console.log('Error refreshing recorded beneficiaries', err);
+        }
+      })();
+    }
   }, []);
 
   const filterRecordedCountForVillage = (villageId) =>
@@ -83,7 +124,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
       setVillages(villagesRows);
 
       // ---- 2) Fetch SHG list for this Panchayat (and cache by Panchayat) ----
-      let shgRows = getShgListForPanchayat(p.panchayat_id);
+      let shgRows = getShgListForPanchayat(p.panchayat_id) || [];
       if (!shgRows.length) {
         const shgRes = await gsApi.getUpsrlmShgList(blockId, {
           panchayat_id: p.panchayat_id,
@@ -99,7 +140,11 @@ export default function CRPRecordFlowProduction({ navigation }) {
           ? shgRes
           : [];
 
-        setShgListForPanchayat(p.panchayat_id, shgRows);
+        try {
+          setShgListForPanchayat(p.panchayat_id, shgRows);
+        } catch (e) {
+          // ignore if storage helper not available/writable
+        }
       }
       // We don't setShgs here; SHGs will be filtered by village in handleSelectVillage.
     } catch (err) {
@@ -188,43 +233,13 @@ export default function CRPRecordFlowProduction({ navigation }) {
 
   const handleBeneficiaryPress = async (row) => {
     const hasExisting = row._isRecorded;
-    const memberCode = row.member_code;
 
-    if (hasExisting && row._recordRow?.enterprise_id) {
-      // Already has enterprise – fetch detail to know type (existing/new)
-      try {
-        setLoading(true);
-        const detail = await gsApi.getEpsakhiDetailByMember(memberCode);
-        const enterpriseType = detail?.enterprise_type;
-        const recordedBenef = detail?.beneficiary;
-
-        if (enterpriseType === 'existing') {
-          navigation.navigate('ExistingEnterpriseForm', {
-            beneficiary: row,
-            recordedBenef,
-            existingEnterprise: detail.enterprise,
-          });
-        } else if (enterpriseType === 'new') {
-          navigation.navigate('NewEnterpriseForm', {
-            beneficiary: row,
-            recordedBenef,
-            newEnterprise: detail.enterprise,
-          });
-        } else {
-          Alert.alert(
-            'Info',
-            'Enterprise id present but type could not be determined.'
-          );
-        }
-      } catch (err) {
-        console.error('epsakhi-detail error', err);
-        Alert.alert(
-          'Error',
-          'Failed to load existing enterprise detail.'
-        );
-      } finally {
-        setLoading(false);
-      }
+    // ✅ If already recorded, do NOT open any form
+    if (hasExisting) {
+      Alert.alert(
+        'Already Recorded',
+        'This beneficiary enterprise has already been recorded.'
+      );
       return;
     }
 
@@ -238,7 +253,9 @@ export default function CRPRecordFlowProduction({ navigation }) {
           onPress: () =>
             navigation.navigate('ExistingEnterpriseForm', {
               beneficiary: row,
-              recordedBenef: row._recordRow, // or create BeneficiaryRecorded first, then pass it
+              recordedBenef: row._recordRow, // may be null
+              tempShg: selectedShg, // for lokos_shg_code / fallback
+              crpUserId, // for created_by in RecordedBenef
             }),
         },
         {
@@ -247,13 +264,14 @@ export default function CRPRecordFlowProduction({ navigation }) {
             navigation.navigate('NewEnterpriseForm', {
               beneficiary: row,
               recordedBenef: row._recordRow,
+              tempShg: selectedShg,
+              crpUserId,
             }),
         },
         { text: 'Cancel', style: 'cancel' },
       ]
     );
   };
-
 
   const getTitle = () =>
     step === 'gp'
@@ -263,6 +281,28 @@ export default function CRPRecordFlowProduction({ navigation }) {
       : step === 'shg'
       ? 'Select SHG'
       : 'Select Beneficiary';
+
+  // ✅ Back button logic per step
+  const handleStepBack = () => {
+    if (step === 'gp') {
+      navigation.goBack();
+    } else if (step === 'village') {
+      setStep('gp');
+      setSelectedPanchayat(null);
+      setSelectedVillage(null);
+      setSelectedShg(null);
+      setVillages([]);
+      setShgs([]);
+      setBeneficiaries([]);
+    } else if (step === 'shg') {
+      setStep('village');
+      setSelectedShg(null);
+      setBeneficiaries([]);
+    } else if (step === 'beneficiaries') {
+      setStep('shg');
+      setBeneficiaries([]);
+    }
+  };
 
   const renderList = () => {
     switch (step) {
@@ -344,7 +384,10 @@ export default function CRPRecordFlowProduction({ navigation }) {
                 onPress={() => handleBeneficiaryPress(item)}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.listText}>{item.member_name}</Text>
+                  <Text style={styles.listText}>
+                    {item.member_name}
+                    {item._isRecorded ? ' (Recorded)' : ''}
+                  </Text>
                   <Text style={styles.metaText}>
                     Member Code: {item.member_code}
                   </Text>
@@ -370,7 +413,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
     <View style={styles.container}>
       <LoaderModal visible={loading} message="Loading..." />
       <View style={styles.headerRow}>
-        <BackButton onPress={() => navigation.goBack()} />
+        <BackButton onPress={handleStepBack} />
         <Text style={styles.headerTitle}>{getTitle()}</Text>
       </View>
 
