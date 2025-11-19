@@ -363,7 +363,24 @@ export async function updateExistingEnterprise(id, payload) {
   });
 }
 
+/**
+ * createNewEnterprise:
+ * - If payload is FormData (file upload), call requestMultipart.
+ * - Otherwise call JSON request.
+ */
+function isFormData(obj) {
+  if (!obj) return false;
+  // React Native FormData has append function
+  return typeof obj.append === 'function';
+}
+
 export async function createNewEnterprise(payload) {
+  if (isFormData(payload)) {
+    return requestMultipart('/api/v1/new-enterprise/', {
+      method: 'POST',
+      body: payload,
+    });
+  }
   return request('/api/v1/new-enterprise/', {
     method: 'POST',
     body: payload,
@@ -371,6 +388,12 @@ export async function createNewEnterprise(payload) {
 }
 
 export async function updateNewEnterprise(id, payload) {
+  if (isFormData(payload)) {
+    return requestMultipart(`/api/v1/new-enterprise/${id}/`, {
+      method: 'PATCH',
+      body: payload,
+    });
+  }
   return request(`/api/v1/new-enterprise/${id}/`, {
     method: 'PATCH',
     body: payload,

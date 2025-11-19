@@ -1,5 +1,5 @@
 // src/screens/epsakhi/NewEnterpriseForm.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ScrollView,
   View,
@@ -19,6 +19,19 @@ import {
   getCrpPanchayats,
   getCrpDetail,
 } from '../../utils/tempStore';
+import { getUser } from '../../utils/auth';
+
+/**
+ * NewEnterpriseForm.jsx
+ *
+ * - Uses logged-in user id from getUser() to populate created_by when creating recorded beneficiary.
+ * - Uploads applicant_signature properly via multipart POST to /api/v1/new-enterprise/ (FormData).
+ * - If no signature file selected, sends JSON payload as before.
+ * - Preserves all original UI and validation / behavior.
+ *
+ * Note: This file duplicates the X-API headers used by your gsApi helper so multipart fetch has the same headers.
+ * If you later centralize multipart calls into gsApi, you can remove the duplicated header constants.
+ */
 
 // Helper to compute age from DOB string (YYYY-MM-DD)
 const computeAgeFromDob = (dobStr) => {
@@ -73,12 +86,18 @@ const requestCameraPermissionIfNeeded = async () => {
   }
 };
 
+// NOTE: these header values duplicate those in your gsApi file to make direct fetch multipart call identical to gsApi requests.
+// If you change them centrally in gsApi later, update these too.
+const MULTIPART_X_API_ID = 'TH_EPS.BDOuser_test.co.in';
+const MULTIPART_X_API_KEY = 'wFR8IpSeNMawCF4RPLXit1POGuQAJTSmRexBBOwO';
+const BASE_URL = 'http://66.116.207.88:8088';
+
 export default function NewEnterpriseForm({ route, navigation }) {
   const recordedBenef = route?.params?.recordedBenef || null; // may be null
   const beneficiary = route?.params?.beneficiary || null; // UPSRLM member row
   const existingNewEnterprise = route?.params?.newEnterprise || null;
   const tempShg = route?.params?.tempShg || null;
-  const crpUserId =
+  const routeCrpUserId =
     route?.params?.crpUserId ||
     route?.params?.user_id ||
     route?.params?.username ||
@@ -124,6 +143,25 @@ export default function NewEnterpriseForm({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   // store selected signature asset { uri, fileName, type }
   const [signatureAsset, setSignatureAsset] = useState(null);
+  const [loggedUser, setLoggedUser] = useState(null);
+
+  useEffect(() => {
+    // load logged in user to get numeric PK for created_by
+    (async () => {
+      try {
+        const u = await getUser();
+        if (u) {
+          setLoggedUser(u);
+          if (u.access) {
+            // keep gsApi's token in sync
+            gsApi.setAuthToken?.(u.access, u.refresh);
+          }
+        }
+      } catch (e) {
+        console.warn('Unable to load user', e);
+      }
+    })();
+  }, []);
 
   const setField = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -316,16 +354,15 @@ export default function NewEnterpriseForm({ route, navigation }) {
       }
     }
 
-    // created_by: only send if numeric (server expects PK). If crpUserId is a username string, omit it.
+    // created_by: prefer loggedUser numeric PK; fallback to routeCrpUserId if numeric
     let created_by_to_send = null;
-    if (crpUserId !== null && crpUserId !== undefined) {
-      // accept integers or numeric strings only
-      if (typeof crpUserId === 'number') {
-        created_by_to_send = crpUserId;
-      } else if (typeof crpUserId === 'string' && /^\d+$/.test(crpUserId.trim())) {
-        created_by_to_send = parseInt(crpUserId.trim(), 10);
+    const candidate = loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? routeCrpUserId;
+    if (candidate !== null && candidate !== undefined) {
+      if (typeof candidate === 'number') {
+        created_by_to_send = candidate;
+      } else if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
+        created_by_to_send = parseInt(candidate.trim(), 10);
       } else {
-        // don't set created_by if it's a non-numeric username
         created_by_to_send = null;
       }
     }
@@ -365,6 +402,38 @@ export default function NewEnterpriseForm({ route, navigation }) {
     }
 
     return recordedBenefId;
+  };
+
+  const performMultipartCreateNewEnterprise = async (formData) => {
+    // sends FormData to /api/v1/new-enterprise/ with same auth & X-API headers as gsApi
+    const token = gsApi.getAuthToken ? gsApi.getAuthToken() : null;
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    headers['X-API-ID'] = MULTIPART_X_API_ID;
+    headers['X-API-KEY'] = MULTIPART_X_API_KEY;
+    // DO NOT set Content-Type - fetch will set boundary automatically
+
+    const url = `${BASE_URL}/api/v1/new-enterprise/`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    const text = await res.text();
+    try {
+      const data = text ? JSON.parse(text) : null;
+      if (!res.ok) {
+        const err = { status: res.status, data };
+        throw err;
+      }
+      return data;
+    } catch (e) {
+      // If response isn't JSON, still handle non-ok
+      if (!res.ok) throw { status: res.status, data: text || null };
+      return text;
+    }
   };
 
   const handleSubmit = async () => {
@@ -420,7 +489,6 @@ export default function NewEnterpriseForm({ route, navigation }) {
         // append text fields (convert booleans/nulls to strings where necessary)
         Object.keys(payloadObj).forEach((k) => {
           const v = payloadObj[k];
-          // FormData expects string values; null -> ''
           formData.append(k, v === null || v === undefined ? '' : String(v));
         });
 
@@ -433,52 +501,44 @@ export default function NewEnterpriseForm({ route, navigation }) {
         };
         formData.append('applicant_signature', filePart);
 
-        // Some gsApi implementations accept FormData in create call.
-        // Try to call createNewEnterprise with formData; if your gsApi expects a separate endpoint, update accordingly.
+        // Perform multipart POST directly (we can't rely on gsApi.createNewEnterprise to accept FormData)
         try {
-          res = await gsApi.createNewEnterprise(formData);
+          res = await performMultipartCreateNewEnterprise(formData);
         } catch (multipartErr) {
-          // In case gsApi.createNewEnterprise doesn't support multipart, try fallback: create JSON then upload separately (best-effort)
-          console.warn('createNewEnterprise multipart attempt failed, trying JSON-create then upload. Error:', multipartErr);
-          // First create via JSON (without signature)
+          console.warn('Multipart create attempt failed:', multipartErr);
+          // Try JSON fallback create (create without signature) then attempt upload via update endpoint
           const createRes = await gsApi.createNewEnterprise(payloadObj);
           const enterpriseId =
             createRes?.TH_urid || createRes?.TH_URID || createRes?.id || null;
           if (!enterpriseId) {
             throw new Error('New enterprise saved but ID missing in response.');
           }
-          // Build FormData to upload signature to an hypothetical endpoint - try gsApi.uploadNewEnterpriseSignature, or fallback to updateNewEnterprise with formData if supported
-          const sigForm = new FormData();
-          sigForm.append('applicant_signature', filePart);
-          let uploadDone = false;
-          // try a few plausible API helper names in gsApi
-          const tryFns = [
-            gsApi.uploadNewEnterpriseSignature,
-            gsApi.uploadEnterpriseMedia, // sometimes same endpoint used
-            gsApi.updateNewEnterprise, // may accept FormData for update
-          ];
-          for (const fn of tryFns) {
-            if (typeof fn === 'function') {
+
+          // Try update with multipart if updateNewEnterprise supports FormData (best-effort)
+          try {
+            // attempt to call updateNewEnterprise with FormData (some backends accept multipart on PATCH)
+            if (typeof gsApi.updateNewEnterprise === 'function') {
               try {
-                // if function expects (id, formData)
-                if (fn.length === 2) {
-                  await fn(enterpriseId, sigForm);
-                } else {
-                  // try single-arg form
-                  await fn(sigForm);
-                }
-                uploadDone = true;
-                break;
+                // some implementations expect (id, payload)
+                const tryForm = new FormData();
+                tryForm.append('applicant_signature', filePart);
+                await gsApi.updateNewEnterprise(enterpriseId, tryForm);
               } catch (e) {
-                // continue trying others
-                console.warn('upload attempt failed for one of fallback functions', e);
+                // if that fails, try uploadEnterpriseMedia as a fallback (not the same field)
+                if (typeof gsApi.uploadEnterpriseMedia === 'function') {
+                  const mediaForm = new FormData();
+                  mediaForm.append('enterprise_id', enterpriseId);
+                  mediaForm.append('applicant_signature', filePart);
+                  await gsApi.uploadEnterpriseMedia(mediaForm);
+                } else {
+                  console.warn('No suitable upload fallback available in gsApi.');
+                }
               }
             }
+          } catch (e) {
+            console.warn('Fallback upload attempts failed', e);
           }
-          if (!uploadDone) {
-            console.warn('Could not upload signature automatically; enterprise created - please upload signature separately or extend gsApi.');
-          }
-          // return the createRes as res so the rest of the flow works
+
           res = createRes;
         }
       } else {
