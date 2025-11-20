@@ -22,6 +22,7 @@ import {
   getCrpPanchayats,
   getCrpDetail,
 } from '../../utils/tempStore';
+import { getUser } from '../../utils/auth';
 
 /**
  * Section-wise field grouping for collapsible UI
@@ -48,7 +49,7 @@ const formSections = [
       'electricity_available',
       'water_available',
       'transportation_facility',
-      'financial_coordination',
+      // 'financial_coordination', // intentionally not sent
       'marketing_strategy',
       'marketing_challenges',
     ],
@@ -76,7 +77,7 @@ const formSections = [
       'source_of_investment',
       'working_capital_monthly',
       'annual_turnover',
-      'profit_percentage',
+      'profit_percentage', // label will be shown as "Gross Profit"
       'government_subsidy',
     ],
   },
@@ -85,7 +86,7 @@ const formSections = [
     title: '5) Training / Skills Related',
     fields: [
       'training_received',
-      'training_details',
+      // 'training_details',
       'skills_acquired',
       'future_training_requirements',
       'institutional_support',
@@ -237,6 +238,22 @@ const expansionPlanOptions = [
   { label: 'Others', value: 'Others' },
 ];
 
+// NEW: Target customers options
+const targetCustomersOptions = [
+  { label: 'Retail', value: 'Retail' },
+  { label: 'Business', value: 'Business' },
+  { label: 'Govt.', value: 'Govt.' },
+  { label: 'Others', value: 'Others' },
+];
+
+// NEW: Marketing challenges options
+const marketingChallengesOptions = [
+  { label: 'Lack of Market Awareness', value: 'Lack of Market Awareness' },
+  { label: 'No Digital Access', value: 'No Digital Access' },
+  { label: 'Lack of Social Media Marketting', value: 'Lack of Social Media Marketting' },
+  { label: 'Others', value: 'Others' },
+];
+
 // Helper to compute age from DOB string (YYYY-MM-DD)
 const computeAgeFromDob = (dobStr) => {
   if (!dobStr) return null;
@@ -339,11 +356,13 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     profit_percentage: '',
     has_taken_loan: false,
     target_customers: '',
+    target_customers_other: '',
     marketing_channels: [],
     marketing_channels_other_specify: '',
     monthly_sales: '',
     marketing_strategy: '',
-    marketing_challenges: '',
+    marketing_challenges: [], // now an array of selected challenges
+    marketing_challenges_other: '',
     electricity_available: '',
     electricity_more_detail: '',
     electricity_specify: '',
@@ -356,7 +375,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     subsidy_department: '',
     subsidy_scheme: '',
     loan_details: [], // nested loans array for UI only
-    financial_coordination: '',
+    // financial_coordination: '', // intentionally not in state for sending
     training_received: '',
     training_details: '',
     skills_acquired: '',
@@ -401,6 +420,16 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     formSections.reduce((acc, s) => ({ ...acc, [s.key]: true }), {})
   );
 
+  // NEW: loggedUser to compute created_by numeric id
+  const [loggedUser, setLoggedUser] = useState(null);
+
+  // Declaration date modal (calendar style via pickers)
+  const [declarationDateModalVisible, setDeclarationDateModalVisible] =
+    useState(false);
+  const [declDay, setDeclDay] = useState(null);
+  const [declMonth, setDeclMonth] = useState(null);
+  const [declYear, setDeclYear] = useState(null);
+
   const toggleSection = (key) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
@@ -429,6 +458,60 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       setLoans([]);
     }
   }, [existingForm.loan_details]);
+
+  // Load logged user for created_by logic
+  useEffect(() => {
+    (async () => {
+      try {
+        const u = await getUser();
+        if (u) {
+          setLoggedUser(u);
+          if (u.access) {
+            gsApi.setAuthToken?.(u.access, u.refresh);
+          }
+        }
+      } catch (e) {
+        console.warn('Unable to load user in ExistingEnterpriseForm', e);
+      }
+    })();
+  }, []);
+
+  // Keep decl pickers in sync when existingForm.declaration_date changes
+  useEffect(() => {
+    const d = existingForm.declaration_date;
+    if (!d) {
+      setDeclDay(null);
+      setDeclMonth(null);
+      setDeclYear(null);
+      return;
+    }
+
+    // Handle formats: 'YYYY-MM-DD' or ISO timestamp (e.g. '2025-11-20T00:00:00Z')
+    try {
+      let parsed;
+      if (typeof d === 'string' && d.includes('-') && d.split('-').length >= 3) {
+        // Try to extract yyyy-mm-dd prefix
+        const parts = d.split('T')[0].split('-'); // ensures ISO and plain date both work
+        if (parts.length === 3) {
+          parsed = { y: parts[0], m: String(parseInt(parts[1], 10)), day: String(parseInt(parts[2], 10)) };
+        }
+      }
+      if (!parsed) {
+        const asDate = new Date(d);
+        if (!Number.isNaN(asDate.getTime())) {
+          parsed = { y: String(asDate.getFullYear()), m: String(asDate.getMonth() + 1), day: String(asDate.getDate()) };
+        }
+      }
+      if (parsed) {
+        setDeclYear(parsed.y);
+        setDeclMonth(parsed.m);
+        setDeclDay(parsed.day);
+      }
+    } catch (e) {
+      // ignore - leave pickers null
+      console.warn('Failed to parse declaration_date', e);
+    }
+  }, [existingForm.declaration_date]);
 
   const updateLoans = (newLoans) => {
     setLoans(newLoans);
@@ -464,7 +547,6 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
   };
 
   // MEDIA HELPERS (multiple files per field)
-
   const addMediaAsset = (fieldKey, asset) => {
     if (!asset?.uri) return;
     setMediaFiles((prev) => ({
@@ -701,13 +783,29 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     });
   };
 
+  const toggleMarketingChallenge = (value) => {
+    const current = Array.isArray(existingForm.marketing_challenges)
+      ? [...existingForm.marketing_challenges]
+      : [];
+    let updated;
+    if (current.includes(value)) {
+      updated = current.filter((c) => c !== value);
+      if (value === 'Others') {
+        setExistingForm((f) => ({ ...f, marketing_challenges_other: '' }));
+      }
+    } else {
+      updated = [...current, value];
+    }
+    setExistingForm((f) => ({ ...f, marketing_challenges: updated }));
+  };
+
   const multilineFields = [
     'product_features',
     'marketing_strategy',
     'marketing_challenges',
     'training_details',
     'skills_acquired',
-    'financial_coordination',
+    // 'financial_coordination',
   ];
 
   const renderMediaField = (k) => {
@@ -717,7 +815,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       open_box_photo: 'Photo – Open Box',
       close_box_photo: 'Photo – Close Box',
       others: 'Photo – Others',
-      certificates: 'Certificates (image scans)',
+      certificates: 'Certificates',
     };
     const label = labelMap[k] || k;
     const files = mediaFiles[k] || [];
@@ -730,7 +828,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
             style={styles.smallBtn}
             onPress={() => pickMedia(k)}
           >
-            <Text style={styles.smallBtnText}>Pick</Text>
+            <Text style={styles.smallBtnText}>Upload</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.smallBtn}
@@ -761,8 +859,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
           </ScrollView>
         )}
         <Text style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
-          You can select multiple images; they will be grouped into rows on
-          server (1 per column per row).
+          You can select multiple images, MAX 3.
         </Text>
       </View>
     );
@@ -1059,7 +1156,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
           {transport === 'Yes' && (
             <View style={{ marginTop: 8 }}>
               <Text style={styles.label}>
-                Can you transport/supply the product to the CLF?
+                Can you transport/supply the product to Bijnor CLF?
               </Text>
               <Picker
                 selectedValue={existingForm.can_transport_clf || ''}
@@ -1285,6 +1382,86 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       );
     }
 
+    // NEW: Target Customers dropdown with Others specify
+    if (k === 'target_customers') {
+      const val = existingForm.target_customers || '';
+      return (
+        <View key={k} style={{ marginBottom: 8 }}>
+          <Text style={styles.label}>Target Customers</Text>
+          <Picker
+            selectedValue={val}
+            onValueChange={(v) =>
+              setExistingForm((f) => ({
+                ...f,
+                target_customers: v,
+                target_customers_other: v === 'Others' ? f.target_customers_other : '',
+              }))
+            }
+            style={styles.input}
+          >
+            <Picker.Item label="Select..." value="" />
+            {targetCustomersOptions.map((opt) => (
+              <Picker.Item key={opt.value} label={opt.label} value={opt.value} />
+            ))}
+          </Picker>
+          {existingForm.target_customers === 'Others' && (
+            <TextInput
+              placeholder="Please specify"
+              style={[styles.input, { marginTop: 6 }]}
+              value={existingForm.target_customers_other || ''}
+              onChangeText={(text) =>
+                setExistingForm((f) => ({ ...f, target_customers_other: text }))
+              }
+            />
+          )}
+        </View>
+      );
+    }
+
+    // NEW: Marketing Challenges multi-select
+    if (k === 'marketing_challenges') {
+      const selected = Array.isArray(existingForm.marketing_challenges)
+        ? existingForm.marketing_challenges
+        : [];
+
+      return (
+        <View key={k} style={{ marginBottom: 8 }}>
+          <Text style={styles.label}>Marketing Challenges</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {marketingChallengesOptions.map(({ label, value }) => (
+              <TouchableOpacity
+                key={value}
+                style={[
+                  styles.smallBtn,
+                  selected.includes(value) && { backgroundColor: '#EE6969' },
+                ]}
+                onPress={() => toggleMarketingChallenge(value)}
+              >
+                <Text
+                  style={{
+                    color: selected.includes(value) ? '#fff' : '#333',
+                    fontWeight: '600',
+                  }}
+                >
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {selected.includes('Others') && (
+            <TextInput
+              placeholder="Please specify other marketing challenges"
+              style={[styles.input, { marginTop: 6 }]}
+              value={existingForm.marketing_challenges_other || ''}
+              onChangeText={(text) =>
+                setExistingForm((f) => ({ ...f, marketing_challenges_other: text }))
+              }
+            />
+          )}
+        </View>
+      );
+    }
+
     if (k === 'future_training_requirements') {
       const val = existingForm.additional_training_required || '';
       return (
@@ -1353,14 +1530,34 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
 
     if (k === 'training_received') {
       const val = existingForm.training_received || '';
-      return renderYesNoToggle(
-        'Have you received any training before?',
-        val,
-        (v) =>
-          setExistingForm((f) => ({
-            ...f,
-            training_received: v,
-          }))
+      return (
+        <View key={k} style={{ marginBottom: 8 }}>
+          {renderYesNoToggle(
+            'Have you received any training before?',
+            val,
+            (v) =>
+              setExistingForm((f) => ({
+                ...f,
+                training_received: v,
+                training_details: v === 'No' ? '' : f.training_details,
+              }))
+          )}
+
+          {val === 'Yes' && (
+            <View style={{ marginTop: 8 }}>
+              <Text style={styles.label}>Training Details</Text>
+              <TextInput
+                placeholder="Describe training received (institutions / duration / skills)"
+                style={[styles.input, { minHeight: 80 }]}
+                value={existingForm.training_details || ''}
+                onChangeText={(text) =>
+                  setExistingForm((f) => ({ ...f, training_details: text }))
+                }
+                multiline
+              />
+            </View>
+          )}
+        </View>
       );
     }
 
@@ -1693,19 +1890,174 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     }
 
     if (k === 'declaration_date' || k === 'verifier_name') {
-      const label =
-        k === 'declaration_date'
-          ? 'Declaration Date (YYYY-MM-DD)'
-          : 'Verifier Name';
+      if (k === 'declaration_date') {
+        return (
+          <View key={k} style={{ marginBottom: 8 }}>
+            <Text style={styles.label}>Declaration Date</Text>
+            <TouchableOpacity
+              style={[styles.input, { justifyContent: 'center', height: 44 }]}
+              onPress={() => {
+                // initialize pickers if value exists
+                const existing = existingForm.declaration_date;
+                let initYear = null;
+                let initMonth = null;
+                let initDay = null;
+
+                if (existing && typeof existing === 'string') {
+                  // If contains T (ISO) or plain yyyy-mm-dd, attempt parsing
+                  try {
+                    const isoPart = existing.split('T')[0]; // works for both
+                    const parts = isoPart.split('-'); // yyyy-mm-dd
+                    if (parts.length === 3) {
+                      initYear = parts[0];
+                      initMonth = String(parseInt(parts[1], 10));
+                      initDay = String(parseInt(parts[2], 10));
+                    }
+                  } catch (e) {
+                    // ignore
+                  }
+                }
+
+                // if parsing above didn't work, try Date constructor
+                if (!initYear) {
+                  const dt = new Date(existing || Date.now());
+                  if (!Number.isNaN(dt.getTime())) {
+                    initYear = String(dt.getFullYear());
+                    initMonth = String(dt.getMonth() + 1);
+                    initDay = String(dt.getDate());
+                  }
+                }
+
+                // fallback to today
+                if (!initYear) {
+                  const dt = new Date();
+                  initYear = String(dt.getFullYear());
+                  initMonth = String(dt.getMonth() + 1);
+                  initDay = String(dt.getDate());
+                }
+
+                setDeclYear(initYear);
+                setDeclMonth(initMonth);
+                setDeclDay(initDay);
+
+                setDeclarationDateModalVisible(true);
+              }}
+            >
+              <Text>
+                {existingForm.declaration_date || 'Select date'}
+              </Text>
+            </TouchableOpacity>
+
+            <Modal
+              visible={declarationDateModalVisible}
+              transparent
+              animationType="slide"
+              onRequestClose={() => setDeclarationDateModalVisible(false)}
+            >
+              <View style={styles.modalBackdrop}>
+                <View style={[styles.modalContent, { padding: 12 }]}>
+                  <Text style={[styles.label, { textAlign: 'center' }]}>
+                    Select Declaration Date
+                  </Text>
+
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
+                    {/* Day picker */}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, marginBottom: 4 }}>Day</Text>
+                      <Picker
+                        selectedValue={declDay ?? '1'}
+                        onValueChange={(v) => setDeclDay(String(v))}
+                      >
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                          <Picker.Item key={d} label={String(d)} value={String(d)} />
+                        ))}
+                      </Picker>
+                    </View>
+
+                    {/* Month picker */}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, marginBottom: 4 }}>Month</Text>
+                      <Picker
+                        selectedValue={declMonth ?? '1'}
+                        onValueChange={(v) => setDeclMonth(String(v))}
+                      >
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                          <Picker.Item key={m} label={String(m)} value={String(m)} />
+                        ))}
+                      </Picker>
+                    </View>
+
+                    {/* Year picker */}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, marginBottom: 4 }}>Year</Text>
+                      <Picker
+                        selectedValue={declYear ?? String(currentYear)}
+                        onValueChange={(v) => setDeclYear(String(v))}
+                      >
+                        {yearOptions.map((y) => (
+                          <Picker.Item key={y} label={y} value={y} />
+                        ))}
+                      </Picker>
+                    </View>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+                    <TouchableOpacity
+                      style={[styles.cancelBtn, { paddingHorizontal: 16 }]}
+                      onPress={() => setDeclarationDateModalVisible(false)}
+                    >
+                      <Text style={{ color: '#EE6969', fontWeight: '600' }}>Cancel</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.smallBtn, { paddingHorizontal: 16 }]}
+                      onPress={() => {
+                        // normalize to YYYY-MM-DD
+                        const dd = String(declDay ?? '1').padStart(2, '0');
+                        const mm = String(declMonth ?? '1').padStart(2, '0');
+                        const yyyy = String(declYear ?? currentYear);
+                        const iso = `${yyyy}-${mm}-${dd}`;
+                        setExistingForm((f) => ({ ...f, declaration_date: iso }));
+                        setDeclarationDateModalVisible(false);
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontWeight: '600' }}>Set</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          </View>
+        );
+      } else {
+        // verifier_name
+        return (
+          <View key={k} style={{ marginBottom: 8 }}>
+            <Text style={styles.label}>Verifier Name</Text>
+            <TextInput
+              value={String(existingForm[k] ?? '')}
+              onChangeText={(v) =>
+                setExistingForm((prev) => ({ ...prev, [k]: v }))
+              }
+              style={styles.input}
+            />
+          </View>
+        );
+      }
+    }
+
+    // Specific label change: profit_percentage shows 'Gross Profit'
+    if (k === 'profit_percentage') {
       return (
         <View key={k} style={{ marginBottom: 8 }}>
-          <Text style={styles.label}>{label}</Text>
+          <Text style={styles.label}>Gross Profit</Text>
           <TextInput
-            value={String(existingForm[k] ?? '')}
+            value={String(existingForm.profit_percentage ?? '')}
             onChangeText={(v) =>
-              setExistingForm((prev) => ({ ...prev, [k]: v }))
+              setExistingForm((prev) => ({ ...prev, profit_percentage: v }))
             }
             style={styles.input}
+            keyboardType="numeric"
           />
         </View>
       );
@@ -1871,8 +2223,19 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       }
     }
 
-    // created_by fallback: prefer crpUserId (passed from route), else beneficiary.created_by
-    const created_by = crpUserId || beneficiary.created_by || beneficiary.createdBy || null;
+    // created_by: prefer loggedUser numeric PK; fallback to crpUserId if numeric
+    let created_by_to_send = null;
+    const candidate =
+      loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? crpUserId ?? null;
+    if (candidate !== null && candidate !== undefined) {
+      if (typeof candidate === 'number') {
+        created_by_to_send = candidate;
+      } else if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
+        created_by_to_send = parseInt(candidate.trim(), 10);
+      } else {
+        created_by_to_send = null;
+      }
+    }
 
     const recordedPayload = {
       lokos_member_code: beneficiary.member_code || beneficiary.nic_member_code || null,
@@ -1892,8 +2255,11 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       email: beneficiary.email || null,
       lokos_shg_code: lokos_shg_code || null,
       // enterprise_id will be set after enterprise is created
-      created_by: created_by,
     };
+
+    if (created_by_to_send !== null) {
+      recordedPayload.created_by = created_by_to_send;
+    }
 
     const recRes = await gsApi.createRecordedBeneficiary(recordedPayload);
 
@@ -1983,8 +2349,12 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
           ? parseFloat(existingForm.profit_percentage)
           : null,
         has_taken_loan: loans.length > 0,
-        financial_coordination: existingForm.financial_coordination || '',
-        target_customers: existingForm.target_customers || '',
+        // DO NOT send financial_coordination (kept out intentionally)
+        // financial_coordination: null,
+        target_customers:
+          existingForm.target_customers === 'Others'
+            ? existingForm.target_customers_other || ''
+            : existingForm.target_customers || '',
         marketing_channels: Array.isArray(existingForm.marketing_channels)
           ? existingForm.marketing_channels.join(',')
           : existingForm.marketing_channels || '',
@@ -1992,7 +2362,9 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
           ? parseFloat(existingForm.monthly_sales)
           : null,
         marketing_strategy: existingForm.marketing_strategy || '',
-        marketing_challenges: existingForm.marketing_challenges || '',
+        marketing_challenges: Array.isArray(existingForm.marketing_challenges)
+          ? existingForm.marketing_challenges.join(', ')
+          : existingForm.marketing_challenges || '',
         electricity_available:
           existingForm.electricity_available === 'Yes',
         water_available: existingForm.water_available === 'Yes',

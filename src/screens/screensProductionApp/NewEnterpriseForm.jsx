@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Platform,
   PermissionsAndroid,
+  Modal,
 } from 'react-native';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import gsApi from '../../api/gsApi';
@@ -30,7 +31,7 @@ import { getUser } from '../../utils/auth';
  * - Preserves all original UI and validation / behavior.
  *
  * Note: This file duplicates the X-API headers used by your gsApi helper so multipart fetch has the same headers.
- * If you later centralize multipart calls into gsApi, you can remove the duplicated header constants.
+ * If you change them centrally in gsApi later, update these too.
  */
 
 // Helper to compute age from DOB string (YYYY-MM-DD)
@@ -56,7 +57,7 @@ function extractLocationFromShg(shg) {
   const village_id = shg.villageId ?? shg.village_id ?? null;
   const lokos_shg_code = shg.code ?? shg.shg_code ?? shg.lokos_shg_code ?? null;
   return { district_id, block_id, panchayat_id, village_id, lokos_shg_code };
-};
+}
 
 // Android camera permission helper
 const requestCameraPermissionIfNeeded = async () => {
@@ -110,13 +111,25 @@ export default function NewEnterpriseForm({ route, navigation }) {
     tempShg?.shg_code ||
     null;
 
+  // Form state:
+  // - interest_answer: '', 'Yes', 'No'  -> controls skills_present path
+  // - skills_present: text (if interest Yes), or 'No' when interest No
+  // - location_answer: '', 'Yes', 'No' -> controls any_past_experience which is used to store selected location text or 'No'
+  // - any_past_experience: text OR 'No'
+  // - training_answer: '', 'Yes', 'No' -> controls training_required and family_member_ep_details mapping
+  // - training_name: new field to store training_required when training_answer Yes
+  // - training_department: new field to store family_member_ep_details when training_answer Yes
+  // Other support fields kept as booleans like original.
   const [form, setForm] = useState({
-    skills_present: existingNewEnterprise?.skills_present || '',
-    training_required: existingNewEnterprise?.training_required || '',
-    any_past_experience:
-      existingNewEnterprise?.any_past_experience || '',
-    family_member_ep_details:
-      existingNewEnterprise?.family_member_ep_details || '',
+    // Basic Questions
+    interest_answer: existingNewEnterprise?.interest_answer ?? '', // 'Yes' | 'No' | ''
+    skills_present: existingNewEnterprise?.skills_present ?? '',
+    location_answer: existingNewEnterprise?.location_answer ?? '',
+    any_past_experience: existingNewEnterprise?.any_past_experience ?? '',
+    training_answer: existingNewEnterprise?.training_answer ?? '',
+    training_name: existingNewEnterprise?.training_required ?? '',
+    training_department: existingNewEnterprise?.family_member_ep_details ?? '',
+    // Support required booleans (kept original keys)
     req_skill_training:
       existingNewEnterprise?.req_skill_training || false,
     req_ep_development_training:
@@ -132,10 +145,12 @@ export default function NewEnterpriseForm({ route, navigation }) {
       existingNewEnterprise?.req_infra_support || false,
     req_digi_emarket_linkage:
       existingNewEnterprise?.req_digi_emarket_linkage || false,
+    // Declaration
     declaration_confirmed:
       existingNewEnterprise?.declaration_confirmed || false,
     declaration_date:
       existingNewEnterprise?.declaration_date || '',
+    // Signature field placeholder (URI string if existing)
     applicant_signature:
       existingNewEnterprise?.applicant_signature || '',
   });
@@ -144,6 +159,16 @@ export default function NewEnterpriseForm({ route, navigation }) {
   // store selected signature asset { uri, fileName, type }
   const [signatureAsset, setSignatureAsset] = useState(null);
   const [loggedUser, setLoggedUser] = useState(null);
+
+  // Declaration date modal pickers
+  const [declarationDateModalVisible, setDeclarationDateModalVisible] = useState(false);
+  const [declDay, setDeclDay] = useState(null);
+  const [declMonth, setDeclMonth] = useState(null);
+  const [declYear, setDeclYear] = useState(null);
+  const currentYear = new Date().getFullYear();
+  const startYear = 1950;
+  const yearOptions = [];
+  for (let y = currentYear; y >= startYear; y--) yearOptions.push(String(y));
 
   useEffect(() => {
     // load logged in user to get numeric PK for created_by
@@ -162,6 +187,37 @@ export default function NewEnterpriseForm({ route, navigation }) {
       }
     })();
   }, []);
+
+  // keep pickers in sync if declaration_date pre-filled
+  useEffect(() => {
+    const d = form.declaration_date;
+    if (!d) {
+      setDeclDay(null);
+      setDeclMonth(null);
+      setDeclYear(null);
+      return;
+    }
+    try {
+      // handle ISO or plain YYYY-MM-DD
+      const isoPart = typeof d === 'string' ? d.split('T')[0] : '';
+      const parts = isoPart.split('-');
+      if (parts.length === 3) {
+        setDeclYear(parts[0]);
+        setDeclMonth(String(parseInt(parts[1], 10)));
+        setDeclDay(String(parseInt(parts[2], 10)));
+        return;
+      }
+      // fallback
+      const dt = new Date(d);
+      if (!Number.isNaN(dt.getTime())) {
+        setDeclYear(String(dt.getFullYear()));
+        setDeclMonth(String(dt.getMonth() + 1));
+        setDeclDay(String(dt.getDate()));
+      }
+    } catch (e) {
+      console.warn('Failed to parse declaration_date', e);
+    }
+  }, [form.declaration_date]);
 
   const setField = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -444,11 +500,18 @@ export default function NewEnterpriseForm({ route, navigation }) {
       );
       return;
     }
-    if (!form.skills_present && !form.any_past_experience) {
-      Alert.alert(
-        'Validation',
-        'Please fill at least skills present or past experience.'
-      );
+
+    // Basic validation: ensure business interest answered and location answered and training answered
+    if (!form.interest_answer) {
+      Alert.alert('Validation', 'Please answer the "What type of business / work you are interested in?" question.');
+      return;
+    }
+    if (!form.location_answer) {
+      Alert.alert('Validation', 'Please answer the "Have you selected any location for your Enterprise?" question.');
+      return;
+    }
+    if (!form.training_answer) {
+      Alert.alert('Validation', 'Please answer the "Have you received any training?" question.');
       return;
     }
 
@@ -458,14 +521,37 @@ export default function NewEnterpriseForm({ route, navigation }) {
       // Step 1: Ensure we have a recorded beneficiary row
       const recordedBenefId = await ensureRecordedBeneficiary();
 
-      // Step 2: Create / update new-enterprise row
-      // If there is a signature asset (file), create multipart formdata; otherwise JSON.
+      // Prepare payload mapping per your rules:
+      // - skills_present: if interest_answer === 'No' => 'No', else skills_present text (could be empty string)
+      // - any_past_experience: if location_answer === 'No' => 'No', else any_past_experience text
+      // - training_required & family_member_ep_details:
+      //    if training_answer === 'Yes' => training_required = training_name (text), family_member_ep_details = training_department (text)
+      //    if training_answer === 'No' => training_required = 'No', family_member_ep_details = null
+
+      const skills_present_out =
+        form.interest_answer === 'No' ? 'No' : (form.skills_present || '');
+
+      const any_past_experience_out =
+        form.location_answer === 'No' ? 'No' : (form.any_past_experience || '');
+
+      let training_required_out = null;
+      let family_member_ep_details_out = null;
+      if (form.training_answer === 'Yes') {
+        training_required_out = form.training_name || '';
+        family_member_ep_details_out = form.training_department || '';
+      } else {
+        training_required_out = 'No';
+        family_member_ep_details_out = null;
+      }
+
       const payloadObj = {
         recorded_benef_id: recordedBenefId,
-        skills_present: form.skills_present,
-        training_required: form.training_required,
-        any_past_experience: form.any_past_experience,
-        family_member_ep_details: form.family_member_ep_details,
+        // Basic Questions mapping
+        skills_present: skills_present_out,
+        training_required: training_required_out,
+        any_past_experience: any_past_experience_out,
+        family_member_ep_details: family_member_ep_details_out,
+        // support flags
         req_skill_training: !!form.req_skill_training,
         req_ep_development_training:
           !!form.req_ep_development_training,
@@ -476,6 +562,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
         req_infra_support: !!form.req_infra_support,
         req_digi_emarket_linkage:
           !!form.req_digi_emarket_linkage,
+        // declaration
         declaration_confirmed: !!form.declaration_confirmed,
         declaration_date: form.declaration_date || null,
         // applicant_signature handled separately (file)
@@ -489,11 +576,11 @@ export default function NewEnterpriseForm({ route, navigation }) {
         // append text fields (convert booleans/nulls to strings where necessary)
         Object.keys(payloadObj).forEach((k) => {
           const v = payloadObj[k];
+          // send explicit null as empty string to avoid multipart server issues; except family_member_ep_details we may want empty string for multipart
           formData.append(k, v === null || v === undefined ? '' : String(v));
         });
 
         // Attach applicant_signature as file part
-        // Ensure name and type exist (type often image/jpeg)
         const filePart = {
           uri: signatureAsset.uri,
           name: signatureAsset.fileName || `signature_${Date.now()}.jpg`,
@@ -501,7 +588,6 @@ export default function NewEnterpriseForm({ route, navigation }) {
         };
         formData.append('applicant_signature', filePart);
 
-        // Perform multipart POST directly (we can't rely on gsApi.createNewEnterprise to accept FormData)
         try {
           res = await performMultipartCreateNewEnterprise(formData);
         } catch (multipartErr) {
@@ -516,15 +602,12 @@ export default function NewEnterpriseForm({ route, navigation }) {
 
           // Try update with multipart if updateNewEnterprise supports FormData (best-effort)
           try {
-            // attempt to call updateNewEnterprise with FormData (some backends accept multipart on PATCH)
             if (typeof gsApi.updateNewEnterprise === 'function') {
               try {
-                // some implementations expect (id, payload)
                 const tryForm = new FormData();
                 tryForm.append('applicant_signature', filePart);
                 await gsApi.updateNewEnterprise(enterpriseId, tryForm);
               } catch (e) {
-                // if that fails, try uploadEnterpriseMedia as a fallback (not the same field)
                 if (typeof gsApi.uploadEnterpriseMedia === 'function') {
                   const mediaForm = new FormData();
                   mediaForm.append('enterprise_id', enterpriseId);
@@ -576,7 +659,6 @@ export default function NewEnterpriseForm({ route, navigation }) {
       ]);
     } catch (err) {
       console.error('NewEnterprise submit error', err);
-      // Show useful message if server returned validation object
       const serverMsg =
         err?.data?.detail ||
         (err?.data && typeof err.data === 'object' ? JSON.stringify(err.data) : null) ||
@@ -594,52 +676,162 @@ export default function NewEnterpriseForm({ route, navigation }) {
     recordedBenef?.applicant_name ||
     '';
 
+  // Small UI helpers for Yes/No toggles
+  const YesNoToggle = ({ value, onChange }) => (
+    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
+      <TouchableOpacity
+        style={[styles.smallBtn, value === 'Yes' && { backgroundColor: '#EE6969' }]}
+        onPress={() => onChange('Yes')}
+      >
+        <Text style={{ color: value === 'Yes' ? '#fff' : '#333', fontWeight: '600' }}>Yes</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.smallBtn, value === 'No' && { backgroundColor: '#EE6969' }]}
+        onPress={() => onChange('No')}
+      >
+        <Text style={{ color: value === 'No' ? '#fff' : '#333', fontWeight: '600' }}>No</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // When opening declaration modal, initialize pickers to existing value or today
+  const openDeclarationModal = () => {
+    const existing = form.declaration_date;
+    let initYear = null;
+    let initMonth = null;
+    let initDay = null;
+
+    if (existing && typeof existing === 'string') {
+      try {
+        const isoPart = existing.split('T')[0];
+        const parts = isoPart.split('-');
+        if (parts.length === 3) {
+          initYear = parts[0];
+          initMonth = String(parseInt(parts[1], 10));
+          initDay = String(parseInt(parts[2], 10));
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    if (!initYear) {
+      const dt = new Date();
+      initYear = String(dt.getFullYear());
+      initMonth = String(dt.getMonth() + 1);
+      initDay = String(dt.getDate());
+    }
+
+    setDeclYear(initYear);
+    setDeclMonth(initMonth);
+    setDeclDay(initDay);
+    setDeclarationDateModalVisible(true);
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <Text style={styles.heading}>
         New Enterprise — {benefName}
       </Text>
 
-      <Text style={styles.sectionHeading}>Skills & Experience</Text>
-      <Text style={styles.label}>
-        Skills present (existing skills / interests)
+      {/* ===== Basic Questions (new section) ===== */}
+      <Text style={styles.sectionHeading}>Basic Questions</Text>
+
+      {/* Business interest */}
+      <Text style={styles.label}>Are you interested in any type of Work / Business?</Text>
+      <YesNoToggle
+        value={form.interest_answer}
+        onChange={(v) => {
+          // if No, set skills_present to 'No' (but keep interest_answer)
+          if (v === 'No') {
+            setForm((p) => ({ ...p, interest_answer: 'No', skills_present: 'No' }));
+          } else {
+            setForm((p) => ({ ...p, interest_answer: 'Yes', skills_present: '' }));
+          }
+        }}
+      />
+      <Text style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
+        Eg: Food processing, Tailoring, Beauty & Wellness, Artisan, General Store, etc.
       </Text>
-      <TextInput
-        style={styles.input}
-        value={form.skills_present}
-        onChangeText={(v) => setField('skills_present', v)}
-        multiline
-      />
+      {form.interest_answer === 'Yes' && (
+        <TextInput
+          style={[styles.input, { minHeight: 80 }]}
+          value={form.skills_present}
+          onChangeText={(v) => setField('skills_present', v)}
+          placeholder="Describe the business / work you are interested in"
+          multiline
+        />
+      )}
 
-      <Text style={styles.label}>Training required (if any)</Text>
-      <TextInput
-        style={styles.input}
-        value={form.training_required}
-        onChangeText={(v) => setField('training_required', v)}
-        multiline
+      {/* Location selection (re-using any_past_experience field for location per your instruction) */}
+      <Text style={[styles.label, { marginTop: 12 }]}>Have you selected any location for your Enterprise?</Text>
+      <YesNoToggle
+        value={form.location_answer}
+        onChange={(v) => {
+          if (v === 'No') {
+            setForm((p) => ({ ...p, location_answer: 'No', any_past_experience: 'No' }));
+          } else {
+            setForm((p) => ({ ...p, location_answer: 'Yes', any_past_experience: '' }));
+          }
+        }}
       />
+      {form.location_answer === 'Yes' && (
+        <TextInput
+          style={[styles.input, { minHeight: 80 }]}
+          value={form.any_past_experience}
+          onChangeText={(v) => setField('any_past_experience', v)}
+          placeholder="Enter selected location details (village / town / area)"
+          multiline
+        />
+      )}
 
-      <Text style={styles.label}>Any past experience</Text>
-      <TextInput
-        style={styles.input}
-        value={form.any_past_experience}
-        onChangeText={(v) => setField('any_past_experience', v)}
-        multiline
+      {/* Training received */}
+      <Text style={[styles.label, { marginTop: 12 }]}>Have you received any training?</Text>
+      <YesNoToggle
+        value={form.training_answer}
+        onChange={(v) => {
+          if (v === 'No') {
+            // per instruction: if No => training_required should be 'No', family_member_ep_details => NULL
+            setForm((p) => ({
+              ...p,
+              training_answer: 'No',
+              training_name: 'No',
+              training_department: '',
+            }));
+          } else {
+            setForm((p) => ({
+              ...p,
+              training_answer: 'Yes',
+              training_name: '',
+              training_department: '',
+            }));
+          }
+        }}
       />
+      {form.training_answer === 'Yes' && (
+        <>
+          <Text style={[styles.label, { marginTop: 8 }]}>Training Name or Type</Text>
+          <TextInput
+            style={[styles.input, { minHeight: 80 }]}
+            value={form.training_name}
+            onChangeText={(v) => setField('training_name', v)}
+            placeholder="Enter training name / type"
+            multiline
+          />
 
-      <Text style={styles.label}>
-        Family member enterprise details (if any)
-      </Text>
-      <TextInput
-        style={styles.input}
-        value={form.family_member_ep_details}
-        onChangeText={(v) =>
-          setField('family_member_ep_details', v)
-        }
-        multiline
-      />
+          <Text style={[styles.label, { marginTop: 8 }]}>Training Department</Text>
+          <TextInput
+            style={[styles.input, { minHeight: 80 }]}
+            value={form.training_department}
+            onChangeText={(v) => setField('training_department', v)}
+            placeholder="Enter training department / institution"
+            multiline
+          />
+        </>
+      )}
 
-      <Text style={styles.sectionHeading}>Support Required</Text>
+      {/* Next: Support Required */}
+      <Text style={styles.sectionHeading}>Support Required from Department</Text>
 
       {[
         ['Skill Training', 'req_skill_training'],
@@ -669,10 +861,11 @@ export default function NewEnterpriseForm({ route, navigation }) {
         </TouchableOpacity>
       ))}
 
+      {/* Declaration */}
       <Text style={styles.sectionHeading}>Declaration</Text>
       <TouchableOpacity
         style={styles.checkboxRow}
-        onPress={() => toggleBool('declaration_confirmed')}
+        onPress={() => setField('declaration_confirmed', !form.declaration_confirmed)}
       >
         <View
           style={[
@@ -686,21 +879,103 @@ export default function NewEnterpriseForm({ route, navigation }) {
         </Text>
       </TouchableOpacity>
 
-      <Text style={styles.label}>Declaration Date (YYYY-MM-DD)</Text>
-      <TextInput
-        style={styles.input}
-        value={form.declaration_date}
-        onChangeText={(v) => setField('declaration_date', v)}
-        placeholder="YYYY-MM-DD"
-      />
+      <Text style={[styles.label, { marginTop: 10 }]}>Declaration Date</Text>
+      <TouchableOpacity
+        style={[styles.input, { justifyContent: 'center', height: 44 }]}
+        onPress={openDeclarationModal}
+      >
+        <Text>{form.declaration_date || 'Select date'}</Text>
+      </TouchableOpacity>
 
-      <Text style={styles.label}>Applicant Signature (image)</Text>
+      <Modal
+        visible={declarationDateModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDeclarationDateModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalContent, { padding: 12 }]}>
+            <Text style={[styles.label, { textAlign: 'center' }]}>
+              Select Declaration Date
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
+              {/* Day picker */}
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, marginBottom: 4 }}>Day</Text>
+                <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6, backgroundColor: '#fff' }}>
+                  <ScrollView style={{ maxHeight: 120 }}>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                      <TouchableOpacity key={d} onPress={() => setDeclDay(String(d))} style={{ padding: 8 }}>
+                        <Text style={{ color: declDay === String(d) ? '#EE6969' : '#333' }}>{String(d)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+
+              {/* Month picker */}
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, marginBottom: 4 }}>Month</Text>
+                <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6, backgroundColor: '#fff' }}>
+                  <ScrollView style={{ maxHeight: 120 }}>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                      <TouchableOpacity key={m} onPress={() => setDeclMonth(String(m))} style={{ padding: 8 }}>
+                        <Text style={{ color: declMonth === String(m) ? '#EE6969' : '#333' }}>{String(m)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+
+              {/* Year picker */}
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, marginBottom: 4 }}>Year</Text>
+                <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 6, backgroundColor: '#fff' }}>
+                  <ScrollView style={{ maxHeight: 120 }}>
+                    {yearOptions.map((y) => (
+                      <TouchableOpacity key={y} onPress={() => setDeclYear(y)} style={{ padding: 8 }}>
+                        <Text style={{ color: declYear === y ? '#EE6969' : '#333' }}>{y}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
+              <TouchableOpacity
+                style={[styles.cancelBtn, { paddingHorizontal: 16 }]}
+                onPress={() => setDeclarationDateModalVisible(false)}
+              >
+                <Text style={{ color: '#EE6969', fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.smallBtn, { paddingHorizontal: 16 }]}
+                onPress={() => {
+                  const dd = String(declDay ?? '1').padStart(2, '0');
+                  const mm = String(declMonth ?? '1').padStart(2, '0');
+                  const yyyy = String(declYear ?? currentYear);
+                  const iso = `${yyyy}-${mm}-${dd}`;
+                  setField('declaration_date', iso);
+                  setDeclarationDateModalVisible(false);
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600' }}>Set</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Text style={[styles.label, { marginTop: 12 }]}>Applicant Signature (image)</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <TouchableOpacity
           style={styles.smallBtn}
           onPress={pickSignatureFromGallery}
         >
-          <Text style={{ fontWeight: '600' }}>Pick</Text>
+          <Text style={{ fontWeight: '600' }}>Upload</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.smallBtn}
@@ -806,5 +1081,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEE',
     padding: 8,
     borderRadius: 6,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  cancelBtn: { padding: 10, alignItems: 'center', marginTop: 8 },
+  // Modal
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    minWidth: 300,
+    paddingBottom: 15,
+    paddingTop: 10,
   },
 });

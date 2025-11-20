@@ -11,11 +11,12 @@ const DEFAULT_HEADERS = {
 let AUTH_TOKEN = null;
 let REFRESH_TOKEN = null;
 
-// ========== TOKEN HELPERS ==========
+// ======================= TOKEN HELPERS =======================
 
 export function setAuthToken(accessToken, refreshToken) {
   AUTH_TOKEN = accessToken || null;
-  // keep backwards compatibility: old calls with 1 arg still work
+
+  // keep backward compatibility (if only access is passed)
   if (typeof refreshToken !== 'undefined') {
     REFRESH_TOKEN = refreshToken || null;
   }
@@ -41,10 +42,12 @@ function buildUrl(path) {
 
 async function handleResponse(response) {
   const text = await response.text();
+
   if (!text) {
     if (!response.ok) throw { status: response.status, data: null };
     return null;
   }
+
   try {
     const data = JSON.parse(text);
     if (!response.ok) throw { status: response.status, data };
@@ -55,53 +58,71 @@ async function handleResponse(response) {
   }
 }
 
-// Standard headers (X-API-ID/KEY + Authorization, unless caller overrides)
 function authHeaders(extra = {}) {
   const h = { ...DEFAULT_HEADERS, ...extra };
-  if (AUTH_TOKEN) {
-    h['Authorization'] = `Bearer ${AUTH_TOKEN}`;
-  }
+  if (AUTH_TOKEN) h['Authorization'] = `Bearer ${AUTH_TOKEN}`;
   return h;
 }
 
-// ========== CENTRAL REQUEST WITH AUTO-REFRESH ==========
+// ======================= AUTO REFRESH =======================
 
+/**
+ * DRF refresh endpoint returns ONLY:
+ * { "access": "<newAccess>" }
+ * Not "refresh".
+ */
 async function refreshAccessTokenOnce() {
   if (!REFRESH_TOKEN) {
     throw { status: 401, data: { detail: 'No refresh token available' } };
   }
 
-  const res = await fetch(buildUrl('/api/v1/auth/refresh/'), {
+  const resp = await fetch(buildUrl('/api/v1/auth/refresh/'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      // backend reads this as request.COOKIES['ps_refresh']
       Cookie: `ps_refresh=${REFRESH_TOKEN}`,
     },
   });
 
   try {
-    const data = await handleResponse(res);
+    const data = await handleResponse(resp);
+
     if (!data || !data.access) {
-      throw { status: res.status, data: data || null };
+      throw { status: resp.status, data: data || null };
     }
+
+    // only access token comes from backend
     AUTH_TOKEN = data.access;
-    if (data.refresh) {
-      REFRESH_TOKEN = data.refresh;
-    }
+
     return AUTH_TOKEN;
   } catch (err) {
-    // if refresh fails, clear tokens so app can force re-login
     clearAuthTokens();
     throw err;
   }
 }
 
-/**
- * Centralised JSON request helper.
- * path      - "/api/v1/...."
- * options   - { method, body, headers, useAuth, retryOnAuthFail }
- */
+// Token expiry detector supports ALL possible DRF/SimpleJWT messages
+function isAccessTokenExpired(err) {
+  if (!err || !err.status) return false;
+  if (err.status !== 401) return false;
+
+  const detail =
+    typeof err?.data?.detail === 'string'
+      ? err.data.detail.toLowerCase()
+      : '';
+
+  return (
+    detail.includes('token_not_valid') ||
+    detail.includes('token is expired') ||
+    detail.includes('not valid for any token type') ||
+    detail.includes('invalid or expired') ||
+    detail.includes('authentication credentials were not provided') ||
+    detail.includes('signature has expired')
+  );
+}
+
+// ======================= REQUEST (JSON) =======================
+
 async function request(
   path,
   {
@@ -114,43 +135,32 @@ async function request(
 ) {
   const url = buildUrl(path);
 
-  const makeFetch = async () => {
+  const doFetch = async () => {
     const finalHeaders = useAuth ? authHeaders(headers) : { ...headers };
+
     const res = await fetch(url, {
       method,
       headers: finalHeaders,
       body: body != null ? JSON.stringify(body) : undefined,
     });
+
     return handleResponse(res);
   };
 
   try {
-    return await makeFetch();
+    return await doFetch();
   } catch (err) {
-    const status = err?.status;
-    const detail =
-      typeof err?.data?.detail === 'string'
-        ? err.data.detail.toLowerCase()
-        : '';
-
-    const isTokenExpired =
-      status === 401 &&
-      detail.includes('invalid or expired access token') &&
-      REFRESH_TOKEN;
-
-    if (useAuth && retryOnAuthFail && isTokenExpired) {
+    if (useAuth && retryOnAuthFail && isAccessTokenExpired(err) && REFRESH_TOKEN) {
+      // refresh once
       await refreshAccessTokenOnce();
-      return makeFetch();
+      return doFetch();
     }
-
     throw err;
   }
 }
 
-/**
- * Multipart request helper (for file uploads).
- * - DOES NOT set Content-Type explicitly (so fetch can add boundary).
- */
+// ======================= REQUEST (MULTIPART) =======================
+
 async function requestMultipart(
   path,
   {
@@ -163,131 +173,102 @@ async function requestMultipart(
 ) {
   const url = buildUrl(path);
 
-  const makeFetch = async () => {
+  const doFetch = async () => {
     const baseHeaders = useAuth ? authHeaders(headers) : { ...headers };
-    // Ensure we don't override Content-Type for multipart
-    if (baseHeaders['Content-Type']) {
-      delete baseHeaders['Content-Type'];
-    }
+
+    // delete content-type so fetch sets boundary
+    if (baseHeaders['Content-Type']) delete baseHeaders['Content-Type'];
 
     const res = await fetch(url, {
       method,
       headers: baseHeaders,
       body,
     });
+
     return handleResponse(res);
   };
 
   try {
-    return await makeFetch();
+    return await doFetch();
   } catch (err) {
-    const status = err?.status;
-    const detail =
-      typeof err?.data?.detail === 'string'
-        ? err.data.detail.toLowerCase()
-        : '';
-
-    const isTokenExpired =
-      status === 401 &&
-      detail.includes('invalid or expired access token') &&
-      REFRESH_TOKEN;
-
-    if (useAuth && retryOnAuthFail && isTokenExpired) {
+    if (useAuth && retryOnAuthFail && isAccessTokenExpired(err) && REFRESH_TOKEN) {
       await refreshAccessTokenOnce();
-      return makeFetch();
+      return doFetch();
     }
-
     throw err;
   }
 }
 
-// ========== AUTH ==========
+// ======================= AUTH =======================
 
 export async function login(username, password) {
   const res = await fetch(buildUrl('/api/v1/auth/login/'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      // no X-API headers and no Authorization for login
+      // no X-API-ID/KEY for login
     },
     body: JSON.stringify({ username, password }),
   });
   return handleResponse(res);
 }
 
-// ========== LOOKUPS (Admin hierarchy) ==========
+// ======================= LOOKUPS =======================
 
 export async function getDistricts(page = 1, search = '') {
   const qs = new URLSearchParams();
   qs.append('page', String(page));
   if (search) qs.append('search', search);
-  return request(`/api/v1/lookups/districts/?${qs.toString()}`, {
-    method: 'GET',
-  });
+
+  return request(`/api/v1/lookups/districts/?${qs.toString()}`);
 }
 
 export async function getBlocksByDistrict(districtId, page = 1, search = '') {
   const qs = new URLSearchParams();
   qs.append('page', String(page));
   if (search) qs.append('search', search);
-  return request(`/api/v1/lookups/blocks/${districtId}/?${qs.toString()}`, {
-    method: 'GET',
-  });
+
+  return request(`/api/v1/lookups/blocks/${districtId}/?${qs.toString()}`);
 }
 
 export async function getPanchayatsByBlock(blockId, page = 1, search = '') {
   const qs = new URLSearchParams();
   qs.append('page', String(page));
   if (search) qs.append('search', search);
-  return request(`/api/v1/lookups/panchayats/${blockId}/?${qs.toString()}`, {
-    method: 'GET',
-  });
+
+  return request(`/api/v1/lookups/panchayats/${blockId}/?${qs.toString()}`);
 }
 
-export async function getVillagesByPanchayat(
-  panchayatId,
-  page = 1,
-  search = ''
-) {
+export async function getVillagesByPanchayat(panchayatId, page = 1, search = '') {
   const qs = new URLSearchParams();
   qs.append('page', String(page));
   if (search) qs.append('search', search);
-  return request(`/api/v1/lookups/villages/${panchayatId}/?${qs.toString()}`, {
-    method: 'GET',
-  });
+
+  return request(`/api/v1/lookups/villages/${panchayatId}/?${qs.toString()}`);
 }
 
-// ========== epSakhi helper APIs ==========
+// ======================= EP SAKHI HELPERS =======================
 
-// CRP detail by MasterUser.id
 export async function getCrpDetailByUserId(userId, fields = null) {
   const query = fields ? `?fields=${encodeURIComponent(fields)}` : '';
-  return request(`/api/v1/crp-detail/id/${userId}/${query}`, {
-    method: 'GET',
-  });
+  return request(`/api/v1/crp-detail/id/${userId}/${query}`);
 }
 
-// Panchayats mapped to CRP (by MasterUser.id)
 export async function getPanchayatsUnderCrpByUserId(userId) {
-  return request(`/api/v1/panchayats-under-crp/id/${userId}/`, {
-    method: 'GET',
-  });
+  return request(`/api/v1/panchayats-under-crp/id/${userId}/`);
 }
 
-// Recorded beneficiaries (generic list with filters / group_by)
 export async function getRecordedBeneficiaries(params = {}) {
   const qs = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
-    if (v === undefined || v === null || v === '') return;
-    qs.append(k, String(v));
+    if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
   });
-  const path = `/api/v1/recorded-beneficiaries/${
-    qs.toString() ? '?' + qs.toString() : ''
-  }`;
-  return request(path, { method: 'GET' });
+
+  return request(
+    `/api/v1/recorded-beneficiaries/${qs.toString() ? '?' + qs.toString() : ''}`
+  );
 }
 
-// Create a recorded beneficiary (used when enterprise form is submitted)
 export async function createRecordedBeneficiary(payload) {
   return request('/api/v1/recorded-beneficiaries/', {
     method: 'POST',
@@ -295,59 +276,51 @@ export async function createRecordedBeneficiary(payload) {
   });
 }
 
-// UPSRLM Shg list by block
 export async function getUpsrlmShgList(blockId, params = {}) {
   const qs = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
-    if (v === undefined || v === null || v === '') return;
-    qs.append(k, String(v));
+    if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
   });
-  const path = `/api/v1/upsrlm-shg-list/${blockId}/${
-    qs.toString() ? '?' + qs.toString() : ''
-  }`;
-  return request(path, { method: 'GET' });
+
+  return request(
+    `/api/v1/upsrlm-shg-list/${blockId}/${qs.toString() ? '?' + qs.toString() : ''}`
+  );
 }
 
-// UPSRLM SHG members
 export async function getUpsrlmShgMembers(shgCode, params = {}) {
   const qs = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
-    if (v === undefined || v === null || v === '') return;
-    qs.append(k, String(v));
+    if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
   });
-  const path = `/api/v1/upsrlm-shg-members/${shgCode}/${
-    qs.toString() ? '?' + qs.toString() : ''
-  }`;
-  return request(path, { method: 'GET' });
+
+  return request(
+    `/api/v1/upsrlm-shg-members/${shgCode}/${qs.toString() ? '?' + qs.toString() : ''}`
+  );
 }
 
-// Only recorded beneficiaries under an SHG
 export async function getEpsakhiListByShg(shgCode, params = {}) {
   const qs = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
-    if (v === undefined || v === null || v === '') return;
-    qs.append(k, String(v));
+    if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
   });
-  const path = `/api/v1/epsakhi-list/${shgCode}/${
-    qs.toString() ? '?' + qs.toString() : ''
-  }`;
-  return request(path, { method: 'GET' });
+
+  return request(
+    `/api/v1/epsakhi-list/${shgCode}/${qs.toString() ? '?' + qs.toString() : ''}`
+  );
 }
 
-// Beneficiary + enterprise detail bundle by member_code
 export async function getEpsakhiDetailByMember(memberCode, params = {}) {
   const qs = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
-    if (v === undefined || v === null || v === '') return;
-    qs.append(k, String(v));
+    if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
   });
-  const path = `/api/v1/epsakhi-detail/${memberCode}/${
-    qs.toString() ? '?' + qs.toString() : ''
-  }`;
-  return request(path, { method: 'GET' });
+
+  return request(
+    `/api/v1/epsakhi-detail/${memberCode}/${qs.toString() ? '?' + qs.toString() : ''}`
+  );
 }
 
-// ========== Enterprise forms (Existing / New) ==========
+// ======================= ENTERPRISE (MAIN) =======================
 
 export async function createExistingEnterprise(payload) {
   return request('/api/v1/existing-enterprise/', {
@@ -363,15 +336,8 @@ export async function updateExistingEnterprise(id, payload) {
   });
 }
 
-/**
- * createNewEnterprise:
- * - If payload is FormData (file upload), call requestMultipart.
- * - Otherwise call JSON request.
- */
 function isFormData(obj) {
-  if (!obj) return false;
-  // React Native FormData has append function
-  return typeof obj.append === 'function';
+  return obj && typeof obj.append === 'function';
 }
 
 export async function createNewEnterprise(payload) {
@@ -407,9 +373,8 @@ export async function updateRecordedBeneficiary(id, payload) {
   });
 }
 
-// ========== Enterprise child models (Option B) ==========
+// ======================= ENTERPRISE CHILD MODELS =======================
 
-// Loan details
 export async function createEnterpriseLoanDetail(payload) {
   return request('/api/v1/enterprise-loan-details/', {
     method: 'POST',
@@ -417,7 +382,6 @@ export async function createEnterpriseLoanDetail(payload) {
   });
 }
 
-// Support detail
 export async function createEnterpriseSupportDetail(payload) {
   return request('/api/v1/enterprise-support-details/', {
     method: 'POST',
@@ -425,7 +389,6 @@ export async function createEnterpriseSupportDetail(payload) {
   });
 }
 
-// Training requirements
 export async function createEnterpriseTrainingReq(payload) {
   return request('/api/v1/enterprise-training-reqs/', {
     method: 'POST',
@@ -433,7 +396,6 @@ export async function createEnterpriseTrainingReq(payload) {
   });
 }
 
-// Media upload (multipart)
 export async function uploadEnterpriseMedia(formData) {
   return requestMultipart('/api/v1/enterprise-media/', {
     method: 'POST',
@@ -442,34 +404,38 @@ export async function uploadEnterpriseMedia(formData) {
 }
 
 const api = {
-  // auth
   login,
   setAuthToken,
   getAuthToken,
   getRefreshToken,
   clearAuthTokens,
+
   // lookups
   getDistricts,
   getBlocksByDistrict,
   getPanchayatsByBlock,
   getVillagesByPanchayat,
-  // epsakhi helpers
+
+  // CRP helpers
   getCrpDetailByUserId,
   getPanchayatsUnderCrpByUserId,
   getUpsrlmShgList,
   getUpsrlmShgMembers,
   getEpsakhiListByShg,
   getEpsakhiDetailByMember,
-  // enterprise main
+
+  // enterprise
   createExistingEnterprise,
   updateExistingEnterprise,
   createNewEnterprise,
   updateNewEnterprise,
-  // recorded beneficiary
+
+  // recorded benef
   createRecordedBeneficiary,
   getRecordedBeneficiaries,
   updateRecordedBeneficiary,
-  // enterprise child models
+
+  // child models
   createEnterpriseLoanDetail,
   createEnterpriseSupportDetail,
   createEnterpriseTrainingReq,

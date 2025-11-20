@@ -17,6 +17,7 @@ import {
   getShgListForPanchayat,
   setShgListForPanchayat,
 } from '../../utils/tempStore';
+import { getUser } from '../../utils/auth';
 import LoaderModal from '../LoaderModal';
 import BackButton from '../../components/BackButton';
 import SearchBar from '../SearchBar';
@@ -35,10 +36,13 @@ export default function CRPRecordFlowProduction({ navigation }) {
   const [selectedShg, setSelectedShg] = useState(null);
 
   const [blockId, setBlockId] = useState(null);
-  const [crpUserId, setCrpUserId] = useState(null); // for created_by
+  const [crpUserId, setCrpUserId] = useState(null); // for created_by fallback
 
   const [query, setQuery] = useState('');
   const [benefQuery, setBenefQuery] = useState('');
+
+  // Keep logged user (so we can derive numeric id for created_by)
+  const [loggedUser, setLoggedUser] = useState(null);
 
   // RECORDED BENEFICIARIES STATE (kept in sync with server)
   const [recorded, setRecorded] = useState(getCrpRecordedBeneficiaries() || []);
@@ -50,7 +54,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
     const detail = getCrpDetail();
     setBlockId(detail?.block_id || detail?.blockId || null);
 
-    // Try to derive a stable CRP user identifier for created_by
+    // Try to derive a stable CRP user identifier for created_by fallback
     const derivedUserId =
       detail?.master_user_id ||
       detail?.masterUserId ||
@@ -60,6 +64,21 @@ export default function CRPRecordFlowProduction({ navigation }) {
       detail?.login_id ||
       null;
     setCrpUserId(derivedUserId);
+
+    // load logged in user to get numeric PK for created_by and keep gsApi token in sync
+    (async () => {
+      try {
+        const u = await getUser();
+        if (u) {
+          setLoggedUser(u);
+          if (u.access) {
+            gsApi.setAuthToken?.(u.access, u.refresh);
+          }
+        }
+      } catch (e) {
+        console.warn('Unable to load user in CRPRecordFlowProduction', e);
+      }
+    })();
 
     // Refresh recorded beneficiaries for all CRP panchayats
     const panchayatIds = gps.map((p) => p.panchayat_id).filter(Boolean);
@@ -231,25 +250,164 @@ export default function CRPRecordFlowProduction({ navigation }) {
     (b.member_name || '').toLowerCase().includes(benefQuery.toLowerCase())
   );
 
+  // Helper - calculate age from dob string (ISO or YYYY-MM-DD). Returns integer or null
+  const calculateAge = (dobStr) => {
+    if (!dobStr) return null;
+    try {
+      const dob = new Date(dobStr);
+      if (isNaN(dob.getTime())) return null;
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      return age;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // Helper - build record payload from a member row (includes created_by logic similar to NewEnterpriseForm)
+  const buildRecordedPayloadFromMember = (member, shg) => {
+    // addresses & phones may be arrays
+    const addresses = Array.isArray(member?.member_addresses) ? member.member_addresses : [];
+    const phones = Array.isArray(member?.member_phones) ? member.member_phones : [];
+
+    const primaryAddress = addresses[0] || {};
+    const primaryPhone = phones[0] || {};
+
+    // Determine created_by: prefer loggedUser numeric PK; fallback to crpUserId if numeric (like NewEnterpriseForm)
+    let created_by_to_send = null;
+    const candidate =
+      loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? crpUserId;
+    if (candidate !== null && candidate !== undefined) {
+      if (typeof candidate === 'number') {
+        created_by_to_send = candidate;
+      } else if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
+        created_by_to_send = parseInt(candidate.trim(), 10);
+      } else {
+        created_by_to_send = null;
+      }
+    }
+
+    const payload = {
+      // System fields
+      enterprise_id: null, // explicitly null as requested
+
+      // Lokos / member fields
+      lokos_member_code: member?.member_code ?? null,
+      applicant_name: member?.member_name ?? null,
+      age: calculateAge(member?.dob),
+      gender: member?.gender ?? null,
+      marital_status: member?.marital_status ?? null,
+      father_husband_name: member?.father_husband ?? null,
+      category: member?.social_category ?? null,
+      education: member?.education ?? null,
+
+      // Address fields (from first address object)
+      address: primaryAddress?.address_line1 ?? null,
+      district_id: primaryAddress?.district_id ?? null,
+      block_id: primaryAddress?.block_id ?? blockId ?? null,
+      panchayat_id: primaryAddress?.panchayat_id ?? selectedPanchayat?.panchayat_id ?? null,
+      village_id: primaryAddress?.village_id ?? selectedVillage?.village_id ?? null,
+
+      // Contact
+      mobile: primaryPhone?.phone_no ?? null,
+
+      // SHG code from selected SHG (fallback to member.shg_code if present)
+      lokos_shg_code: (shg?.code ?? member?.shg_code ?? selectedShg?.code) ?? null,
+    };
+
+    if (created_by_to_send !== null) {
+      payload.created_by = created_by_to_send;
+    }
+
+    return payload;
+  };
+
+  // Try different known names for create API on gsApi
+  const findCreateApi = () => {
+    return (
+      gsApi.createRecordedBeneficiary ||
+      gsApi.createRecordedBenef ||
+      gsApi.postRecordedBeneficiary ||
+      gsApi.createRecorded ||
+      gsApi.createRecordedBeneficiaries ||
+      (() => {
+        throw new Error('No createRecorded API found on gsApi');
+      })
+    );
+  };
+
+  // Create recorded beneficiary on server and update local cache/state
+  const createRecordedForNonInterested = async (member) => {
+    setLoading(true);
+    const payload = buildRecordedPayloadFromMember(member, selectedShg);
+
+    try {
+      const createFn = findCreateApi();
+      let res;
+      res = await createFn(payload);
+
+      // Normalize response into created row. If API returns the created object, use it; otherwise, create a local object.
+      const createdRow =
+        res && typeof res === 'object' && (res.id || res.lokos_member_code)
+          ? res
+          : {
+              id: null,
+              ...payload,
+            };
+
+      // Keep local flags similar to others: mark _isRecorded true and store _recordRow reference
+      const finalRow = { ...createdRow, _isRecorded: true, _recordRow: createdRow };
+
+      // update recorded state & cache
+      const updated = [...recorded, finalRow];
+      setRecorded(updated);
+      try {
+        setCrpRecordedBeneficiaries?.(updated);
+      } catch (e) {
+        // ignore if setter not available
+      }
+
+      // Also update the beneficiaries listing in memory (so UI shows 'Recorded')
+      const updatedBeneficiaries = beneficiaries.map((b) =>
+        String(b.member_code) === String(member.member_code) &&
+        String((selectedShg?.code ?? b.shg_code ?? '') ?? '') ===
+          String((selectedShg?.code ?? '') ?? '')
+          ? { ...b, _isRecorded: true, _recordRow: finalRow }
+          : b
+      );
+      setBeneficiaries(updatedBeneficiaries);
+
+      Alert.alert('Recorded', 'Beneficiary marked as NOT INTERESTED and saved (enterprise_id = NULL).');
+    } catch (err) {
+      console.log('Error creating recorded beneficiary', err);
+      Alert.alert('Error', 'Failed to save record for this beneficiary. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBeneficiaryPress = async (row) => {
     const hasExisting = row._isRecorded;
 
-    // ✅ If already recorded, do NOT open any form
+    // If already recorded, do NOT open any form
     if (hasExisting) {
-      Alert.alert(
-        'Already Recorded',
-        'This beneficiary enterprise has already been recorded.'
-      );
+      Alert.alert('Already Recorded', 'This beneficiary enterprise has already been recorded.');
       return;
     }
 
-    // No enterprise yet – ask CRP which type to record
+    const name = row.member_name || 'the beneficiary';
+
+    // Step 1: Ask whether the beneficiary already has an existing enterprise
     Alert.alert(
-      'Enterprise Detail',
-      'Does the beneficiary already have an existing enterprise?',
+      `Does ${name} have an existing Enterprise?`,
+      '',
       [
         {
-          text: 'Existing Enterprise',
+          text: 'Yes',
           onPress: () =>
             navigation.navigate('ExistingEnterpriseForm', {
               beneficiary: row,
@@ -259,17 +417,47 @@ export default function CRPRecordFlowProduction({ navigation }) {
             }),
         },
         {
-          text: 'New Enterprise',
-          onPress: () =>
-            navigation.navigate('NewEnterpriseForm', {
-              beneficiary: row,
-              recordedBenef: row._recordRow,
-              tempShg: selectedShg,
-              crpUserId,
-            }),
+          text: 'No',
+          onPress: () => {
+            // Step 2: Ask if interested in opening a new enterprise
+            Alert.alert(
+              `Is ${name} interested in opening a new Enterprise?`,
+              '',
+              [
+                {
+                  text: 'Yes',
+                  onPress: () =>
+                    navigation.navigate('NewEnterpriseForm', {
+                      beneficiary: row,
+                      recordedBenef: row._recordRow,
+                      tempShg: selectedShg,
+                      crpUserId,
+                    }),
+                },
+                {
+                  text: 'No',
+                  onPress: async () => {
+                    // Create a recordBenef row with NULL enterprise_id (as requested)
+                    await createRecordedForNonInterested(row);
+
+                    // Ensure UI stays on beneficiaries list
+                    setStep('beneficiaries');
+                  },
+                  style: 'default',
+                },
+              ],
+              { cancelable: true }
+            );
+          },
+          style: 'default',
         },
-        { text: 'Cancel', style: 'cancel' },
-      ]
+        {
+          text: 'Cancel',
+          onPress: () => {},
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
     );
   };
 
@@ -282,7 +470,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
       ? 'Select SHG'
       : 'Select Beneficiary';
 
-  // ✅ Back button logic per step
+  // Back button logic per step
   const handleStepBack = () => {
     if (step === 'gp') {
       navigation.goBack();
@@ -388,9 +576,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
                     {item.member_name}
                     {item._isRecorded ? ' (Recorded)' : ''}
                   </Text>
-                  <Text style={styles.metaText}>
-                    Member Code: {item.member_code}
-                  </Text>
+                  <Text style={styles.metaText}>Member Code: {item.member_code}</Text>
                 </View>
                 <Text
                   style={[
