@@ -312,7 +312,7 @@ export default function CRPDashboardProduction({ navigation }) {
       </View>
 
       <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
-        Gram Panchayat-wise analytics
+        Gram Panchayats assigned to you,
       </Text>
       {analytics.length === 0 ? (
         <Text style={{ marginTop: 8, color: '#666' }}>{t.noData}</Text>

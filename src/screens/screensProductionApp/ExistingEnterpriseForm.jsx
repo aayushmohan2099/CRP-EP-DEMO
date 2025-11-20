@@ -36,6 +36,7 @@ const formSections = [
       'enterprise_type',
       'ownership_type',
       'year_of_establishment',
+      'enterprise_aadhar_code',
       'number_of_employees',
       'sales_area',
       'target_customers',
@@ -396,6 +397,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     declaration_confirmed: false,
     declaration_date: '',
     verifier_name: '',
+    enterprise_aadhar_code: '',
     // If editing, hydrate from existingEnterprise (only overlapping keys)
     ...(existingEnterprise || {}),
   });
@@ -630,6 +632,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
   ) => (
     <View key={label} style={{ marginBottom: 8 }}>
       <Text style={styles.label}>{label}</Text>
+      <Text style={styles.helpText}>Please select the correct option for this field. If you are not sure, please choose 'Others' and then specify below. Thank you.</Text>
       <Picker
         selectedValue={selectedValue}
         onValueChange={(itemValue) => {
@@ -638,7 +641,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
             onSpecifyChange('');
           }
         }}
-        style={styles.input}
+        style={[styles.input, styles.dropdown]}
       >
         <Picker.Item label="Select..." value="" />
         {options.map((opt) => (
@@ -696,7 +699,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
             institutionOther: val === 'Others' ? entry.institutionOther : '',
           })
         }
-        style={styles.input}
+        style={[styles.input, styles.dropdown]}
       >
         <Picker.Item label="Select Institution" value="" />
         {institutionOptions.map((opt) => (
@@ -706,7 +709,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       {entry.institution === 'Others' && (
         <TextInput
           placeholder="Specify Institution"
-          style={styles.input}
+          style={[styles.input, styles.dropdown]}
           value={entry.institutionOther}
           onChangeText={(val) => onUpdate({ ...entry, institutionOther: val })}
         />
@@ -714,7 +717,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
 
       <TextInput
         placeholder="Loan Amount"
-        style={styles.input}
+        style={[styles.input, styles.dropdown]}
         keyboardType="numeric"
         value={String(entry.amount ?? '')}
         onChangeText={(val) =>
@@ -731,7 +734,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
             repaymentOther: val === 'Others' ? entry.repaymentOther : '',
           })
         }
-        style={styles.input}
+        style={[styles.input, styles.dropdown]}
       >
         <Picker.Item label="Select Repayment Status" value="" />
         {repaymentOptions.map((opt) => (
@@ -741,7 +744,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       {entry.repayment === 'Others' && (
         <TextInput
           placeholder="Specify Repayment Status"
-          style={styles.input}
+          style={[styles.input, styles.dropdown]}
           value={entry.repaymentOther}
           onChangeText={(val) =>
             onUpdate({ ...entry, repaymentOther: val })
@@ -807,6 +810,23 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     'skills_acquired',
     // 'financial_coordination',
   ];
+
+  // Polite help-texts for fields (suitable for non-technical users)
+  const fieldHelp = {
+    enterprise_name: 'Please enter the name of the enterprise. Thank you.',
+    enterprise_type: 'Please choose the main type of the enterprise. If unsure, select Others and specify.',
+    ownership_type: 'Please select the ownership type. If unsure, pick the closest option.',
+    year_of_establishment: 'Please select the year when the enterprise started. If you are not sure, give your best estimate.',
+    enterprise_aadhar_code: 'Please enter the Enterprise Aadhar Code carefully. This is used for record-keeping.',
+    number_of_employees: 'Please enter how many people work here. If none, enter 0.',
+    sales_area: 'Please describe where you sell (local market, nearby town, online, etc.).',
+    target_customers: 'Please select who your main customers are. If many, choose the main one.',
+    declaration_date: 'Please enter the date of declaration in YYYY-MM-DD format (for example: 2025-11-21).',
+  };
+
+  const getHelpText = (k) => (fieldHelp[k] || 'Please provide the information for this field. Thank you.');
+
+
 
   const renderMediaField = (k) => {
     const labelMap = {
@@ -1007,7 +1027,20 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       );
     }
 
-    if (k === 'electricity_available') {
+    
+
+          <View style={{ marginBottom: 8 }}>
+            <Text style={styles.label}>Enterprise Aadhar Code</Text>
+            <Text style={styles.helpText}>Please enter the Enterprise Aadhar Code (digits). This will be used for verification and kept secure. Please type carefully.</Text>
+            <TextInput
+              value={String(existingForm.enterprise_aadhar_code || '')}
+              onChangeText={(v) => setExistingForm((prev) => ({ ...prev, enterprise_aadhar_code: v }))}
+              style={styles.input}
+              keyboardType="default"
+            />
+          </View>
+
+if (k === 'electricity_available') {
       const elec = existingForm.electricity_available || '';
       return (
         <View key={k} style={{ marginBottom: 8 }}>
@@ -1023,7 +1056,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
                 electricity_specify: '',
               }))
             }
-            style={styles.input}
+            style={[styles.input, styles.dropdown]}
           >
             <Picker.Item label="Select..." value="" />
             <Picker.Item label="Yes" value="Yes" />
@@ -1086,7 +1119,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
                 water_specify: '',
               }))
             }
-            style={styles.input}
+            style={[styles.input, styles.dropdown]}
           >
             <Picker.Item label="Select..." value="" />
             <Picker.Item label="Yes" value="Yes" />
@@ -1145,7 +1178,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
                 can_transport_clf: v === 'Yes' ? f.can_transport_clf : '',
               }))
             }
-            style={styles.input}
+            style={[styles.input, styles.dropdown]}
           >
             <Picker.Item label="Select..." value="" />
             <Picker.Item label="Yes" value="Yes" />
@@ -1166,7 +1199,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
                     can_transport_clf: v,
                   }))
                 }
-                style={styles.input}
+                style={[styles.input, styles.dropdown]}
               >
                 <Picker.Item label="Select..." value="" />
                 <Picker.Item label="Yes" value="Yes" />
@@ -1193,7 +1226,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
                   v === 'Others' ? f.source_of_investment_specify : '',
               }))
             }
-            style={styles.input}
+            style={[styles.input, styles.dropdown]}
           >
             <Picker.Item label="Select..." value="" />
             <Picker.Item label="CCL" value="CCL" />
@@ -1236,7 +1269,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
                 subsidy_scheme: v === 'Yes' ? f.subsidy_scheme : '',
               }))
             }
-            style={styles.input}
+            style={[styles.input, styles.dropdown]}
           >
             <Picker.Item label="Select..." value="" />
             <Picker.Item label="Yes" value="Yes" />
@@ -1296,7 +1329,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
                 updateLoans([]);
               }
             }}
-            style={styles.input}
+            style={[styles.input, styles.dropdown]}
           >
             <Picker.Item label="Select..." value="" />
             <Picker.Item label="Yes" value="Yes" />
@@ -1397,7 +1430,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
                 target_customers_other: v === 'Others' ? f.target_customers_other : '',
               }))
             }
-            style={styles.input}
+            style={[styles.input, styles.dropdown]}
           >
             <Picker.Item label="Select..." value="" />
             {targetCustomersOptions.map((opt) => (
@@ -1489,7 +1522,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
 
               <TextInput
                 placeholder="Skill name"
-                style={styles.input}
+                style={[styles.input, styles.dropdown]}
                 value={existingForm.training_skill_name || ''}
                 onChangeText={(text) =>
                   setExistingForm((f) => ({
@@ -1501,7 +1534,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
 
               <TextInput
                 placeholder="Type of training (Technical / Business / Digital, etc.)"
-                style={styles.input}
+                style={[styles.input, styles.dropdown]}
                 value={existingForm.training_type || ''}
                 onChangeText={(text) =>
                   setExistingForm((f) => ({
@@ -1513,7 +1546,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
 
               <TextInput
                 placeholder="Specific institution or department requirement (if applicable)"
-                style={styles.input}
+                style={[styles.input, styles.dropdown]}
                 value={existingForm.training_institution || ''}
                 onChangeText={(text) =>
                   setExistingForm((f) => ({
@@ -1576,7 +1609,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
                   v === 'Others' ? f.institutional_support_other : '',
               }))
             }
-            style={styles.input}
+            style={[styles.input, styles.dropdown]}
           >
             <Picker.Item label="Select..." value="" />
             {institutionalSupportOptions.map((opt) => (
@@ -1620,7 +1653,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
                   v === 'Others' ? f.financial_linkage_other : '',
               }))
             }
-            style={styles.input}
+            style={[styles.input, styles.dropdown]}
           >
             <Picker.Item label="Select..." value="" />
             {financialLinkageOptions.map((opt) => (
@@ -1894,139 +1927,13 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
         return (
           <View key={k} style={{ marginBottom: 8 }}>
             <Text style={styles.label}>Declaration Date</Text>
-            <TouchableOpacity
-              style={[styles.input, { justifyContent: 'center', height: 44 }]}
-              onPress={() => {
-                // initialize pickers if value exists
-                const existing = existingForm.declaration_date;
-                let initYear = null;
-                let initMonth = null;
-                let initDay = null;
-
-                if (existing && typeof existing === 'string') {
-                  // If contains T (ISO) or plain yyyy-mm-dd, attempt parsing
-                  try {
-                    const isoPart = existing.split('T')[0]; // works for both
-                    const parts = isoPart.split('-'); // yyyy-mm-dd
-                    if (parts.length === 3) {
-                      initYear = parts[0];
-                      initMonth = String(parseInt(parts[1], 10));
-                      initDay = String(parseInt(parts[2], 10));
-                    }
-                  } catch (e) {
-                    // ignore
-                  }
-                }
-
-                // if parsing above didn't work, try Date constructor
-                if (!initYear) {
-                  const dt = new Date(existing || Date.now());
-                  if (!Number.isNaN(dt.getTime())) {
-                    initYear = String(dt.getFullYear());
-                    initMonth = String(dt.getMonth() + 1);
-                    initDay = String(dt.getDate());
-                  }
-                }
-
-                // fallback to today
-                if (!initYear) {
-                  const dt = new Date();
-                  initYear = String(dt.getFullYear());
-                  initMonth = String(dt.getMonth() + 1);
-                  initDay = String(dt.getDate());
-                }
-
-                setDeclYear(initYear);
-                setDeclMonth(initMonth);
-                setDeclDay(initDay);
-
-                setDeclarationDateModalVisible(true);
-              }}
-            >
-              <Text>
-                {existingForm.declaration_date || 'Select date'}
-              </Text>
-            </TouchableOpacity>
-
-            <Modal
-              visible={declarationDateModalVisible}
-              transparent
-              animationType="slide"
-              onRequestClose={() => setDeclarationDateModalVisible(false)}
-            >
-              <View style={styles.modalBackdrop}>
-                <View style={[styles.modalContent, { padding: 12 }]}>
-                  <Text style={[styles.label, { textAlign: 'center' }]}>
-                    Select Declaration Date
-                  </Text>
-
-                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-                    {/* Day picker */}
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 12, marginBottom: 4 }}>Day</Text>
-                      <Picker
-                        selectedValue={declDay ?? '1'}
-                        onValueChange={(v) => setDeclDay(String(v))}
-                      >
-                        {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                          <Picker.Item key={d} label={String(d)} value={String(d)} />
-                        ))}
-                      </Picker>
-                    </View>
-
-                    {/* Month picker */}
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 12, marginBottom: 4 }}>Month</Text>
-                      <Picker
-                        selectedValue={declMonth ?? '1'}
-                        onValueChange={(v) => setDeclMonth(String(v))}
-                      >
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                          <Picker.Item key={m} label={String(m)} value={String(m)} />
-                        ))}
-                      </Picker>
-                    </View>
-
-                    {/* Year picker */}
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 12, marginBottom: 4 }}>Year</Text>
-                      <Picker
-                        selectedValue={declYear ?? String(currentYear)}
-                        onValueChange={(v) => setDeclYear(String(v))}
-                      >
-                        {yearOptions.map((y) => (
-                          <Picker.Item key={y} label={y} value={y} />
-                        ))}
-                      </Picker>
-                    </View>
-                  </View>
-
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 }}>
-                    <TouchableOpacity
-                      style={[styles.cancelBtn, { paddingHorizontal: 16 }]}
-                      onPress={() => setDeclarationDateModalVisible(false)}
-                    >
-                      <Text style={{ color: '#EE6969', fontWeight: '600' }}>Cancel</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.smallBtn, { paddingHorizontal: 16 }]}
-                      onPress={() => {
-                        // normalize to YYYY-MM-DD
-                        const dd = String(declDay ?? '1').padStart(2, '0');
-                        const mm = String(declMonth ?? '1').padStart(2, '0');
-                        const yyyy = String(declYear ?? currentYear);
-                        const iso = `${yyyy}-${mm}-${dd}`;
-                        setExistingForm((f) => ({ ...f, declaration_date: iso }));
-                        setDeclarationDateModalVisible(false);
-                      }}
-                    >
-                      <Text style={{ color: '#fff', fontWeight: '600' }}>Set</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            </Modal>
+            <Text style={styles.helpText}>Please enter declaration date in YYYY-MM-DD format (for example: 2025-11-21). Please type carefully. Thank you.</Text>
+            <TextInput
+              value={String(existingForm.declaration_date || '')}
+              onChangeText={(v) => setExistingForm((f) => ({ ...f, declaration_date: v }))}
+              placeholder="YYYY-MM-DD"
+              style={styles.input}
+            />
           </View>
         );
       } else {
@@ -2039,7 +1946,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
               onChangeText={(v) =>
                 setExistingForm((prev) => ({ ...prev, [k]: v }))
               }
-              style={styles.input}
+              style={[styles.input, styles.dropdown]}
             />
           </View>
         );
@@ -2056,7 +1963,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
             onChangeText={(v) =>
               setExistingForm((prev) => ({ ...prev, profit_percentage: v }))
             }
-            style={styles.input}
+            style={[styles.input, styles.dropdown]}
             keyboardType="numeric"
           />
         </View>
@@ -2072,7 +1979,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
           onChangeText={(v) =>
             setExistingForm((prev) => ({ ...prev, [k]: v }))
           }
-          style={styles.input}
+          style={[styles.input, styles.dropdown]}
           multiline={multilineFields.includes(k)}
           keyboardType={
             [
@@ -2349,8 +2256,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
           ? parseFloat(existingForm.profit_percentage)
           : null,
         has_taken_loan: loans.length > 0,
-        // DO NOT send financial_coordination (kept out intentionally)
-        // financial_coordination: null,
+        financial_coordination: existingForm.enterprise_aadhar_code || '',
         target_customers:
           existingForm.target_customers === 'Others'
             ? existingForm.target_customers_other || ''
@@ -2639,6 +2545,17 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
+  dropdown: {
+    borderWidth: 2,
+    borderColor: '#EE6969',
+    borderRadius: 6,
+  },
+  helpText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    marginBottom: 4,
+  },
   input: {
     borderWidth: 1,
     borderColor: '#EE6969',

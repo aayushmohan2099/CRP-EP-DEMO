@@ -67,7 +67,7 @@ export default function AdminDashboardProduction({ navigation }) {
       progressMessage: (done, total) => `Fetched ${done} of ${total} member details...`,
     },
     hi: {
-      headerTitle: 'एडमिन डैशबोर्ड',
+      headerTitle: 'लाभार्थी उद्यम जानकारी प्राप्त करें',
       logout: 'लॉग आउट',
       loadingDistricts: 'जिला एनालिटिक्स प्राप्त किए जा रहे हैं...',
       totalLabel: 'कुल लाभार्थी रिकॉर्डेड',
@@ -94,6 +94,11 @@ export default function AdminDashboardProduction({ navigation }) {
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState([]); // rows for current level
   const [totalCount, setTotalCount] = useState(0);
+
+  // enterprise counts
+  const [existingEnterpriseCount, setExistingEnterpriseCount] = useState(0);
+  const [newEnterpriseCount, setNewEnterpriseCount] = useState(0);
+  const [noEnterpriseCount, setNoEnterpriseCount] = useState(0);
 
   // selected identifiers for filters
   const [selectedDistrict, setSelectedDistrict] = useState(null);
@@ -156,6 +161,42 @@ export default function AdminDashboardProduction({ navigation }) {
         }));
         setRows(rowsOut);
         setTotalCount(rowsOut.reduce((a, b) => a + (b.count || 0), 0));
+        // additionally compute enterprise interest counts by fetching raw recorded beneficiaries
+        try {
+          const allRecRes = await gsApi.getRecordedBeneficiaries({ page_size: 5000 });
+          const allRecs = normalizeList(allRecRes);
+          let existCnt = 0, newCnt = 0, noneCnt = 0;
+          for (const r of allRecs) {
+            const hasExisting = !!(r.existing_enterprise_id || r.existing_enterprise || r.existing_enterprise_id === 0);
+            const hasNew = !!(r.new_enterprise_id || r.new_enterprise);
+            const hasAnyEnterprise = hasExisting || hasNew || !!r.enterprise_id || !!r.enterprise;
+            if (hasExisting) existCnt += 1;
+            else if (hasNew) newCnt += 1;
+            else if (!hasAnyEnterprise) noneCnt += 1;
+          }
+          setExistingEnterpriseCount(existCnt);
+          setNewEnterpriseCount(newCnt);
+          setNoEnterpriseCount(noneCnt);
+        } catch (err) {
+          console.warn('Failed to compute enterprise counts', err);
+          setExistingEnterpriseCount(0);
+          setNewEnterpriseCount(0);
+          setNoEnterpriseCount(0);
+        }
+
+        // enrich district names via District lookup API
+        try {
+          const distRes = await gsApi.getDistricts(1, '');
+          const distList = normalizeList(distRes);
+          const distMap = {};
+          distList.forEach(d => { if (d.id || d.district_id) distMap[String(d.id || d.district_id)] = d.name || d.district_name || d.name_en || d.title || d.display_name || d.search_name || d.district_name_en || d.name_en || d.name; });
+          const rowsEnriched = rowsOut.map(r => ({ ...r, name: distMap[String(r.id)] || r.name }));
+          setRows(rowsEnriched);
+        } catch (err) {
+          // ignore
+        }
+
+
         setLevel('district');
       } else if (targetLevel === 'block') {
         const res = await gsApi.getRecordedBeneficiaries({
@@ -692,12 +733,22 @@ export default function AdminDashboardProduction({ navigation }) {
           </TouchableOpacity>
         </View>
       </View>
-
-      <Text style={styles.title}>{t.headerTitle}</Text>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{t.totalLabel}</Text>
-        <Text style={styles.totalNumber}>{total}</Text>
+      <View style={{marginTop: 8}}>
+        <Text style={styles.title}>{t.headerTitle}</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statTitle}>Beneficiaries having Existing Enterprise</Text>
+            <Text style={styles.statNumber}>{existingEnterpriseCount}</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statTitle}>Beneficiaries interested in opening new Enterprise</Text>
+            <Text style={styles.statNumber}>{newEnterpriseCount}</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statTitle}>Beneficiaries not interested in opening Enterprise</Text>
+            <Text style={styles.statNumber}>{noEnterpriseCount}</Text>
+          </View>
+        </View>
       </View>
 
       <View style={{ marginTop: 16, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -857,6 +908,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 8 },
+  statCard: { flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#F6F8FB', alignItems: 'center', marginHorizontal: 6, minHeight: 88, justifyContent: 'center' },
+  statTitle: { fontSize: 12, color: '#333', textAlign: 'center' },
+  statNumber: { fontSize: 22, fontWeight: '700', color: '#EE6969', marginTop: 8 },
   exportModal: {
     width: '80%',
     backgroundColor: '#fff',
