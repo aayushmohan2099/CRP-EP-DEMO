@@ -87,23 +87,20 @@ const formSections = [
     title: '5) Training / Skills Related',
     fields: [
       'training_received',
-      // 'training_details',
-      'skills_acquired',
+      // (all new conditional training / skills placeholders are rendered inside training_received block)
       'future_training_requirements',
       'institutional_support',
-      'financial_linkage',
-      'market_linkage',
     ],
   },
   {
     key: 'loan',
     title: '6) Loan Details',
-    fields: ['loan_details'],
+    fields: ['loan_details', 'financial_linkage', 'market_linkage'],
   },
   {
     key: 'support',
     title: '7) Support Required',
-    fields: ['required_support', 'expansion_plan'],
+    fields: ['required_support', 'expansion_plan', 'govt_scheme_info'],
   },
   {
     key: 'media',
@@ -251,7 +248,56 @@ const targetCustomersOptions = [
 const marketingChallengesOptions = [
   { label: 'Lack of Market Awareness', value: 'Lack of Market Awareness' },
   { label: 'No Digital Access', value: 'No Digital Access' },
-  { label: 'Lack of Social Media Marketting', value: 'Lack of Social Media Marketting' },
+  {
+    label: 'Lack of Social Media Marketting',
+    value: 'Lack of Social Media Marketting',
+  },
+  { label: 'Others', value: 'Others' },
+];
+
+// NEW: Skills acquired multi-selector options
+const skillsAcquiredMultiOptions = [
+  { label: 'ITI', value: 'ITI' },
+  { label: 'UPSDM', value: 'UPSDM' },
+  { label: 'DDU-GKY', value: 'DDU-GKY' },
+  { label: 'PMKVY', value: 'PMKVY' },
+  { label: 'NABARD', value: 'NABARD' },
+  { label: 'RSETI', value: 'RSETI' },
+  { label: 'Vishwakarma', value: 'Vishwakarma' },
+  { label: 'Others', value: 'Others' },
+];
+
+// NEW: Training sector dropdown options
+const trainingSectorOptions = [
+  {
+    label: 'Food Processing (Pickles, Papad, Bakery, etc.)',
+    value: 'Food Processing (Pickles, Papad, Bakery, etc.)',
+  },
+  { label: 'Tailoring / Garment Manufacturing', value: 'Tailoring / Garment Manufacturing' },
+  { label: 'Beauty and Wellness', value: 'Beauty and Wellness' },
+  {
+    label: 'Handicrafts / Terracotta / Jute / Bamboo-based Work',
+    value: 'Handicrafts / Terracotta / Jute / Bamboo-based Work',
+  },
+  { label: 'Retail Trade / Grocery Store', value: 'Retail Trade / Grocery Store' },
+  { label: 'Dairy / Goat Rearing / Poultry', value: 'Dairy / Goat Rearing / Poultry' },
+  {
+    label: 'Solar Product Installation / Repair (Suryasakhii)',
+    value: 'Solar Product Installation / Repair (Suryasakhii)',
+  },
+  {
+    label: 'Agriculture-based Enterprise (Nursery, Manure)',
+    value: 'Agriculture-based Enterprise (Nursery, Manure)',
+  },
+  { label: 'Others', value: 'Others' },
+];
+
+// NEW: Govt schemes dropdown options (placeholder only)
+const govtSchemeOptions = [
+  { label: 'PMEGP (Prime Minister Employment Generation Program)', value: 'PMEGP' },
+  { label: 'ODOP (One District One Product)', value: 'ODOP' },
+  { label: 'Chief Minister Youth Entrepreneurship Scheme', value: 'CMYES' },
+  { label: 'NRLM Livelihood Fund', value: 'NRLM Livelihood Fund' },
   { label: 'Others', value: 'Others' },
 ];
 
@@ -398,6 +444,30 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     declaration_date: '',
     verifier_name: '',
     enterprise_aadhar_code: '',
+
+    // NEW: placeholder training / skills fields (UI-only)
+    training_duration: '',
+    work_started_after_training: '',
+    work_started_after_training_details: '',
+    skills_sufficient_for_livelihood: '',
+    skills_acquired_multi: [],
+    skills_acquired_multi_other: '',
+    future_training_required_preferred_duration: '',
+    future_training_required_sector: '',
+    future_training_required_sector_other: '',
+    future_training_required_location: '',
+    start_business_after_training: '',
+    start_business_after_training_detail: '',
+    expected_monthly_income_after_training: '',
+    know_skill_centers_nearby: '',
+    skill_center_location: '',
+    know_nearest_industry: '',
+    nearest_industries: [],
+
+    // NEW: govt scheme info placeholder (Support Required)
+    govt_scheme_info: '',
+    govt_scheme_info_other: '',
+
     // If editing, hydrate from existingEnterprise (only overlapping keys)
     ...(existingEnterprise || {}),
   });
@@ -441,6 +511,40 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
   const startYear = 1950;
   const yearOptions = [];
   for (let y = currentYear; y >= startYear; y--) yearOptions.push(y.toString());
+
+  // NEW: industry rows (placeholder only)
+  const addIndustryRow = () => {
+    setExistingForm((f) => ({
+      ...f,
+      nearest_industries: [
+        ...(Array.isArray(f.nearest_industries) ? f.nearest_industries : []),
+        { industry_name: '', work_type: '' },
+      ],
+    }));
+  };
+
+  const updateIndustryRow = (index, field, value) => {
+    setExistingForm((f) => {
+      const arr = Array.isArray(f.nearest_industries)
+        ? [...f.nearest_industries]
+        : [];
+      if (!arr[index]) {
+        arr[index] = { industry_name: '', work_type: '' };
+      }
+      arr[index] = { ...arr[index], [field]: value };
+      return { ...f, nearest_industries: arr };
+    });
+  };
+
+  const removeIndustryRow = (index) => {
+    setExistingForm((f) => {
+      const arr = Array.isArray(f.nearest_industries)
+        ? [...f.nearest_industries]
+        : [];
+      const filtered = arr.filter((_, i) => i !== index);
+      return { ...f, nearest_industries: filtered };
+    });
+  };
 
   // Init loans from existingForm.loan_details (if any)
   useEffect(() => {
@@ -495,13 +599,21 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
         // Try to extract yyyy-mm-dd prefix
         const parts = d.split('T')[0].split('-'); // ensures ISO and plain date both work
         if (parts.length === 3) {
-          parsed = { y: parts[0], m: String(parseInt(parts[1], 10)), day: String(parseInt(parts[2], 10)) };
+          parsed = {
+            y: parts[0],
+            m: String(parseInt(parts[1], 10)),
+            day: String(parseInt(parts[2], 10)),
+          };
         }
       }
       if (!parsed) {
         const asDate = new Date(d);
         if (!Number.isNaN(asDate.getTime())) {
-          parsed = { y: String(asDate.getFullYear()), m: String(asDate.getMonth() + 1), day: String(asDate.getDate()) };
+          parsed = {
+            y: String(asDate.getFullYear()),
+            m: String(asDate.getMonth() + 1),
+            day: String(asDate.getDate()),
+          };
         }
       }
       if (parsed) {
@@ -595,7 +707,10 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       // ✅ ensure CAMERA permission on Android
       const ok = await requestCameraPermissionIfNeeded();
       if (!ok) {
-        Alert.alert('Permission required', 'Camera permission is required to capture photos.');
+        Alert.alert(
+          'Permission required',
+          'Camera permission is required to capture photos.'
+        );
         return;
       }
 
@@ -632,7 +747,10 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
   ) => (
     <View key={label} style={{ marginBottom: 8 }}>
       <Text style={styles.label}>{label}</Text>
-      <Text style={styles.helpText}>Please select the correct option for this field. If you are not sure, please choose 'Others' and then specify below. Thank you.</Text>
+      <Text style={styles.helpText}>
+        Please select the correct option for this field. If you are not sure,
+        please choose 'Others' and then specify below. Thank you.
+      </Text>
       <Picker
         selectedValue={selectedValue}
         onValueChange={(itemValue) => {
@@ -802,6 +920,22 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     setExistingForm((f) => ({ ...f, marketing_challenges: updated }));
   };
 
+  const toggleSkillsAcquiredMulti = (value) => {
+    const current = Array.isArray(existingForm.skills_acquired_multi)
+      ? [...existingForm.skills_acquired_multi]
+      : [];
+    let updated;
+    if (current.includes(value)) {
+      updated = current.filter((c) => c !== value);
+      if (value === 'Others') {
+        setExistingForm((f) => ({ ...f, skills_acquired_multi_other: '' }));
+      }
+    } else {
+      updated = [...current, value];
+    }
+    setExistingForm((f) => ({ ...f, skills_acquired_multi: updated }));
+  };
+
   const multilineFields = [
     'product_features',
     'marketing_strategy',
@@ -809,24 +943,41 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     'training_details',
     'skills_acquired',
     // 'financial_coordination',
+    'training_duration',
+    'work_started_after_training_details',
+    'skills_acquired_multi_other',
+    'future_training_required_preferred_duration',
+    'future_training_required_sector_other',
+    'future_training_required_location',
+    'start_business_after_training_detail',
+    'expected_monthly_income_after_training',
+    'skill_center_location',
+    'govt_scheme_info_other',
   ];
 
   // Polite help-texts for fields (suitable for non-technical users)
   const fieldHelp = {
     enterprise_name: 'Please enter the name of the enterprise. Thank you.',
-    enterprise_type: 'Please choose the main type of the enterprise. If unsure, select Others and specify.',
-    ownership_type: 'Please select the ownership type. If unsure, pick the closest option.',
-    year_of_establishment: 'Please select the year when the enterprise started. If you are not sure, give your best estimate.',
-    enterprise_aadhar_code: 'Please enter the Enterprise Aadhar Code carefully. This is used for record-keeping.',
-    number_of_employees: 'Please enter how many people work here. If none, enter 0.',
-    sales_area: 'Please describe where you sell (local market, nearby town, online, etc.).',
-    target_customers: 'Please select who your main customers are. If many, choose the main one.',
-    declaration_date: 'Please enter the date of declaration in YYYY-MM-DD format (for example: 2025-11-21).',
+    enterprise_type:
+      'Please choose the main type of the enterprise. If unsure, select Others and specify.',
+    ownership_type:
+      'Please select the ownership type. If unsure, pick the closest option.',
+    year_of_establishment:
+      'Please select the year when the enterprise started. If you are not sure, give your best estimate.',
+    enterprise_aadhar_code:
+      'Please enter the Enterprise Aadhar Code carefully. This is used for record-keeping.',
+    number_of_employees:
+      'Please enter how many people work here. If none, enter 0.',
+    sales_area:
+      'Please describe where you sell (local market, nearby town, online, etc.).',
+    target_customers:
+      'Please select who your main customers are. If many, choose the main one.',
+    declaration_date:
+      'Please enter the date of declaration in YYYY-MM-DD format (for example: 2025-11-21).',
   };
 
-  const getHelpText = (k) => (fieldHelp[k] || 'Please provide the information for this field. Thank you.');
-
-
+  const getHelpText = (k) =>
+    fieldHelp[k] || 'Please provide the information for this field. Thank you.';
 
   const renderMediaField = (k) => {
     const labelMap = {
@@ -1027,20 +1178,31 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       );
     }
 
-    
+    if (k === 'enterprise_aadhar_code') {
+      return (
+        <View key={k} style={{ marginBottom: 8 }}>
+          <Text style={styles.label}>Uddyam Aadhar Number (If Available)</Text>
+          <Text style={styles.helpText}>
+            Please enter the Enterprise Aadhar Code (digits). This will
+            be used for verification and kept secure. Please type
+            carefully.
+          </Text>
+          <TextInput
+            value={String(existingForm.enterprise_aadhar_code || '')}
+            onChangeText={(v) =>
+              setExistingForm((prev) => ({
+                ...prev,
+                enterprise_aadhar_code: v,
+              }))
+            }
+            style={styles.input}
+            keyboardType="default"
+          />
+        </View>
+      );
+    }
 
-          <View style={{ marginBottom: 8 }}>
-            <Text style={styles.label}>Enterprise Aadhar Code</Text>
-            <Text style={styles.helpText}>Please enter the Enterprise Aadhar Code (digits). This will be used for verification and kept secure. Please type carefully.</Text>
-            <TextInput
-              value={String(existingForm.enterprise_aadhar_code || '')}
-              onChangeText={(v) => setExistingForm((prev) => ({ ...prev, enterprise_aadhar_code: v }))}
-              style={styles.input}
-              keyboardType="default"
-            />
-          </View>
-
-if (k === 'electricity_available') {
+    if (k === 'electricity_available') {
       const elec = existingForm.electricity_available || '';
       return (
         <View key={k} style={{ marginBottom: 8 }}>
@@ -1427,14 +1589,19 @@ if (k === 'electricity_available') {
               setExistingForm((f) => ({
                 ...f,
                 target_customers: v,
-                target_customers_other: v === 'Others' ? f.target_customers_other : '',
+                target_customers_other:
+                  v === 'Others' ? f.target_customers_other : '',
               }))
             }
             style={[styles.input, styles.dropdown]}
           >
             <Picker.Item label="Select..." value="" />
             {targetCustomersOptions.map((opt) => (
-              <Picker.Item key={opt.value} label={opt.label} value={opt.value} />
+              <Picker.Item
+                key={opt.value}
+                label={opt.label}
+                value={opt.value}
+              />
             ))}
           </Picker>
           {existingForm.target_customers === 'Others' && (
@@ -1443,7 +1610,10 @@ if (k === 'electricity_available') {
               style={[styles.input, { marginTop: 6 }]}
               value={existingForm.target_customers_other || ''}
               onChangeText={(text) =>
-                setExistingForm((f) => ({ ...f, target_customers_other: text }))
+                setExistingForm((f) => ({
+                  ...f,
+                  target_customers_other: text,
+                }))
               }
             />
           )}
@@ -1487,7 +1657,10 @@ if (k === 'electricity_available') {
               style={[styles.input, { marginTop: 6 }]}
               value={existingForm.marketing_challenges_other || ''}
               onChangeText={(text) =>
-                setExistingForm((f) => ({ ...f, marketing_challenges_other: text }))
+                setExistingForm((f) => ({
+                  ...f,
+                  marketing_challenges_other: text,
+                }))
               }
             />
           )}
@@ -1497,6 +1670,8 @@ if (k === 'electricity_available') {
 
     if (k === 'future_training_requirements') {
       const val = existingForm.additional_training_required || '';
+      const showFutureBlock = val === 'Yes';
+
       return (
         <View key={k} style={{ marginBottom: 8 }}>
           {renderYesNoToggle(
@@ -1508,52 +1683,112 @@ if (k === 'electricity_available') {
                 additional_training_required: v,
                 training_skill_name: v === 'No' ? '' : f.training_skill_name,
                 training_type: v === 'No' ? '' : f.training_type,
-                training_institution:
-                  v === 'No' ? '' : f.training_institution,
+                training_institution: v === 'No' ? '' : f.training_institution,
+
+                future_training_required_preferred_duration:
+                  v === 'No'
+                    ? ''
+                    : f.future_training_required_preferred_duration,
+                future_training_required_sector:
+                  v === 'No' ? '' : f.future_training_required_sector,
+                future_training_required_sector_other:
+                  v === 'No'
+                    ? ''
+                    : f.future_training_required_sector_other,
+                future_training_required_location:
+                  v === 'No'
+                    ? ''
+                    : f.future_training_required_location,
               }));
             }
           )}
 
-          {val === 'Yes' && (
+          {showFutureBlock && (
             <View style={{ marginTop: 8 }}>
               <Text style={styles.label}>
-                Please provide details of the required training:
+                How many days of training you want?
               </Text>
 
+              {/* Preferred Training Duration (No. of Days) */}
               <TextInput
-                placeholder="Skill name"
+                placeholder="Preferred Training Duration (No. of Days)"
                 style={[styles.input, styles.dropdown]}
-                value={existingForm.training_skill_name || ''}
+                value={
+                  existingForm.future_training_required_preferred_duration ||
+                  ''
+                }
                 onChangeText={(text) =>
                   setExistingForm((f) => ({
                     ...f,
-                    training_skill_name: text,
+                    future_training_required_preferred_duration: text,
                   }))
                 }
               />
 
-              <TextInput
-                placeholder="Type of training (Technical / Business / Digital, etc.)"
-                style={[styles.input, styles.dropdown]}
-                value={existingForm.training_type || ''}
-                onChangeText={(text) =>
+              {/* Training Sector dropdown (with Others -> textarea) */}
+              <Text style={[styles.label, { marginTop: 8 }]}>
+                What type of training are you interested in? (Training Sector)
+              </Text>
+              <Picker
+                selectedValue={
+                  existingForm.future_training_required_sector || ''
+                }
+                onValueChange={(v) =>
                   setExistingForm((f) => ({
                     ...f,
-                    training_type: text,
+                    future_training_required_sector: v,
+                    future_training_required_sector_other:
+                      v === 'Others'
+                        ? f.future_training_required_sector_other
+                        : '',
                   }))
                 }
-              />
+                style={[styles.input, styles.dropdown]}
+              >
+                <Picker.Item label="Select..." value="" />
+                {trainingSectorOptions.map((opt) => (
+                  <Picker.Item
+                    key={opt.value}
+                    label={opt.label}
+                    value={opt.value}
+                  />
+                ))}
+              </Picker>
+              {existingForm.future_training_required_sector === 'Others' && (
+                <TextInput
+                  placeholder="Please specify Training Sector"
+                  style={[styles.input, { marginTop: 6 }]}
+                  value={
+                    existingForm.future_training_required_sector_other ||
+                    ''
+                  }
+                  onChangeText={(text) =>
+                    setExistingForm((f) => ({
+                      ...f,
+                      future_training_required_sector_other: text,
+                    }))
+                  }
+                  multiline
+                />
+              )}
 
+              {/* Preferred Training Location */}
+              <Text style={[styles.label, { marginTop: 8 }]}>
+                Preferred Training Location
+              </Text>
               <TextInput
-                placeholder="Specific institution or department requirement (if applicable)"
+                placeholder="Preferred Training Location"
                 style={[styles.input, styles.dropdown]}
-                value={existingForm.training_institution || ''}
+                value={
+                  existingForm.future_training_required_location || ''
+                }
                 onChangeText={(text) =>
                   setExistingForm((f) => ({
                     ...f,
-                    training_institution: text,
+                    future_training_required_location: text,
                   }))
                 }
+                multiline
               />
             </View>
           )}
@@ -1563,6 +1798,43 @@ if (k === 'electricity_available') {
 
     if (k === 'training_received') {
       const val = existingForm.training_received || '';
+      const showTrainingBlock = val === 'Yes';
+
+      const skillsSufficient = existingForm.skills_sufficient_for_livelihood;
+      const skillsSufficientYes = skillsSufficient === 'Yes';
+      const skillsSufficientNo = skillsSufficient === 'No';
+
+      const showSkillsAcquiredMulti =
+        skillsSufficientYes && Array.isArray(existingForm.skills_acquired_multi);
+
+      const additionalTrainingAnswer =
+        existingForm.additional_training_required || '';
+
+      const workStarted = existingForm.work_started_after_training || '';
+      const workStartedYes = workStarted === 'Yes';
+
+      const startBusiness = existingForm.start_business_after_training || '';
+      const startBusinessYes = startBusiness === 'Yes';
+
+      const knowSkillCenters = existingForm.know_skill_centers_nearby || '';
+      const knowSkillCentersYes = knowSkillCenters === 'Yes';
+
+      const knowNearestIndustry = existingForm.know_nearest_industry || '';
+      const knowNearestIndustryYes = knowNearestIndustry === 'Yes';
+
+      const selectedSkillsAcquiredMulti =
+        Array.isArray(existingForm.skills_acquired_multi) &&
+        existingForm.skills_acquired_multi.length > 0
+          ? existingForm.skills_acquired_multi
+          : [];
+
+      const showSkillsAcquiredMultiOther =
+        selectedSkillsAcquiredMulti.includes('Others');
+
+      const industryRows = Array.isArray(existingForm.nearest_industries)
+        ? existingForm.nearest_industries
+        : [];
+
       return (
         <View key={k} style={{ marginBottom: 8 }}>
           {renderYesNoToggle(
@@ -1573,6 +1845,37 @@ if (k === 'electricity_available') {
                 ...f,
                 training_received: v,
                 training_details: v === 'No' ? '' : f.training_details,
+
+                training_duration: v === 'No' ? '' : f.training_duration,
+                work_started_after_training:
+                  v === 'No' ? '' : f.work_started_after_training,
+                work_started_after_training_details:
+                  v === 'No' ? '' : f.work_started_after_training_details,
+                skills_sufficient_for_livelihood:
+                  v === 'No' ? '' : f.skills_sufficient_for_livelihood,
+                skills_acquired_multi:
+                  v === 'No' ? [] : f.skills_acquired_multi || [],
+                skills_acquired_multi_other:
+                  v === 'No' ? '' : f.skills_acquired_multi_other,
+
+                start_business_after_training:
+                  v === 'No' ? '' : f.start_business_after_training,
+                start_business_after_training_detail:
+                  v === 'No'
+                    ? ''
+                    : f.start_business_after_training_detail,
+                expected_monthly_income_after_training:
+                  v === 'No'
+                    ? ''
+                    : f.expected_monthly_income_after_training,
+                know_skill_centers_nearby:
+                  v === 'No' ? '' : f.know_skill_centers_nearby,
+                skill_center_location:
+                  v === 'No' ? '' : f.skill_center_location,
+                know_nearest_industry:
+                  v === 'No' ? '' : f.know_nearest_industry,
+                nearest_industries:
+                  v === 'No' ? [] : f.nearest_industries || [],
               }))
           )}
 
@@ -1584,10 +1887,359 @@ if (k === 'electricity_available') {
                 style={[styles.input, { minHeight: 80 }]}
                 value={existingForm.training_details || ''}
                 onChangeText={(text) =>
-                  setExistingForm((f) => ({ ...f, training_details: text }))
+                  setExistingForm((f) => ({
+                    ...f,
+                    training_details: text,
+                  }))
                 }
                 multiline
               />
+
+              {/* Duration of Training (placeholder) */}
+              <Text style={[styles.label, { marginTop: 8 }]}>
+                Duration of Training
+              </Text>
+              <TextInput
+                placeholder="Enter training duration"
+                style={[styles.input, { minHeight: 40 }]}
+                value={existingForm.training_duration || ''}
+                onChangeText={(text) =>
+                  setExistingForm((f) => ({
+                    ...f,
+                    training_duration: text,
+                  }))
+                }
+                multiline
+              />
+
+              {/* Did you start any work after the training? */}
+              {renderYesNoToggle(
+                'Did you start any work after the training?',
+                workStarted,
+                (v) =>
+                  setExistingForm((f) => ({
+                    ...f,
+                    work_started_after_training: v,
+                    work_started_after_training_details:
+                      v === 'Yes'
+                        ? f.work_started_after_training_details
+                        : '',
+                  }))
+              )}
+
+              {workStartedYes && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={styles.label}>
+                    Specify what work you started
+                  </Text>
+                  <TextInput
+                    placeholder="Specify what work you started"
+                    style={[styles.input, { minHeight: 60 }]}
+                    value={
+                      existingForm.work_started_after_training_details ||
+                      ''
+                    }
+                    onChangeText={(text) =>
+                      setExistingForm((f) => ({
+                        ...f,
+                        work_started_after_training_details: text,
+                      }))
+                    }
+                    multiline
+                  />
+                </View>
+              )}
+
+              {/* Are your current skills sufficient for your livelihood? */}
+              {renderYesNoToggle(
+                'Are your current skills sufficient for your livelihood?',
+                skillsSufficient,
+                (v) =>
+                  setExistingForm((f) => ({
+                    ...f,
+                    skills_sufficient_for_livelihood: v,
+
+                    // reset both sides when toggled
+                    skills_acquired_multi:
+                      v === 'Yes' ? f.skills_acquired_multi || [] : [],
+                    skills_acquired_multi_other:
+                      v === 'Yes' ? f.skills_acquired_multi_other : '',
+                    additional_training_required:
+                      v === 'No'
+                        ? f.additional_training_required
+                        : '',
+                    future_training_required_preferred_duration:
+                      v === 'No'
+                        ? f.future_training_required_preferred_duration
+                        : '',
+                    future_training_required_sector:
+                      v === 'No'
+                        ? f.future_training_required_sector
+                        : '',
+                    future_training_required_sector_other:
+                      v === 'No'
+                        ? f.future_training_required_sector_other
+                        : '',
+                    future_training_required_location:
+                      v === 'No'
+                        ? f.future_training_required_location
+                        : '',
+                  }))
+              )}
+
+              {/* If Yes -> Skills Acquired multi-selector */}
+              {skillsSufficientYes && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={styles.label}>Skills Acquired</Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      flexWrap: 'wrap',
+                      gap: 8,
+                    }}
+                  >
+                    {skillsAcquiredMultiOptions.map(
+                      ({ label, value }) => (
+                        <TouchableOpacity
+                          key={value}
+                          style={[
+                            styles.smallBtn,
+                            selectedSkillsAcquiredMulti.includes(
+                              value
+                            ) && { backgroundColor: '#EE6969' },
+                          ]}
+                          onPress={() =>
+                            toggleSkillsAcquiredMulti(value)
+                          }
+                        >
+                          <Text
+                            style={{
+                              color:
+                                selectedSkillsAcquiredMulti.includes(
+                                  value
+                                )
+                                  ? '#fff'
+                                  : '#333',
+                              fontWeight: '600',
+                            }}
+                          >
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    )}
+                  </View>
+
+                  {showSkillsAcquiredMultiOther && (
+                    <TextInput
+                      placeholder="Specify Other Skills Acquired"
+                      style={[styles.input, { marginTop: 6 }]}
+                      value={
+                        existingForm.skills_acquired_multi_other || ''
+                      }
+                      onChangeText={(text) =>
+                        setExistingForm((f) => ({
+                          ...f,
+                          skills_acquired_multi_other: text,
+                        }))
+                      }
+                      multiline
+                    />
+                  )}
+                </View>
+              )}
+
+              {/* If No -> future training requirements block already handled by k === 'future_training_requirements' */}
+
+              {/* Start own business after training? */}
+              {renderYesNoToggle(
+                'Do you want to start your own business after training?',
+                startBusiness,
+                (v) =>
+                  setExistingForm((f) => ({
+                    ...f,
+                    start_business_after_training: v,
+                    start_business_after_training_detail:
+                      v === 'Yes'
+                        ? f.start_business_after_training_detail
+                        : '',
+                  }))
+              )}
+
+              {startBusinessYes && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={styles.label}>Business Detail</Text>
+                  <TextInput
+                    placeholder="Describe the business you want to start"
+                    style={[styles.input, { minHeight: 60 }]}
+                    value={
+                      existingForm.start_business_after_training_detail ||
+                      ''
+                    }
+                    onChangeText={(text) =>
+                      setExistingForm((f) => ({
+                        ...f,
+                        start_business_after_training_detail: text,
+                      }))
+                    }
+                    multiline
+                  />
+                </View>
+              )}
+
+              {/* Expected Monthly Income after Training (₹) */}
+              <Text style={[styles.label, { marginTop: 8 }]}>
+                Expected Monthly Income after Training (₹)
+              </Text>
+              <TextInput
+                placeholder="Expected Monthly Income after Training (₹)"
+                style={[styles.input, { minHeight: 40 }]}
+                keyboardType="numeric"
+                value={
+                  existingForm.expected_monthly_income_after_training ||
+                  ''
+                }
+                onChangeText={(text) =>
+                  setExistingForm((f) => ({
+                    ...f,
+                    expected_monthly_income_after_training: text,
+                  }))
+                }
+                multiline
+              />
+
+              {/* Know skill centers nearby? */}
+              {renderYesNoToggle(
+                'Do you know about any Skill Centers near you?',
+                knowSkillCenters,
+                (v) =>
+                  setExistingForm((f) => ({
+                    ...f,
+                    know_skill_centers_nearby: v,
+                    skill_center_location:
+                      v === 'Yes' ? f.skill_center_location : '',
+                  }))
+              )}
+
+              {knowSkillCentersYes && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={styles.label}>Center Location</Text>
+                  <TextInput
+                    placeholder="Center Location"
+                    style={[styles.input, { minHeight: 60 }]}
+                    value={existingForm.skill_center_location || ''}
+                    onChangeText={(text) =>
+                      setExistingForm((f) => ({
+                        ...f,
+                        skill_center_location: text,
+                      }))
+                    }
+                    multiline
+                  />
+                </View>
+              )}
+
+              {/* Know nearest industry? */}
+              {renderYesNoToggle(
+                'Do you know about any nearest Industry?',
+                knowNearestIndustry,
+                (v) =>
+                  setExistingForm((f) => ({
+                    ...f,
+                    know_nearest_industry: v,
+                    nearest_industries:
+                      v === 'Yes' ? f.nearest_industries || [] : [],
+                  }))
+              )}
+
+              {knowNearestIndustryYes && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={styles.label}>Nearest Industries</Text>
+
+                  {industryRows.length === 0 && (
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: '#666',
+                        marginBottom: 4,
+                      }}
+                    >
+                      Please add details of nearby industries.
+                    </Text>
+                  )}
+
+                  {industryRows.map((row, idx) => (
+                    <View
+                      key={`industry-${idx}`}
+                      style={[
+                        styles.loanEntryContainer,
+                        { marginVertical: 6 },
+                      ]}
+                    >
+                      <Text style={styles.label}>
+                        Industry {idx + 1}
+                      </Text>
+
+                      <TextInput
+                        placeholder="Industry name"
+                        style={[styles.input, { marginTop: 4 }]}
+                        value={row.industry_name || ''}
+                        onChangeText={(text) =>
+                          updateIndustryRow(
+                            idx,
+                            'industry_name',
+                            text
+                          )
+                        }
+                      />
+
+                      <TextInput
+                        placeholder="Work Type"
+                        style={[styles.input, { marginTop: 4 }]}
+                        value={row.work_type || ''}
+                        onChangeText={(text) =>
+                          updateIndustryRow(
+                            idx,
+                            'work_type',
+                            text
+                          )
+                        }
+                      />
+
+                      <TouchableOpacity
+                        style={[
+                          styles.deleteBtn,
+                          { marginTop: 8, paddingVertical: 4 },
+                        ]}
+                        onPress={() => removeIndustryRow(idx)}
+                      >
+                        <Text
+                          style={{
+                            color: 'white',
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          Remove
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+
+                  <TouchableOpacity
+                    style={styles.addBtn}
+                    onPress={addIndustryRow}
+                  >
+                    <Text
+                      style={{
+                        color: '#EE6969',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      ➕ Add Industry
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -1664,7 +2316,6 @@ if (k === 'electricity_available') {
               />
             ))}
           </Picker>
-
           {val === 'Others' && (
             <TextInput
               placeholder="Specify"
@@ -1749,6 +2400,8 @@ if (k === 'electricity_available') {
       );
     }
 
+// continuation of renderField function and following components and styles...
+
     if (k === 'expansion_plan') {
       const selected = Array.isArray(existingForm.expansion_plan)
         ? existingForm.expansion_plan
@@ -1770,9 +2423,7 @@ if (k === 'electricity_available') {
       return (
         <View key={k} style={{ marginBottom: 8 }}>
           <Text style={styles.label}>Expansion Plan</Text>
-          <View
-            style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}
-          >
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {expansionPlanOptions.map(({ label, value }) => (
               <TouchableOpacity
                 key={value}
@@ -1795,17 +2446,13 @@ if (k === 'electricity_available') {
               </TouchableOpacity>
             ))}
           </View>
-
           {selected.includes('Others') && (
             <TextInput
-              placeholder="Specify"
+              placeholder="Specify Your Expansion Plan"
               style={[styles.input, { marginTop: 6 }]}
               value={existingForm.expansion_plan_other || ''}
               onChangeText={(text) =>
-                setExistingForm((f) => ({
-                  ...f,
-                  expansion_plan_other: text,
-                }))
+                setExistingForm((f) => ({ ...f, expansion_plan_other: text }))
               }
             />
           )}
@@ -1813,869 +2460,227 @@ if (k === 'electricity_available') {
       );
     }
 
-    if (k === 'market_linkage') {
-      const selected = Array.isArray(existingForm.market_linkage)
-        ? existingForm.market_linkage
-        : [];
-
-      const toggleOption = (value) => {
-        let updated = [...selected];
-        if (updated.includes(value)) {
-          updated = updated.filter((v) => v !== value);
-        } else {
-          updated.push(value);
-        }
-        setExistingForm((f) => ({ ...f, market_linkage: updated }));
-        if (value === 'Others' && updated.indexOf('Others') === -1) {
-          setExistingForm((f) => ({
-            ...f,
-            market_linkage_other: '',
-          }));
-        }
-      };
-
+    // NEW: Government Schemes info dropdown in Support section
+    if (k === 'govt_scheme_info') {
+      const val = existingForm.govt_scheme_info || '';
       return (
         <View key={k} style={{ marginBottom: 8 }}>
-          <Text style={styles.label}>Market Linkages</Text>
-          <View
-            style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}
+          <Text style={styles.label}>
+            Do you want to know Information about Government Schemes?
+          </Text>
+          <Picker
+            selectedValue={val}
+            onValueChange={(v) =>
+              setExistingForm((f) => ({
+                ...f,
+                govt_scheme_info: v,
+                govt_scheme_info_other: v === 'Others' ? f.govt_scheme_info_other : '',
+              }))
+            }
+            style={[styles.input, styles.dropdown]}
           >
-            {marketLinkageOptions.map(({ label, value }) => (
-              <TouchableOpacity
-                key={value}
-                style={[
-                  styles.smallBtn,
-                  selected.includes(value) && {
-                    backgroundColor: '#EE6969',
-                  },
-                ]}
-                onPress={() => toggleOption(value)}
-              >
-                <Text
-                  style={{
-                    color: selected.includes(value) ? '#fff' : '#333',
-                    fontWeight: '600',
-                  }}
-                >
-                  {label}
-                </Text>
-              </TouchableOpacity>
+            <Picker.Item label="Select..." value="" />
+            {govtSchemeOptions.map((opt) => (
+              <Picker.Item key={opt.value} label={opt.label} value={opt.value} />
             ))}
-          </View>
+          </Picker>
 
-          {selected.includes('Others') && (
+          {val === 'Others' && (
             <TextInput
               placeholder="Specify"
               style={[styles.input, { marginTop: 6 }]}
-              value={existingForm.market_linkage_other || ''}
+              value={existingForm.govt_scheme_info_other || ''}
               onChangeText={(text) =>
-                setExistingForm((f) => ({
-                  ...f,
-                  market_linkage_other: text,
-                }))
+                setExistingForm((f) => ({ ...f, govt_scheme_info_other: text }))
               }
+              multiline
             />
           )}
         </View>
       );
     }
 
-    if (k === 'certification_registration') {
-      return renderYesNoToggle(
-        'Certification / Registration?',
-        existingForm.certification_registration,
-        (v) =>
-          setExistingForm((f) => ({
-            ...f,
-            certification_registration: v,
-          }))
-      );
-    }
-
-    // MEDIA FIELDS (multi-file)
-    if (
-      [
-        'photo_entrepreneur',
-        'photo_enterprise',
-        'open_box_photo',
-        'close_box_photo',
-        'others',
-        'certificates',
-      ].includes(k)
-    ) {
-      return renderMediaField(k);
-    }
-
-    if (k === 'declaration_confirmed') {
+    // Generic text inputs and textareas
+    if (multilineFields.includes(k))
       return (
         <View key={k} style={{ marginBottom: 8 }}>
-          {renderYesNoToggle(
-            'I confirm the declaration is read and agreed.',
-            existingForm.declaration_confirmed ? 'Yes' : 'No',
-            (v) =>
-              setExistingForm((f) => ({
-                ...f,
-                declaration_confirmed: v === 'Yes',
-              }))
-          )}
-        </View>
-      );
-    }
-
-    if (k === 'declaration_date' || k === 'verifier_name') {
-      if (k === 'declaration_date') {
-        return (
-          <View key={k} style={{ marginBottom: 8 }}>
-            <Text style={styles.label}>Declaration Date</Text>
-            <Text style={styles.helpText}>Please enter declaration date in YYYY-MM-DD format (for example: 2025-11-21). Please type carefully. Thank you.</Text>
-            <TextInput
-              value={String(existingForm.declaration_date || '')}
-              onChangeText={(v) => setExistingForm((f) => ({ ...f, declaration_date: v }))}
-              placeholder="YYYY-MM-DD"
-              style={styles.input}
-            />
-          </View>
-        );
-      } else {
-        // verifier_name
-        return (
-          <View key={k} style={{ marginBottom: 8 }}>
-            <Text style={styles.label}>Verifier Name</Text>
-            <TextInput
-              value={String(existingForm[k] ?? '')}
-              onChangeText={(v) =>
-                setExistingForm((prev) => ({ ...prev, [k]: v }))
-              }
-              style={[styles.input, styles.dropdown]}
-            />
-          </View>
-        );
-      }
-    }
-
-    // Specific label change: profit_percentage shows 'Gross Profit'
-    if (k === 'profit_percentage') {
-      return (
-        <View key={k} style={{ marginBottom: 8 }}>
-          <Text style={styles.label}>Gross Profit</Text>
+          <Text style={styles.label}>{k.replace(/_/g, ' ').toUpperCase()}</Text>
           <TextInput
-            value={String(existingForm.profit_percentage ?? '')}
-            onChangeText={(v) =>
-              setExistingForm((prev) => ({ ...prev, profit_percentage: v }))
+            value={existingForm[k] || ''}
+            onChangeText={(text) =>
+              setExistingForm((f) => ({ ...f, [k]: text }))
             }
-            style={[styles.input, styles.dropdown]}
-            keyboardType="numeric"
+            placeholder={k.replace(/_/g, ' ').toUpperCase()}
+            style={[styles.input, { minHeight: 80 }]}
+            multiline
+            textAlignVertical="top"
           />
         </View>
       );
-    }
 
-    // Default text field
+    // Default: simple text input
     return (
       <View key={k} style={{ marginBottom: 8 }}>
-        <Text style={styles.label}>{k.replace(/_/g, ' ')}</Text>
+        <Text style={styles.label}>{k.replace(/_/g, ' ').toUpperCase()}</Text>
         <TextInput
-          value={String(existingForm[k] ?? '')}
-          onChangeText={(v) =>
-            setExistingForm((prev) => ({ ...prev, [k]: v }))
+          value={existingForm[k] || ''}
+          onChangeText={(text) =>
+            setExistingForm((f) => ({ ...f, [k]: text }))
           }
-          style={[styles.input, styles.dropdown]}
-          multiline={multilineFields.includes(k)}
-          keyboardType={
-            [
-              'initial_investment',
-              'working_capital_monthly',
-              'annual_turnover',
-              'profit_percentage',
-              'monthly_sales',
-              'monthly_income_estimate',
-              'number_of_employees',
-            ].includes(k)
-              ? 'numeric'
-              : 'default'
-          }
+          placeholder={k.replace(/_/g, ' ').toUpperCase()}
+          style={styles.input}
         />
       </View>
     );
   };
 
-  // ----------------- Fallback helpers for recorded beneficiary creation -----------------
-  async function findShgAcrossCachedPanchayats(shgCode) {
-    if (!shgCode) return null;
-    try {
-      // First try temp cache by panchayat (if CRP panchayats available)
-      const gps = getCrpPanchayats ? getCrpPanchayats() || [] : [];
-      for (const gp of gps) {
-        const pid = gp?.panchayat_id || gp?.panchayatId;
-        if (!pid) continue;
-        const cached = getShgListForPanchayat(pid) || [];
-        const found = cached.find((s) => {
-          const code = s.code ?? s.shg_code ?? s.lokos_shg_code ?? s.code;
-          return String(code) === String(shgCode);
-        });
-        if (found) return extractLocationFromShg(found);
-      }
-      // Not found in local cache
-      return null;
-    } catch (e) {
-      console.warn('findShgAcrossCachedPanchayats error', e);
-      return null;
-    }
-  }
-
-  // ---------- SUBMIT FLOW ----------
-  // 1) Create RecordedBeneficiary from UPSRLM row (if not already created)
-  // 2) Create/Update ExistingEnterprise with recorded_benef_id
-  // 3) Patch RecordedBeneficiary.enterprise_id with created enterprise id
-  // 4) Create child rows: loans, support, training, media
-  const ensureRecordedBeneficiary = async () => {
-    let recordedBenefId =
-      recordedBenef?.TH_urid || recordedBenef?.TH_URID || recordedBenef?.id || null;
-
-    if (recordedBenefId) return recordedBenefId;
-
-    // If not present, create one from UPSRLM beneficiary row
-    if (!beneficiary) {
-      throw new Error(
-        'Beneficiary data missing. Cannot create recorded beneficiary.'
-      );
-    }
-
-    const addr =
-      Array.isArray(beneficiary.member_addresses) &&
-      beneficiary.member_addresses.length > 0
-        ? beneficiary.member_addresses[0]
-        : null;
-
-    const phone =
-      Array.isArray(beneficiary.member_phones) &&
-      beneficiary.member_phones.length > 0
-        ? beneficiary.member_phones[0]
-        : null;
-
-    const addressText =
-      (addr?.address_line1 && String(addr.address_line1).trim()) ||
-      (addr?.address_line2 && String(addr.address_line2).trim()) ||
-      '';
-
-    const age = computeAgeFromDob(beneficiary.dob);
-
-    // Primary mapping from member row
-    let district_id = addr?.district_id ?? addr?.districtId ?? null;
-    let block_id = addr?.block_id ?? addr?.blockId ?? null;
-    let panchayat_id = addr?.panchayat_id ?? addr?.panchayatId ?? null;
-    let village_id = addr?.village_id ?? addr?.villageId ?? null;
-    let member_mobile = phone?.phone_no ?? phone?.mobile ?? phone?.number ?? null;
-    let marital_status = beneficiary.marital_status ?? beneficiary.maritalStatus ?? '';
-    let father_husband_name = beneficiary.father_husband ?? beneficiary.father_husband_name ?? beneficiary.relation_name ?? '';
-
-    // lokos_shg_code may be present in local tempShg or member; try those first
-    let lokos_shg_code = lokosShgCode || beneficiary.shg_code || beneficiary.lokos_shg_code || null;
-
-    // If any critical location fields missing, try to extract from tempShg (passed in route)
-    if ((!district_id || !block_id || !panchayat_id || !village_id || !lokos_shg_code) && tempShg) {
-      const loc = extractLocationFromShg(tempShg);
-      if (loc) {
-        district_id = district_id || loc.district_id || null;
-        block_id = block_id || loc.block_id || null;
-        panchayat_id = panchayat_id || loc.panchayat_id || null;
-        village_id = village_id || loc.village_id || null;
-        lokos_shg_code = lokos_shg_code || loc.lokos_shg_code || null;
-      }
-    }
-
-    // If still missing, try cached SHG lists for CRP panchayats
-    if ((!district_id || !block_id || !panchayat_id || !village_id || !lokos_shg_code) && (beneficiary.shg_code || lokos_shg_code)) {
-      const fallback = await findShgAcrossCachedPanchayats(beneficiary.shg_code || lokos_shg_code);
-      if (fallback) {
-        district_id = district_id || fallback.district_id || null;
-        block_id = block_id || fallback.block_id || null;
-        panchayat_id = panchayat_id || fallback.panchayat_id || null;
-        village_id = village_id || fallback.village_id || null;
-        lokos_shg_code = lokos_shg_code || fallback.lokos_shg_code || null;
-      }
-    }
-
-    // As a last resort, if block_id can be inferred from CRP detail, try on-demand fetch for that panchayat
-    if ((!district_id || !block_id || !panchayat_id || !village_id) && lokos_shg_code) {
-      try {
-        const crpDetail = getCrpDetail ? getCrpDetail() : null;
-        const cbid = crpDetail?.block_id ?? crpDetail?.blockId ?? null;
-        if (cbid) {
-          // try to find in block's SHG list (panchayat filter omitted to get broader results)
-          const shgRes = await gsApi.getUpsrlmShgList(cbid, { page_size: 5000 });
-          const shgRows = Array.isArray(shgRes?.data)
-            ? shgRes.data
-            : Array.isArray(shgRes?.results)
-            ? shgRes.results
-            : Array.isArray(shgRes)
-            ? shgRes
-            : [];
-          const found = shgRows.find((s) => {
-            const code = s.code ?? s.shg_code ?? s.lokos_shg_code ?? s.code;
-            return String(code) === String(lokos_shg_code);
-          });
-          if (found) {
-            const loc = extractLocationFromShg(found);
-            district_id = district_id || loc.district_id || null;
-            block_id = block_id || loc.block_id || null;
-            panchayat_id = panchayat_id || loc.panchayat_id || null;
-            village_id = village_id || loc.village_id || null;
-            lokos_shg_code = lokos_shg_code || loc.lokos_shg_code || null;
-          }
-        }
-      } catch (e) {
-        // ignore failures here — we already tried other fallbacks
-        console.warn('on-demand SHG list fallback failed', e);
-      }
-    }
-
-    // created_by: prefer loggedUser numeric PK; fallback to crpUserId if numeric
-    let created_by_to_send = null;
-    const candidate =
-      loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? crpUserId ?? null;
-    if (candidate !== null && candidate !== undefined) {
-      if (typeof candidate === 'number') {
-        created_by_to_send = candidate;
-      } else if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
-        created_by_to_send = parseInt(candidate.trim(), 10);
-      } else {
-        created_by_to_send = null;
-      }
-    }
-
-    const recordedPayload = {
-      lokos_member_code: beneficiary.member_code || beneficiary.nic_member_code || null,
-      applicant_name: beneficiary.member_name || '',
-      age: age,
-      gender: beneficiary.gender || '',
-      marital_status: marital_status,
-      father_husband_name: father_husband_name,
-      category: beneficiary.social_category || beneficiary.socialCategory || '',
-      education: beneficiary.education || '',
-      address: addressText,
-      district_id: district_id || null,
-      block_id: block_id || null,
-      panchayat_id: panchayat_id || null,
-      village_id: village_id || null,
-      mobile: member_mobile || null,
-      email: beneficiary.email || null,
-      lokos_shg_code: lokos_shg_code || null,
-      // enterprise_id will be set after enterprise is created
-    };
-
-    if (created_by_to_send !== null) {
-      recordedPayload.created_by = created_by_to_send;
-    }
-
-    const recRes = await gsApi.createRecordedBeneficiary(recordedPayload);
-
-    recordedBenefId =
-      recRes?.TH_urid || recRes?.TH_URID || recRes?.id || null;
-
-    if (!recordedBenefId) {
-      throw new Error(
-        'Recorded beneficiary created but ID missing in response.'
-      );
-    }
-
-    return recordedBenefId;
-  };
-
-  const handleSubmit = async () => {
-    if (!existingForm.enterprise_name) {
-      Alert.alert('Validation', 'Please enter enterprise name.');
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      // ----- Step 1: ensure we have a Recorded Beneficiary ID -----
-      const recordedBenefId = await ensureRecordedBeneficiary();
-
-      // ----- Step 2: create/update ExistingEnterprise, linked to recorded_benef_id -----
-      const mainPayload = {
-        recorded_benef_id: recordedBenefId,
-        enterprise_name: existingForm.enterprise_name,
-        year_of_establishment: existingForm.year_of_establishment
-          ? parseInt(existingForm.year_of_establishment, 10)
-          : null,
-        enterprise_type:
-          existingForm.enterprise_type === 'Others'
-            ? existingForm.enterprise_type_other || 'Others'
-            : existingForm.enterprise_type || null,
-        ownership_type:
-          existingForm.ownership_type === 'Others'
-            ? existingForm.ownership_type_other || 'Others'
-            : existingForm.ownership_type || null,
-        number_of_employees: existingForm.number_of_employees
-          ? parseInt(existingForm.number_of_employees, 10)
-          : null,
-        activity_or_product_type:
-          existingForm.main_product_service === 'Others'
-            ? existingForm.main_product_service_other || ''
-            : existingForm.main_product_service || '',
-        main_product_name: existingForm.main_product_name || '',
-        product_features: existingForm.product_features || '',
-        production_capacity: existingForm.production_capacity || '',
-        raw_material:
-          existingForm.raw_material === 'Others'
-            ? existingForm.raw_material_other || ''
-            : existingForm.raw_material || '',
-        machinery_equipment:
-          existingForm.machinery_equipment === 'Others'
-            ? existingForm.machinery_equipment_other || ''
-            : existingForm.machinery_equipment || '',
-        workplace_type:
-          existingForm.workplace_type === 'Others'
-            ? existingForm.workplace_type_other || ''
-            : existingForm.workplace_type || '',
-        packaging_branding_status:
-          existingForm.packaging_branding_status || '',
-        certification_registration:
-          existingForm.certification_registration || '',
-        sales_area: existingForm.sales_area || '',
-        monthly_income_estimate: existingForm.monthly_income_estimate
-          ? parseFloat(existingForm.monthly_income_estimate)
-          : null,
-        initial_investment: existingForm.initial_investment
-          ? parseFloat(existingForm.initial_investment)
-          : null,
-        source_of_investment:
-          existingForm.source_of_investment === 'Others'
-            ? existingForm.source_of_investment_specify || ''
-            : existingForm.source_of_investment || '',
-        working_capital_monthly: existingForm.working_capital_monthly
-          ? parseFloat(existingForm.working_capital_monthly)
-          : null,
-        annual_turnover: existingForm.annual_turnover
-          ? parseFloat(existingForm.annual_turnover)
-          : null,
-        profit_percentage: existingForm.profit_percentage
-          ? parseFloat(existingForm.profit_percentage)
-          : null,
-        has_taken_loan: loans.length > 0,
-        financial_coordination: existingForm.enterprise_aadhar_code || '',
-        target_customers:
-          existingForm.target_customers === 'Others'
-            ? existingForm.target_customers_other || ''
-            : existingForm.target_customers || '',
-        marketing_channels: Array.isArray(existingForm.marketing_channels)
-          ? existingForm.marketing_channels.join(',')
-          : existingForm.marketing_channels || '',
-        monthly_sales: existingForm.monthly_sales
-          ? parseFloat(existingForm.monthly_sales)
-          : null,
-        marketing_strategy: existingForm.marketing_strategy || '',
-        marketing_challenges: Array.isArray(existingForm.marketing_challenges)
-          ? existingForm.marketing_challenges.join(', ')
-          : existingForm.marketing_challenges || '',
-        electricity_available:
-          existingForm.electricity_available === 'Yes',
-        water_available: existingForm.water_available === 'Yes',
-        transportation_facility:
-          existingForm.transportation_facility || '',
-        can_send_to_bijnor_clf:
-          existingForm.can_transport_clf === 'Yes',
-        need_transport_help:
-          existingForm.transportation_facility === 'Need Help',
-        has_received_any_scheme_support:
-          existingForm.government_subsidy === 'Yes',
-        is_training_received:
-          existingForm.training_received === 'Yes',
-        training_details: existingForm.training_details || '',
-        skills_acquired: existingForm.skills_acquired || '',
-        expansion_plan: Array.isArray(existingForm.expansion_plan)
-          ? existingForm.expansion_plan.join(',')
-          : existingForm.expansion_plan || '',
-        declaration_confirmed: !!existingForm.declaration_confirmed,
-        declaration_date:
-          existingForm.declaration_date || null,
-        verifier_name: existingForm.verifier_name || '',
-      };
-
-      // IMPORTANT: we do NOT send nested children here (Option B).
-      const payload = {
-        ...mainPayload,
-      };
-
-      let enterpriseRes;
-      if (existingEnterprise?.TH_urid) {
-        enterpriseRes = await gsApi.updateExistingEnterprise(
-          existingEnterprise.TH_urid,
-          payload
-        );
-      } else {
-        enterpriseRes = await gsApi.createExistingEnterprise(payload);
-      }
-
-      const enterpriseId =
-        enterpriseRes?.TH_urid ||
-        enterpriseRes?.TH_URID ||
-        enterpriseRes?.id ||
-        null;
-
-      if (!enterpriseId) {
-        throw new Error(
-          'Enterprise saved but ID missing in response.'
-        );
-      }
-
-      // ----- Step 3: Patch RecordedBeneficiary.enterprise_id with enterpriseId -----
-      try {
-        if (recordedBenefId) {
-          await gsApi.updateRecordedBeneficiary(recordedBenefId, {
-            enterprise_id: enterpriseId,
-          });
-        }
-      } catch (e) {
-        console.error('Failed to update recorded beneficiary enterprise_id', e);
-        // keep going; not fatal
-      }
-
-      // ----- Step 4: Create loan details via /enterprise-loan-details/ -----
-      if (loans && loans.length) {
-        for (const l of loans) {
-          const institution_name =
-            l.institution === 'Others'
-              ? l.institutionOther || 'Others'
-              : l.institution || '';
-          const loan_amount = l.amount ? parseFloat(l.amount) : null;
-          const repayment_status =
-            l.repayment === 'Others'
-              ? l.repaymentOther || 'Others'
-              : l.repayment || '';
-
-          // date_taken not captured in UI; leave null
-          try {
-            await gsApi.createEnterpriseLoanDetail({
-              enterprise_id: enterpriseId,
-              institution_name,
-              loan_amount,
-              date_taken: null,
-              repayment_status,
-            });
-          } catch (e) {
-            console.warn('createEnterpriseLoanDetail failed', e);
-          }
-        }
-      }
-
-      // ----- Step 5: Create support detail via /enterprise-support-details/ -----
-      const reqSupportArray = Array.isArray(existingForm.required_support)
-        ? existingForm.required_support
-        : [];
-      const required_support_bool = reqSupportArray.length > 0;
-
-      const supportPayload = {
-        enterprise_id: enterpriseId,
-        department_name: existingForm.subsidy_department || null,
-        scheme_name: existingForm.subsidy_scheme || null,
-        date_taken: null,
-        institutional_support: !!existingForm.institutional_support,
-        mentorship_support: false,
-        required_support: required_support_bool,
-        what_req_support: reqSupportArray.join(', '),
-        is_skill_training_needed: reqSupportArray.includes('Training'),
-        is_entrepreneurship_training_needed: reqSupportArray.includes(
-          'Training'
-        ),
-        is_financial_assistance_needed: reqSupportArray.includes('Finance'),
-        is_market_branding_needed: reqSupportArray.includes(
-          'Advertisement / Promotion'
-        ),
-        is_infrastructure_needed: reqSupportArray.includes('Equipment'),
-        is_digital_emarket_needed: reqSupportArray.includes('E-commerce'),
-        other_support: existingForm.required_support_other || '',
-      };
-
-      try {
-        if (
-          supportPayload.department_name ||
-          supportPayload.scheme_name ||
-          required_support_bool
-        ) {
-          await gsApi.createEnterpriseSupportDetail(supportPayload);
-        }
-      } catch (e) {
-        console.warn('createEnterpriseSupportDetail failed', e);
-      }
-
-      // ----- Step 6: Create training requirement via /enterprise-training-reqs/ -----
-      if (existingForm.additional_training_required === 'Yes') {
-        const hasTrainingData =
-          existingForm.training_skill_name ||
-          existingForm.training_type ||
-          existingForm.training_institution;
-        if (hasTrainingData) {
-          try {
-            await gsApi.createEnterpriseTrainingReq({
-              enterprise_id: enterpriseId,
-              skill_name: existingForm.training_skill_name || '',
-              training_type: existingForm.training_type || '',
-              any_specific_scheme: null,
-              any_specific_department: existingForm.training_institution || '',
-            });
-          } catch (e) {
-            console.warn('createEnterpriseTrainingReq failed', e);
-          }
-        }
-      }
-
-      // ----- Step 7: Media upload via /enterprise-media/ (multipart, grouped rows) -----
-      const m = mediaFiles;
-      const arrs = {
-        photo_entrepreneur: m.photo_entrepreneur || [],
-        photo_enterprise: m.photo_enterprise || [],
-        open_box_photo: m.open_box_photo || [],
-        close_box_photo: m.close_box_photo || [],
-        others: m.others || [],
-        certificates: m.certificates || [],
-      };
-
-      const maxLen = Math.max(
-        arrs.photo_entrepreneur.length,
-        arrs.photo_enterprise.length,
-        arrs.open_box_photo.length,
-        arrs.close_box_photo.length,
-        arrs.others.length,
-        arrs.certificates.length
-      );
-
-      const fileKeys = Object.keys(arrs);
-
-      const toFilePart = (asset) => ({
-        uri: asset.uri,
-        name: asset.fileName || 'upload.jpg',
-        type: asset.type || 'image/jpeg',
-      });
-
-      for (let i = 0; i < maxLen; i++) {
-        const formData = new FormData();
-        formData.append('enterprise_id', enterpriseId);
-
-        let hasAnyFile = false;
-        for (const key of fileKeys) {
-          const arr = arrs[key];
-          if (i < arr.length && arr[i]) {
-            hasAnyFile = true;
-            formData.append(key, toFilePart(arr[i]));
-          }
-        }
-
-        if (!hasAnyFile) continue;
-
-        try {
-          await gsApi.uploadEnterpriseMedia(formData);
-        } catch (e) {
-          console.warn('uploadEnterpriseMedia failed for index', i, e);
-        }
-      }
-
-      Alert.alert('Success', 'Existing enterprise saved successfully.', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
-    } catch (err) {
-      console.error('ExistingEnterprise submit error', err);
-      const msg =
-        err?.data?.detail ||
-        err?.message ||
-        'Failed to save enterprise. Please try again.';
-      Alert.alert('Error', msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const benefName =
-    beneficiary?.member_name ||
-    beneficiary?.name ||
-    recordedBenef?.applicant_name ||
-    '';
-
   return (
-    <View style={{ padding: 12, flex: 1, backgroundColor: '#fff' }}>
-      <Text
-        style={{ fontSize: 18, fontWeight: '700', marginBottom: 12 }}
-      >
-        Existing Enterprise — {benefName}
-      </Text>
-
-      <ScrollView nestedScrollEnabled>
-        {formSections.map((section) => (
-          <View key={section.key} style={styles.sectionContainer}>
-            <TouchableOpacity
-              onPress={() => toggleSection(section.key)}
-              style={styles.sectionHeader}
-            >
-              <Text style={styles.sectionTitle}>{section.title}</Text>
-              <Text style={styles.sectionToggle}>
-                {openSections[section.key] ? '−' : '+'}
-              </Text>
-            </TouchableOpacity>
-
-            {openSections[section.key] && (
-              <View style={styles.sectionBody}>
-                {section.fields.map((fieldKey) => renderField(fieldKey))}
-              </View>
-            )}
-          </View>
-        ))}
-
-        <TouchableOpacity
-          style={styles.submitButton}
-          onPress={handleSubmit}
-          disabled={loading || uploading}
-        >
-          {loading || uploading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitText}>
-              Save Existing Enterprise
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+      {formSections.map((section) => (
+        <View key={section.key} style={{ marginBottom: 24 }}>
+          <TouchableOpacity
+            onPress={() => toggleSection(section.key)}
+            style={styles.sectionHeader}
+          >
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <Text style={styles.sectionToggle}>
+              {openSections[section.key] ? '▼' : '►'}
             </Text>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
+          </TouchableOpacity>
+          {openSections[section.key] &&
+            section.fields.map((fieldKey) => renderField(fieldKey))}
+        </View>
+      ))}
+      <TouchableOpacity
+        style={styles.submitBtn}
+        onPress={() => Alert.alert('Submit pressed')}
+      >
+        <Text style={styles.submitBtnText}>Submit Form</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  dropdown: {
-    borderWidth: 2,
-    borderColor: '#EE6969',
-    borderRadius: 6,
+  container: { flex: 1, padding: 14, backgroundColor: '#fff' },
+  label: {
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: '#333',
   },
   helpText: {
     fontSize: 12,
     color: '#666',
-    marginTop: 4,
     marginBottom: 4,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#EE6969',
-    padding: 10,
+    borderColor: '#ccc',
     borderRadius: 6,
-    marginBottom: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 15,
     backgroundColor: '#fff',
   },
-  label: {
-    fontWeight: '600',
-    marginBottom: 6,
-    textTransform: 'capitalize',
+  dropdown: {
+    height: 44,
+    borderRadius: 6,
+    backgroundColor: '#fff',
   },
   smallBtn: {
-    backgroundColor: '#EEE',
-    padding: 8,
-    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: '#eee',
+    borderRadius: 22,
+    minWidth: 80,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-    minWidth: 70,
   },
-  smallBtnText: { color: '#333', fontWeight: '600' },
-  submitButton: {
-    backgroundColor: '#EE6969',
-    padding: 14,
-    borderRadius: 6,
-    marginTop: 12,
-    alignItems: 'center',
-    marginBottom: 30,
+  smallBtnText: {
+    color: '#333',
+    fontWeight: '600',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 4,
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  sectionToggle: {
+    fontWeight: '700',
+    fontSize: 18,
   },
   loanEntryContainer: {
     borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 6,
+    borderColor: '#ddd',
+    borderRadius: 8,
     padding: 10,
-    marginVertical: 10,
-    backgroundColor: '#FCFBF4',
-  },
-  addBtn: {
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 12,
+    marginVertical: 5,
   },
   deleteBtn: {
     backgroundColor: '#EE6969',
-    marginTop: 8,
     borderRadius: 6,
-    paddingVertical: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  addBtn: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  submitBtn: {
+    backgroundColor: '#EE6969',
+    paddingVertical: 14,
+    marginVertical: 12,
+    borderRadius: 6,
     alignItems: 'center',
   },
-  submitText: { color: '#fff', fontWeight: '600' },
+  submitBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+  },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: '#0009',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
+    width: '75%',
     backgroundColor: '#fff',
-    borderRadius: 12,
-    minWidth: 250,
-    paddingBottom: 15,
-    paddingTop: 10,
+    borderRadius: 10,
+    padding: 16,
   },
-  cancelBtn: { padding: 10, alignItems: 'center', marginTop: 8 },
-
-  // Sections
-  sectionContainer: {
-    borderWidth: 1,
-    borderColor: '#f0c5c5',
-    borderRadius: 8,
-    marginBottom: 12,
-    overflow: 'hidden',
+  cancelBtn: {
+    marginTop: 12,
+    alignSelf: 'center',
   },
-  sectionHeader: {
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    backgroundColor: '#FFEAEA',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontWeight: '700',
-    fontSize: 14,
-    color: '#AA2E2E',
-  },
-  sectionToggle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#AA2E2E',
-  },
-  sectionBody: {
-    padding: 8,
-    backgroundColor: '#FFF',
-  },
-
-  // Media thumbnails
   thumbWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginRight: 8,
     position: 'relative',
+    marginRight: 10,
   },
   thumb: {
-    width: '100%',
-    height: '100%',
+    width: 70,
+    height: 70,
+    borderRadius: 6,
   },
   thumbRemove: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    alignItems: 'center',
+    right: -6,
+    top: -6,
+    backgroundColor: '#EB5757',
+    width: 18,
+    height: 18,
+    borderRadius: 18,
     justifyContent: 'center',
+    alignItems: 'center',
   },
 });
