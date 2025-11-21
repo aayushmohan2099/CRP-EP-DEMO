@@ -1,5 +1,5 @@
 // src/screens/epsakhi/CRPViewRecordedProduction.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,120 @@ import LoaderModal from '../LoaderModal';
 import BackButton from '../../components/BackButton';
 import SearchBar from '../SearchBar';
 
+// --- API base + headers (same as gsApi constants) ---
+const API_BASE_URL = 'http://66.116.207.88:8088';
+const BASE_HEADERS = {
+  'Content-Type': 'application/json',
+  'X-API-ID': 'TH_EPS.BDOuser_test.co.in',
+  'X-API-KEY': 'wFR8IpSeNMawCF4RPLXit1POGuQAJTSmRexBBOwO',
+};
+
+function buildAuthHeaders() {
+  const headers = { ...BASE_HEADERS };
+  try {
+    if (typeof gsApi.getAuthToken === 'function') {
+      const token = gsApi.getAuthToken();
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to get auth token from gsApi', e);
+  }
+  return headers;
+}
+
+// Generic DELETE helper used here only (does NOT touch gsApi)
+async function deleteResource(path) {
+  const url =
+    API_BASE_URL + (path.startsWith('/') ? path : `/${path}`);
+  const headers = buildAuthHeaders();
+
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers,
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    let data = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch (e) {
+      data = text || null;
+    }
+    throw { status: res.status, data };
+  }
+}
+
+// Helper: RecordedBenef primary key
+function getRecordedBenefId(row) {
+  if (!row) return null;
+  return (
+    row.TH_urid ||
+    row.TH_URID ||
+    row.id ||
+    row.recorded_benef_id ||
+    null
+  );
+}
+
+// Helper: Enterprise primary key from enterprise object
+function getEnterprisePk(enterprise) {
+  if (!enterprise) return null;
+  return (
+    enterprise.TH_urid ||
+    enterprise.TH_URID ||
+    enterprise.id ||
+    null
+  );
+}
+
+// Helper: key generation for FlatList items
+function getRowKey(row, fallbackIndex, prefix = '') {
+  const core =
+    row.lokos_member_code
+      ? String(row.lokos_member_code)
+      : row.member_code
+      ? String(row.member_code)
+      : String(fallbackIndex);
+  return prefix ? `${prefix}-${core}` : core;
+}
+
+// Extract array from possible API shapes
+function extractResultsArray(data) {
+  if (!data) return [];
+  if (Array.isArray(data.results)) return data.results;
+  if (Array.isArray(data.data)) return data.data;
+  if (Array.isArray(data)) return data;
+  return [];
+}
+
+// Find a record whose ID actually matches the enterpriseId
+function findBestEnterpriseMatch(arr, enterpriseId) {
+  if (!arr.length || !enterpriseId) return null;
+  const target = String(enterpriseId);
+
+  for (const rec of arr) {
+    const candidates = [
+      rec.TH_urid,
+      rec.TH_URID,
+      rec.enterprise_id,
+      rec.enterpriseid,
+      rec.enterprise_ID,
+    ]
+      .filter((v) => v !== null && v !== undefined)
+      .map((v) => String(v));
+
+    if (candidates.includes(target)) {
+      return rec;
+    }
+  }
+
+  // IMPORTANT: NO FALLBACK – if nothing strictly matches, treat as no enterprise
+  return null;
+}
+
 export default function CRPViewRecordedProduction({ navigation }) {
   const [loading, setLoading] = useState(false);
 
@@ -36,8 +150,18 @@ export default function CRPViewRecordedProduction({ navigation }) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailRecordedRow, setDetailRecordedRow] = useState(null);
   const [detailEnterprise, setDetailEnterprise] = useState(null);
-  const [detailEnterpriseType, setDetailEnterpriseType] = useState(null);
+  const [detailEnterpriseType, setDetailEnterpriseType] = useState(null); // 'existing' | 'new' | null
 
+  // Cache: enterprise info by enterprise_id
+  // { [enterprise_id]: { type: 'existing'|'new'|null, enterprise: object|null } }
+  const [enterpriseInfoById, setEnterpriseInfoById] = useState({});
+
+  // Progress for arranging beneficiaries
+  const [classifying, setClassifying] = useState(false);
+  const [classifyTotal, setClassifyTotal] = useState(0);
+  const [classifyDone, setClassifyDone] = useState(0);
+
+  // Initial data load
   useEffect(() => {
     const gps = getCrpPanchayats() || [];
     setPanchayats(gps);
@@ -46,6 +170,7 @@ export default function CRPViewRecordedProduction({ navigation }) {
     setRecordedList(recorded);
   }, []);
 
+  // Load villages for a selected Panchayat
   const loadVillagesForPanchayat = async (panchayatId) => {
     if (!panchayatId) return;
     if (villagesByPanchayat[panchayatId]) return; // already loaded
@@ -83,42 +208,161 @@ export default function CRPViewRecordedProduction({ navigation }) {
       ? villagesByPanchayat[selectedPanchayatId]
       : [];
 
+  // --- Helper: fetch enterprise form (existing AND new) by enterprise_id ---
+  async function fetchEnterpriseForId(enterpriseId) {
+    if (!enterpriseId) {
+      return { type: null, enterprise: null };
+    }
+
+    // use cache if already resolved
+    const cached = enterpriseInfoById[enterpriseId];
+    if (cached && (cached.type || cached.enterprise)) {
+      return cached;
+    }
+
+    const headers = buildAuthHeaders();
+    const enc = encodeURIComponent(enterpriseId);
+
+    let existingMatch = null;
+    let newMatch = null;
+
+    // 1. Try Existing Enterprise
+    try {
+      const urlExisting = `${API_BASE_URL}/api/v1/existing-enterprise/?search=${enc}`;
+      const res = await fetch(urlExisting, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        const arr = extractResultsArray(data);
+        existingMatch = findBestEnterpriseMatch(arr, enterpriseId);
+      }
+    } catch (e) {
+      console.error('Existing enterprise search failed', e);
+    }
+
+    // 2. Try New Enterprise
+    try {
+      const urlNew = `${API_BASE_URL}/api/v1/new-enterprise/?search=${enc}`;
+      const resNew = await fetch(urlNew, { headers });
+      if (resNew.ok) {
+        const dataNew = await resNew.json();
+        const arrNew = extractResultsArray(dataNew);
+        newMatch = findBestEnterpriseMatch(arrNew, enterpriseId);
+      }
+    } catch (e) {
+      console.error('New enterprise search failed', e);
+    }
+
+    let info = { type: null, enterprise: null };
+
+    if (existingMatch && !newMatch) {
+      info = { type: 'existing', enterprise: existingMatch };
+    } else if (!existingMatch && newMatch) {
+      info = { type: 'new', enterprise: newMatch };
+    } else if (existingMatch && newMatch) {
+      // very unlikely, but if both match, prefer existing
+      info = { type: 'existing', enterprise: existingMatch };
+    }
+
+    // Update cache
+    setEnterpriseInfoById((prev) => {
+      const prevVal = prev[enterpriseId];
+      if (prevVal && prevVal.enterprise) {
+        return prev; // don't override richer cached info
+      }
+      return { ...prev, [enterpriseId]: info };
+    });
+
+    return info;
+  }
+
+  // Resolve ALL enterprise_ids when recordedList changes (with progress)
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const ids = Array.from(
+          new Set(
+            (recordedList || [])
+              .map((r) => r.enterprise_id)
+              .filter(
+                (id) => id !== null && id !== undefined && id !== ''
+              )
+          )
+        );
+
+        if (!ids.length) {
+          setClassifying(false);
+          setClassifyTotal(0);
+          setClassifyDone(0);
+          return;
+        }
+
+        setClassifying(true);
+        setClassifyTotal(ids.length);
+        setClassifyDone(0);
+
+        for (let i = 0; i < ids.length; i++) {
+          const id = ids[i];
+          await fetchEnterpriseForId(id);
+          setClassifyDone(i + 1);
+        }
+
+        setClassifying(false);
+      } catch (e) {
+        console.error('Error while arranging beneficiaries by enterprise_id', e);
+        setClassifying(false);
+      }
+    };
+
+    if (recordedList && recordedList.length) {
+      run();
+    } else {
+      setClassifying(false);
+      setClassifyTotal(0);
+      setClassifyDone(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recordedList]);
+
   // --- Filtering logic ---
-  const filteredBeneficiaries = recordedList.filter((row) => {
-    // Filter by Panchayat
-    if (
-      selectedPanchayatId &&
-      String(row.panchayat_id) !== String(selectedPanchayatId)
-    ) {
-      return false;
-    }
+  const filteredBeneficiaries = useMemo(
+    () =>
+      recordedList.filter((row) => {
+        // Filter by Panchayat
+        if (
+          selectedPanchayatId &&
+          String(row.panchayat_id) !== String(selectedPanchayatId)
+        ) {
+          return false;
+        }
 
-    // Filter by Village
-    if (
-      selectedVillageId &&
-      String(row.village_id) !== String(selectedVillageId)
-    ) {
-      return false;
-    }
+        // Filter by Village
+        if (
+          selectedVillageId &&
+          String(row.village_id) !== String(selectedVillageId)
+        ) {
+          return false;
+        }
 
-    // Text search filter (name, member code, phone)
-    const q = searchText.trim().toLowerCase();
-    if (!q) return true;
+        // Text search filter (name, member code, phone)
+        const q = searchText.trim().toLowerCase();
+        if (!q) return true;
 
-    const fieldsToSearch = [
-      row.applicant_name,
-      row.member_name,
-      row.lokos_member_name,
-      row.lokos_member_code,
-      row.member_code,
-      row.mobile,
-      row.phone,
-    ]
-      .filter((v) => v !== undefined && v !== null)
-      .map((v) => String(v).toLowerCase());
+        const fieldsToSearch = [
+          row.applicant_name,
+          row.member_name,
+          row.lokos_member_name,
+          row.lokos_member_code,
+          row.member_code,
+          row.mobile,
+          row.phone,
+        ]
+          .filter((v) => v !== undefined && v !== null)
+          .map((v) => String(v).toLowerCase());
 
-    return fieldsToSearch.some((f) => f.includes(q));
-  });
+        return fieldsToSearch.some((f) => f.includes(q));
+      }),
+    [recordedList, selectedPanchayatId, selectedVillageId, searchText]
+  );
 
   // --- Detail modal ---
 
@@ -128,21 +372,26 @@ export default function CRPViewRecordedProduction({ navigation }) {
     setDetailEnterpriseType(null);
     setDetailVisible(true);
 
-    const memberCode = row.lokos_member_code || row.member_code || null;
-    if (!memberCode) {
-      return; // we still show Recorded row; no enterprise detail
+    const enterpriseId = row.enterprise_id;
+    if (!enterpriseId) {
+      // Beneficiary not interested / no enterprise form
+      return;
     }
 
     try {
       setDetailLoading(true);
-      const detail = await gsApi.getEpsakhiDetailByMember(memberCode);
-      const enterprise = detail?.enterprise || null;
-      const enterpriseType = detail?.enterprise_type || null;
+      const info = await fetchEnterpriseForId(enterpriseId);
+      setDetailEnterprise(info.enterprise || null);
+      setDetailEnterpriseType(info.type || null);
 
-      setDetailEnterprise(enterprise);
-      setDetailEnterpriseType(enterpriseType);
+      if (!info.enterprise) {
+        Alert.alert(
+          'Info',
+          'No enterprise form data found for this beneficiary, or it has not been submitted yet.'
+        );
+      }
     } catch (err) {
-      console.error('Failed to load EPSakhi detail', err);
+      console.error('Failed to load enterprise detail by enterprise_id', err);
       Alert.alert(
         'Info',
         'Unable to load enterprise details for this beneficiary.'
@@ -164,7 +413,6 @@ export default function CRPViewRecordedProduction({ navigation }) {
     if (!obj) return null;
     const entries = Object.entries(obj).filter(([key, value]) => {
       if (value === null || value === undefined || value === '') return false;
-      // hide very technical keys if you want
       if (key === 'password') return false;
       return true;
     });
@@ -186,7 +434,129 @@ export default function CRPViewRecordedProduction({ navigation }) {
     );
   };
 
-  const renderItem = ({ item }) => {
+  // --- Edit / Delete actions ---
+
+  const handleDeleteSubmission = () => {
+    if (!detailRecordedRow) {
+      Alert.alert('Error', 'No recorded beneficiary selected.');
+      return;
+    }
+
+    const enterprisePk = getEnterprisePk(detailEnterprise);
+    const recordedId = getRecordedBenefId(detailRecordedRow);
+
+    if (!recordedId && !enterprisePk) {
+      Alert.alert(
+        'Error',
+        'Missing IDs for this submission. Cannot delete.'
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Confirm Delete',
+      'This will permanently delete the recorded beneficiary entry and any linked enterprise form (if present). Do you want to continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+
+              // 1) Delete enterprise row (existing or new), if present
+              if (enterprisePk && detailEnterpriseType) {
+                let entPath = null;
+                if (detailEnterpriseType === 'existing') {
+                  entPath = `/api/v1/existing-enterprise/${enterprisePk}/`;
+                } else if (detailEnterpriseType === 'new') {
+                  entPath = `/api/v1/new-enterprise/${enterprisePk}/`;
+                }
+
+                if (entPath) {
+                  try {
+                    await deleteResource(entPath);
+                  } catch (e) {
+                    console.error('Enterprise delete failed', e);
+                    // we still attempt to delete recordedBenef below
+                  }
+                }
+              }
+
+              // 2) Delete recorded-beneficiaries row
+              if (recordedId) {
+                await deleteResource(
+                  `/api/v1/recorded-beneficiaries/${recordedId}/`
+                );
+              }
+
+              // 3) Update local list
+              if (recordedId) {
+                setRecordedList((prev) =>
+                  prev.filter(
+                    (r) => getRecordedBenefId(r) !== recordedId
+                  )
+                );
+              }
+
+              closeDetail();
+              Alert.alert(
+                'Deleted',
+                'Submission deleted successfully.'
+              );
+            } catch (err) {
+              console.error('Delete submission error', err);
+              const msg =
+                err?.data?.detail ||
+                (err?.data &&
+                typeof err.data === 'object'
+                  ? JSON.stringify(err.data)
+                  : null) ||
+                'Failed to delete submission. Please try again.';
+              Alert.alert('Error', msg);
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleEditSubmission = () => {
+    if (!detailRecordedRow || !detailEnterprise || !detailEnterpriseType) {
+      Alert.alert(
+        'Info',
+        'Enterprise form is not available for editing for this beneficiary.'
+      );
+      return;
+    }
+
+    const type = detailEnterpriseType;
+
+    // Close modal before navigating
+    closeDetail();
+
+    if (type === 'existing') {
+      navigation.navigate('ExistingEnterpriseForm', {
+        recordedBenef: detailRecordedRow,
+        existingEnterprise: detailEnterprise,
+      });
+    } else if (type === 'new') {
+      navigation.navigate('NewEnterpriseForm', {
+        recordedBenef: detailRecordedRow,
+        newEnterprise: detailEnterprise,
+      });
+    } else {
+      Alert.alert(
+        'Info',
+        'Unknown enterprise type. Please open this beneficiary from the main flow to edit.'
+      );
+    }
+  };
+
+  const renderBeneficiaryItem = ({ item }) => {
     const name =
       item.applicant_name ||
       item.member_name ||
@@ -211,6 +581,83 @@ export default function CRPViewRecordedProduction({ navigation }) {
       </View>
     );
   };
+
+  // --- Build sectioned data for FlatList with headers ---
+  const sectionedData = useMemo(() => {
+    const existingItems = [];
+    const newItems = [];
+    const noneItems = [];
+
+    filteredBeneficiaries.forEach((row, idx) => {
+      const eid = row.enterprise_id;
+      if (!eid) {
+        // No enterprise_id => not interested
+        noneItems.push({ row, idx });
+        return;
+      }
+
+      const info = enterpriseInfoById[eid];
+      if (info?.type === 'existing') {
+        existingItems.push({ row, idx });
+      } else if (info?.type === 'new') {
+        newItems.push({ row, idx });
+      } else {
+        // Unknown / not resolved yet => treat temporarily as "not interested"
+        noneItems.push({ row, idx });
+      }
+    });
+
+    const data = [];
+
+    if (existingItems.length) {
+      data.push({
+        type: 'header',
+        key: 'header-existing',
+        title: 'Beneficiaries with Existing Enterprise',
+      });
+      existingItems.forEach(({ row, idx }) =>
+        data.push({
+          type: 'item',
+          key: getRowKey(row, idx, 'existing'),
+          row,
+        })
+      );
+    }
+
+    if (newItems.length) {
+      data.push({
+        type: 'header',
+        key: 'header-new',
+        title:
+          'Beneficiaries interested in opening New Enterprise',
+      });
+      newItems.forEach(({ row, idx }) =>
+        data.push({
+          type: 'item',
+          key: getRowKey(row, idx, 'new'),
+          row,
+        })
+      );
+    }
+
+    if (noneItems.length) {
+      data.push({
+        type: 'header',
+        key: 'header-none',
+        title:
+          'Beneficiaries not interested in opening Enterprise',
+      });
+      noneItems.forEach(({ row, idx }) =>
+        data.push({
+          type: 'item',
+          key: getRowKey(row, idx, 'none'),
+          row,
+        })
+      );
+    }
+
+    return data;
+  }, [filteredBeneficiaries, enterpriseInfoById]);
 
   return (
     <View style={styles.container}>
@@ -291,17 +738,30 @@ export default function CRPViewRecordedProduction({ navigation }) {
         </View>
       </View>
 
-      {/* List */}
+      {/* Classification progress (non-blocking) */}
+      {classifying && classifyTotal > 0 && (
+        <View style={styles.progressBar}>
+          <Text style={styles.progressText}>
+            Arranging beneficiaries ({classifyDone}/{classifyTotal})
+          </Text>
+        </View>
+      )}
+
+      {/* List with headers for 3 categories */}
       <FlatList
-        data={filteredBeneficiaries}
-        keyExtractor={(item, idx) =>
-          item.lokos_member_code
-            ? String(item.lokos_member_code)
-            : item.member_code
-            ? String(item.member_code)
-            : String(idx)
+        data={sectionedData}
+        keyExtractor={(item) => item.key}
+        renderItem={({ item }) =>
+          item.type === 'header' ? (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeaderText}>
+                {item.title}
+              </Text>
+            </View>
+          ) : (
+            renderBeneficiaryItem({ item: item.row })
+          )
         }
-        renderItem={renderItem}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
             No recorded beneficiaries found for the selected filters.
@@ -336,7 +796,13 @@ export default function CRPViewRecordedProduction({ navigation }) {
 
               {detailEnterprise ? (
                 renderKeyValueSection(
-                  `Enterprise Form (${detailEnterpriseType || 'Unknown Type'})`,
+                  `Enterprise Form (${
+                    detailEnterpriseType === 'existing'
+                      ? 'Existing Enterprise'
+                      : detailEnterpriseType === 'new'
+                      ? 'New Enterprise'
+                      : 'Unknown Type'
+                  })`,
                   detailEnterprise
                 )
               ) : (
@@ -351,6 +817,28 @@ export default function CRPViewRecordedProduction({ navigation }) {
             </ScrollView>
 
             <View style={styles.modalFooter}>
+              <View style={styles.modalFooterRow}>
+                {detailRecordedRow && (
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={handleDeleteSubmission}
+                  >
+                    <Text style={styles.deleteBtnText}>
+                      Delete Submission
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {detailEnterprise && detailEnterpriseType && (
+                  <TouchableOpacity
+                    style={styles.editBtn}
+                    onPress={handleEditSubmission}
+                  >
+                    <Text style={styles.editBtnText}>Edit Form</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
               <TouchableOpacity
                 style={styles.closeBtn}
                 onPress={closeDetail}
@@ -399,9 +887,35 @@ const styles = StyleSheet.create({
     borderColor: '#EE6969',
     borderRadius: 6,
     overflow: 'hidden',
+    minHeight: 48, // bigger for better visibility
+    justifyContent: 'center',
   },
   picker: {
-    height: 40,
+    height: 48, // taller picker so selected value is clearly visible
+  },
+  progressBar: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    marginBottom: 6,
+    backgroundColor: '#FFF4E5',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 11,
+    color: '#AA6B00',
+  },
+  sectionHeader: {
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    backgroundColor: '#F5F5F5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    marginTop: 10,
+  },
+  sectionHeaderText: {
+    fontWeight: '700',
+    fontSize: 13,
+    color: '#444',
   },
   listItem: {
     flexDirection: 'row',
@@ -482,13 +996,46 @@ const styles = StyleSheet.create({
     padding: 10,
     borderTopWidth: 1,
     borderTopColor: '#EEE',
-    alignItems: 'flex-end',
+  },
+  modalFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   closeBtn: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
     backgroundColor: '#EE6969',
+    alignSelf: 'flex-end',
   },
   closeBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  editBtn: {
+    flex: 1,
+    marginLeft: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: '#FF9F43',
+    alignItems: 'center',
+  },
+  editBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  deleteBtn: {
+    flex: 1,
+    marginRight: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: '#CC3333',
+    alignItems: 'center',
+  },
+  deleteBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
+  },
 });
