@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import gsApi from '../../api/gsApi';
 import {
@@ -22,9 +23,12 @@ import LoaderModal from '../LoaderModal';
 import BackButton from '../../components/BackButton';
 import SearchBar from '../SearchBar';
 
+const UI_PAGE_SIZE = 10;
+
 export default function CRPRecordFlowProduction({ navigation }) {
   const [step, setStep] = useState('gp');
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [panchayats, setPanchayats] = useState([]);
   const [villages, setVillages] = useState([]);
@@ -41,11 +45,135 @@ export default function CRPRecordFlowProduction({ navigation }) {
   const [query, setQuery] = useState('');
   const [benefQuery, setBenefQuery] = useState('');
 
-  // Keep logged user (so we can derive numeric id for created_by)
+  // UI pagination state (client-side)
+  const [pageGp, setPageGp] = useState(1);
+  const [pageVillage, setPageVillage] = useState(1);
+  const [pageShg, setPageShg] = useState(1);
+  const [pageBenef, setPageBenef] = useState(1);
+
+  // Keep logged user (so we can derive numeric id for created_by fallback)
   const [loggedUser, setLoggedUser] = useState(null);
 
   // RECORDED BENEFICIARIES STATE (kept in sync with server)
   const [recorded, setRecorded] = useState(getCrpRecordedBeneficiaries() || []);
+
+  // ---------- Helpers ----------
+
+  const paginate = (items, page) => {
+    const start = (page - 1) * UI_PAGE_SIZE;
+    return items.slice(start, start + UI_PAGE_SIZE);
+  };
+
+  const getPagingForStep = (filteredPanchayats, filteredVillages, filteredShgs, filteredBeneficiaries) => {
+    if (step === 'gp') {
+      const total = Math.max(1, Math.ceil(filteredPanchayats.length / UI_PAGE_SIZE));
+      const current = Math.min(pageGp, total);
+      return { currentPage: current, totalPages: total };
+    }
+    if (step === 'village') {
+      const total = Math.max(1, Math.ceil(filteredVillages.length / UI_PAGE_SIZE));
+      const current = Math.min(pageVillage, total);
+      return { currentPage: current, totalPages: total };
+    }
+    if (step === 'shg') {
+      const total = Math.max(1, Math.ceil(filteredShgs.length / UI_PAGE_SIZE));
+      const current = Math.min(pageShg, total);
+      return { currentPage: current, totalPages: total };
+    }
+    // beneficiaries
+    const total = Math.max(1, Math.ceil(filteredBeneficiaries.length / UI_PAGE_SIZE));
+    const current = Math.min(pageBenef, total);
+    return { currentPage: current, totalPages: total };
+  };
+
+  const makeVillageCacheKey = (panchayatId, villageId) =>
+    `${String(panchayatId || '')}::${String(villageId || '')}`;
+
+  // Calculate age helper
+  const calculateAge = (dobStr) => {
+    if (!dobStr) return null;
+    try {
+      const dob = new Date(dobStr);
+      if (Number.isNaN(dob.getTime())) return null;
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+      return age;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const filterRecordedCountForVillage = (villageId) =>
+    recorded.filter((r) => String(r.village_id) === String(villageId)).length;
+
+  const filterRecordedCountForShg = (shgCode) =>
+    recorded.filter((r) => String(r.lokos_shg_code) === String(shgCode)).length;
+
+  const buildRecordedPayloadFromMember = (member, shg) => {
+    const addresses = Array.isArray(member?.member_addresses) ? member.member_addresses : [];
+    const phones = Array.isArray(member?.member_phones) ? member.member_phones : [];
+
+    const primaryAddress = addresses[0] || {};
+    const primaryPhone = phones[0] || {};
+
+    let created_by_to_send = null;
+    const candidate =
+      loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? crpUserId;
+    if (candidate !== null && candidate !== undefined) {
+      if (typeof candidate === 'number') {
+        created_by_to_send = candidate;
+      } else if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
+        created_by_to_send = parseInt(candidate.trim(), 10);
+      }
+    }
+
+    const payload = {
+      enterprise_id: null, // explicitly null for NOT INTERESTED case, if/when used
+
+      lokos_member_code: member?.member_code ?? null,
+      applicant_name: member?.member_name ?? null,
+      age: calculateAge(member?.dob),
+      gender: member?.gender ?? null,
+      marital_status: member?.marital_status ?? null,
+      father_husband_name: member?.father_husband ?? null,
+      category: member?.social_category ?? null,
+      education: member?.education ?? null,
+
+      address: primaryAddress?.address_line1 ?? null,
+      district_id: primaryAddress?.district_id ?? null,
+      block_id: primaryAddress?.block_id ?? blockId ?? null,
+      panchayat_id:
+        primaryAddress?.panchayat_id ?? selectedPanchayat?.panchayat_id ?? null,
+      village_id: primaryAddress?.village_id ?? selectedVillage?.village_id ?? null,
+
+      mobile: primaryPhone?.phone_no ?? null,
+
+      lokos_shg_code: (shg?.code ?? member?.shg_code ?? selectedShg?.code) ?? null,
+    };
+
+    if (created_by_to_send !== null) {
+      payload.created_by = created_by_to_send;
+    }
+
+    return payload;
+  };
+
+  // Keep this helper for future use (e.g., in NoEnterpriseForm)
+  const findCreateApi = () =>
+    gsApi.createRecordedBeneficiary ||
+    gsApi.createRecordedBenef ||
+    gsApi.postRecordedBeneficiary ||
+    gsApi.createRecorded ||
+    gsApi.createRecordedBeneficiaries ||
+    (() => {
+      throw new Error('No createRecorded API found on gsApi');
+    });
+
+  // ---------- Initial load ----------
 
   useEffect(() => {
     const gps = getCrpPanchayats() || [];
@@ -54,7 +182,6 @@ export default function CRPRecordFlowProduction({ navigation }) {
     const detail = getCrpDetail();
     setBlockId(detail?.block_id || detail?.blockId || null);
 
-    // Try to derive a stable CRP user identifier for created_by fallback
     const derivedUserId =
       detail?.master_user_id ||
       detail?.masterUserId ||
@@ -65,7 +192,6 @@ export default function CRPRecordFlowProduction({ navigation }) {
       null;
     setCrpUserId(derivedUserId);
 
-    // load logged in user to get numeric PK for created_by and keep gsApi token in sync
     (async () => {
       try {
         const u = await getUser();
@@ -80,7 +206,6 @@ export default function CRPRecordFlowProduction({ navigation }) {
       }
     })();
 
-    // Refresh recorded beneficiaries for all CRP panchayats
     const panchayatIds = gps.map((p) => p.panchayat_id).filter(Boolean);
     if (panchayatIds.length) {
       (async () => {
@@ -98,7 +223,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
           try {
             setCrpRecordedBeneficiaries?.(recList);
           } catch (e) {
-            // ignore if setter not available
+            // ignore
           }
         } catch (err) {
           console.log('Error refreshing recorded beneficiaries', err);
@@ -107,11 +232,131 @@ export default function CRPRecordFlowProduction({ navigation }) {
     }
   }, []);
 
-  const filterRecordedCountForVillage = (villageId) =>
-    recorded.filter((r) => String(r.village_id) === String(villageId)).length;
+  // ---------- Fetch helpers (API) ----------
 
-  const filterRecordedCountForShg = (shgCode) =>
-    recorded.filter((r) => String(r.lokos_shg_code) === String(shgCode)).length;
+  // Fetch all villages for a panchayat (loop through backend pages if needed)
+  const fetchVillagesForPanchayat = async (panchayatId) => {
+    const all = [];
+    let page = 1;
+    while (true) {
+      try {
+        const res = await gsApi.getVillagesByPanchayat(panchayatId, {
+          page,
+          page_size: 10,
+        });
+        const rows = Array.isArray(res?.results)
+          ? res.results
+          : Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res)
+          ? res
+          : [];
+        if (!rows.length) break;
+        all.push(...rows);
+        page += 1;
+      } catch (err) {
+        if (err?.status === 404) break;
+        throw err;
+      }
+    }
+    return all;
+  };
+
+  // Fetch SHGs for a village: get block from village-detail, then call UPSRLM shg-list with village filter
+  const fetchShgsForVillage = async (p, v) => {
+    let vBlockId = v.block_id || v.blockId || null;
+
+    try {
+      if (!vBlockId) {
+        const detail = await gsApi.getVillageDetail(v.village_id);
+        vBlockId =
+          detail?.block_id ||
+          detail?.blockId ||
+          detail?.block?.block_id ||
+          detail?.block?.id ||
+          null;
+      }
+    } catch (err) {
+      console.log('Error fetching village detail for block_id', err);
+    }
+
+    if (!vBlockId) {
+      throw new Error('Unable to resolve block_id for selected village');
+    }
+
+    const cacheKey = makeVillageCacheKey(p.panchayat_id, v.village_id);
+    let cached = getShgListForPanchayat(cacheKey) || [];
+    if (cached.length) {
+      return cached;
+    }
+
+    const all = [];
+    let page = 1;
+
+    while (true) {
+      try {
+        const res = await gsApi.getUpsrlmShgList(vBlockId, {
+          village_id: v.village_id,
+          // only needed fields to speed up
+          fields: 'name,code,villageId,village_id,shg_code',
+          page,
+          page_size: 10,
+        });
+
+        const rows = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.results)
+          ? res.results
+          : Array.isArray(res)
+          ? res
+          : [];
+
+        if (!rows.length) break;
+        all.push(...rows);
+        page += 1;
+      } catch (err) {
+        if (err?.status === 404) break;
+        throw err;
+      }
+    }
+
+    try {
+      setShgListForPanchayat(cacheKey, all);
+    } catch (e) {
+      // ignore storage failure
+    }
+    return all;
+  };
+
+  // Fetch SHG members for a SHG (loop through pages)
+  const fetchMembersForShg = async (shgCode) => {
+    const all = [];
+    let page = 1;
+    while (true) {
+      try {
+        const res = await gsApi.getUpsrlmShgMembers(shgCode, {
+          page,
+          page_size: 10,
+        });
+        const rows = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.results)
+          ? res.results
+          : Array.isArray(res)
+          ? res
+          : [];
+        if (!rows.length) break;
+        all.push(...rows);
+        page += 1;
+      } catch (err) {
+        if (err?.status === 404) break;
+        throw err;
+      }
+    }
+    return all;
+  };
+
+  // ---------- Handlers for steps ----------
 
   const handleSelectPanchayat = async (p) => {
     if (!blockId) {
@@ -126,49 +371,15 @@ export default function CRPRecordFlowProduction({ navigation }) {
     setShgs([]);
     setBeneficiaries([]);
     setStep('village');
+    setPageVillage(1);
 
     try {
       setLoading(true);
-
-      // ---- 1) Fetch villages for this Panchayat ----
-      const resVillages = await gsApi.getVillagesByPanchayat(p.panchayat_id);
-      // DRF style: { count, next, previous, results: [...] }
-      const villagesRows = Array.isArray(resVillages?.results)
-        ? resVillages.results
-        : Array.isArray(resVillages?.data)
-        ? resVillages.data
-        : Array.isArray(resVillages)
-        ? resVillages
-        : [];
+      const villagesRows = await fetchVillagesForPanchayat(p.panchayat_id);
       setVillages(villagesRows);
-
-      // ---- 2) Fetch SHG list for this Panchayat (and cache by Panchayat) ----
-      let shgRows = getShgListForPanchayat(p.panchayat_id) || [];
-      if (!shgRows.length) {
-        const shgRes = await gsApi.getUpsrlmShgList(blockId, {
-          panchayat_id: p.panchayat_id,
-          page_size: 5000,
-        });
-
-        // UPSRLM list: { meta: {...}, data: [ {...}, ... ] }
-        shgRows = Array.isArray(shgRes?.data)
-          ? shgRes.data
-          : Array.isArray(shgRes?.results)
-          ? shgRes.results
-          : Array.isArray(shgRes)
-          ? shgRes
-          : [];
-
-        try {
-          setShgListForPanchayat(p.panchayat_id, shgRows);
-        } catch (e) {
-          // ignore if storage helper not available/writable
-        }
-      }
-      // We don't setShgs here; SHGs will be filtered by village in handleSelectVillage.
     } catch (err) {
       console.log('Error in handleSelectPanchayat', err);
-      Alert.alert('Error', 'Failed to fetch villages / SHGs for this Panchayat.');
+      Alert.alert('Error', 'Failed to fetch villages for this Panchayat.');
     } finally {
       setLoading(false);
     }
@@ -179,13 +390,19 @@ export default function CRPRecordFlowProduction({ navigation }) {
     setSelectedShg(null);
     setBeneficiaries([]);
     setStep('shg');
+    setPageShg(1);
 
     try {
-      // SHGs for this Panchayat are cached per panchayat
-      const allShgs = getShgListForPanchayat(selectedPanchayat?.panchayat_id) || [];
+      setLoading(true);
+      const cacheKey = makeVillageCacheKey(selectedPanchayat?.panchayat_id, v.village_id);
+      let shgRows = getShgListForPanchayat(cacheKey) || [];
 
-      // Filter SHGs by village (field names from UPSRLM API: villageId)
-      const shgsInVillage = allShgs.filter((s) => {
+      if (!shgRows.length) {
+        shgRows = await fetchShgsForVillage(selectedPanchayat, v);
+      }
+
+      // safety: keep only SHGs belonging to this village
+      const shgsInVillage = shgRows.filter((s) => {
         const shgVillage =
           s.villageId !== undefined && s.villageId !== null
             ? s.villageId
@@ -196,24 +413,20 @@ export default function CRPRecordFlowProduction({ navigation }) {
       setShgs(shgsInVillage);
     } catch (err) {
       console.log('Error in handleSelectVillage', err);
-      Alert.alert('Error', 'Failed to filter SHGs for this village.');
+      Alert.alert('Error', 'Failed to fetch SHGs for this village.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSelectShg = async (s) => {
     setSelectedShg(s);
     setStep('beneficiaries');
+    setPageBenef(1);
+
     try {
       setLoading(true);
-      const res = await gsApi.getUpsrlmShgMembers(s.code, { page_size: 500 });
-      // Members API: { meta: {...}, data: [ ... ] }
-      const rows = Array.isArray(res?.data)
-        ? res.data
-        : Array.isArray(res?.results)
-        ? res.results
-        : Array.isArray(res)
-        ? res
-        : [];
+      const rows = await fetchMembersForShg(s.code);
 
       const enriched = rows.map((m) => {
         const rec = recorded.find(
@@ -221,7 +434,12 @@ export default function CRPRecordFlowProduction({ navigation }) {
             String(r.lokos_member_code) === String(m.member_code) &&
             String(r.lokos_shg_code) === String(s.code)
         );
-        return { ...m, _isRecorded: !!rec, _recordRow: rec || null };
+
+        // NEW LOGIC:
+        // Recorded only if enterprise_id is present
+        const isRecorded = !!(rec && rec.enterprise_id);
+
+        return { ...m, _isRecorded: isRecorded, _recordRow: rec || null };
       });
       setBeneficiaries(enriched);
     } catch (err) {
@@ -231,6 +449,119 @@ export default function CRPRecordFlowProduction({ navigation }) {
       setLoading(false);
     }
   };
+
+  const handleBeneficiaryPress = async (row) => {
+    const hasExisting = row._isRecorded;
+
+    if (hasExisting) {
+      Alert.alert('Already Recorded', 'This beneficiary enterprise has already been recorded.');
+      return;
+    }
+
+    const name = row.member_name || 'the beneficiary';
+
+    Alert.alert(
+      `Does ${name} have an existing Enterprise?`,
+      '',
+      [
+        {
+          text: 'Yes',
+          onPress: () =>
+            navigation.navigate('ExistingEnterpriseForm', {
+              beneficiary: row,
+              recordedBenef: row._recordRow,
+              tempShg: selectedShg,
+              crpUserId,
+            }),
+        },
+        {
+          text: 'No',
+          onPress: () => {
+            Alert.alert(
+              `Is ${name} interested in opening a new Enterprise?`,
+              '',
+              [
+                {
+                  text: 'Yes',
+                  onPress: () =>
+                    navigation.navigate('NewEnterpriseForm', {
+                      beneficiary: row,
+                      recordedBenef: row._recordRow,
+                      tempShg: selectedShg,
+                      crpUserId,
+                    }),
+                },
+                {
+                  text: 'No',
+                  onPress: () =>
+                    navigation.navigate('NoEnterpriseForm', {
+                      beneficiary: row,
+                      recordedBenef: row._recordRow,
+                      tempShg: selectedShg,
+                      crpUserId,
+                      // you can also pass buildRecordedPayloadFromMember if needed
+                    }),
+                  style: 'default',
+                },
+              ],
+              { cancelable: true }
+            );
+          },
+          style: 'default',
+        },
+        {
+          text: 'Cancel',
+          onPress: () => {},
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  // ---------- Pull-to-refresh ----------
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (step === 'gp') {
+        // Reload recorded beneficiaries & keep panchayats from tempStore
+        const gps = getCrpPanchayats() || [];
+        setPanchayats(gps);
+        const panchayatIds = gps.map((p) => p.panchayat_id).filter(Boolean);
+        if (panchayatIds.length) {
+          try {
+            const res = await gsApi.getRecordedBeneficiaries({
+              panchayat_multi: panchayatIds.join(','),
+              page_size: 5000,
+            });
+            const recList = Array.isArray(res?.results)
+              ? res.results
+              : Array.isArray(res)
+              ? res
+              : [];
+            setRecorded(recList);
+            setCrpRecordedBeneficiaries?.(recList);
+          } catch (e) {
+            console.log('Error refreshing recorded beneficiaries on refresh', e);
+          }
+        }
+        setPageGp(1);
+      } else if (step === 'village' && selectedPanchayat) {
+        await handleSelectPanchayat(selectedPanchayat);
+      } else if (step === 'shg' && selectedVillage) {
+        await handleSelectVillage(selectedVillage);
+      } else if (step === 'beneficiaries' && selectedShg) {
+        await handleSelectShg(selectedShg);
+      }
+    } catch (e) {
+      console.log('Error in handleRefresh', e);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // ---------- Filters + paging ----------
 
   const filteredPanchayats = panchayats.filter((p) =>
     (p.panchayat_name_en || '').toLowerCase().includes(query.toLowerCase())
@@ -250,216 +581,32 @@ export default function CRPRecordFlowProduction({ navigation }) {
     (b.member_name || '').toLowerCase().includes(benefQuery.toLowerCase())
   );
 
-  // Helper - calculate age from dob string (ISO or YYYY-MM-DD). Returns integer or null
-  const calculateAge = (dobStr) => {
-    if (!dobStr) return null;
-    try {
-      const dob = new Date(dobStr);
-      if (isNaN(dob.getTime())) return null;
-      const today = new Date();
-      let age = today.getFullYear() - dob.getFullYear();
-      const m = today.getMonth() - dob.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-        age--;
-      }
-      return age;
-    } catch (e) {
-      return null;
-    }
+  const paging = getPagingForStep(
+    filteredPanchayats,
+    filteredVillages,
+    filteredShgs,
+    filteredBeneficiaries
+  );
+
+  const handlePrevPage = () => {
+    if (paging.currentPage <= 1) return;
+    if (step === 'gp') setPageGp((p) => Math.max(1, p - 1));
+    else if (step === 'village') setPageVillage((p) => Math.max(1, p - 1));
+    else if (step === 'shg') setPageShg((p) => Math.max(1, p - 1));
+    else setPageBenef((p) => Math.max(1, p - 1));
   };
 
-  // Helper - build record payload from a member row (includes created_by logic similar to NewEnterpriseForm)
-  const buildRecordedPayloadFromMember = (member, shg) => {
-    // addresses & phones may be arrays
-    const addresses = Array.isArray(member?.member_addresses) ? member.member_addresses : [];
-    const phones = Array.isArray(member?.member_phones) ? member.member_phones : [];
-
-    const primaryAddress = addresses[0] || {};
-    const primaryPhone = phones[0] || {};
-
-    // Determine created_by: prefer loggedUser numeric PK; fallback to crpUserId if numeric (like NewEnterpriseForm)
-    let created_by_to_send = null;
-    const candidate =
-      loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? crpUserId;
-    if (candidate !== null && candidate !== undefined) {
-      if (typeof candidate === 'number') {
-        created_by_to_send = candidate;
-      } else if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
-        created_by_to_send = parseInt(candidate.trim(), 10);
-      } else {
-        created_by_to_send = null;
-      }
-    }
-
-    const payload = {
-      // System fields
-      enterprise_id: null, // explicitly null as requested
-
-      // Lokos / member fields
-      lokos_member_code: member?.member_code ?? null,
-      applicant_name: member?.member_name ?? null,
-      age: calculateAge(member?.dob),
-      gender: member?.gender ?? null,
-      marital_status: member?.marital_status ?? null,
-      father_husband_name: member?.father_husband ?? null,
-      category: member?.social_category ?? null,
-      education: member?.education ?? null,
-
-      // Address fields (from first address object)
-      address: primaryAddress?.address_line1 ?? null,
-      district_id: primaryAddress?.district_id ?? null,
-      block_id: primaryAddress?.block_id ?? blockId ?? null,
-      panchayat_id: primaryAddress?.panchayat_id ?? selectedPanchayat?.panchayat_id ?? null,
-      village_id: primaryAddress?.village_id ?? selectedVillage?.village_id ?? null,
-
-      // Contact
-      mobile: primaryPhone?.phone_no ?? null,
-
-      // SHG code from selected SHG (fallback to member.shg_code if present)
-      lokos_shg_code: (shg?.code ?? member?.shg_code ?? selectedShg?.code) ?? null,
-    };
-
-    if (created_by_to_send !== null) {
-      payload.created_by = created_by_to_send;
-    }
-
-    return payload;
-  };
-
-  // Try different known names for create API on gsApi
-  const findCreateApi = () => {
-    return (
-      gsApi.createRecordedBeneficiary ||
-      gsApi.createRecordedBenef ||
-      gsApi.postRecordedBeneficiary ||
-      gsApi.createRecorded ||
-      gsApi.createRecordedBeneficiaries ||
-      (() => {
-        throw new Error('No createRecorded API found on gsApi');
-      })
+  const handleNextPage = () => {
+    if (paging.currentPage >= paging.totalPages) return;
+    if (step === 'gp') setPageGp((p) => Math.min(paging.totalPages, p + 1));
+    else if (step === 'village') setPageVillage((p) =>
+      Math.min(paging.totalPages, p + 1)
     );
+    else if (step === 'shg') setPageShg((p) => Math.min(paging.totalPages, p + 1));
+    else setPageBenef((p) => Math.min(paging.totalPages, p + 1));
   };
 
-  // Create recorded beneficiary on server and update local cache/state
-  const createRecordedForNonInterested = async (member) => {
-    setLoading(true);
-    const payload = buildRecordedPayloadFromMember(member, selectedShg);
-
-    try {
-      const createFn = findCreateApi();
-      let res;
-      res = await createFn(payload);
-
-      // Normalize response into created row. If API returns the created object, use it; otherwise, create a local object.
-      const createdRow =
-        res && typeof res === 'object' && (res.id || res.lokos_member_code)
-          ? res
-          : {
-              id: null,
-              ...payload,
-            };
-
-      // Keep local flags similar to others: mark _isRecorded true and store _recordRow reference
-      const finalRow = { ...createdRow, _isRecorded: true, _recordRow: createdRow };
-
-      // update recorded state & cache
-      const updated = [...recorded, finalRow];
-      setRecorded(updated);
-      try {
-        setCrpRecordedBeneficiaries?.(updated);
-      } catch (e) {
-        // ignore if setter not available
-      }
-
-      // Also update the beneficiaries listing in memory (so UI shows 'Recorded')
-      const updatedBeneficiaries = beneficiaries.map((b) =>
-        String(b.member_code) === String(member.member_code) &&
-        String((selectedShg?.code ?? b.shg_code ?? '') ?? '') ===
-          String((selectedShg?.code ?? '') ?? '')
-          ? { ...b, _isRecorded: true, _recordRow: finalRow }
-          : b
-      );
-      setBeneficiaries(updatedBeneficiaries);
-
-      Alert.alert('Recorded', 'Beneficiary marked as NOT INTERESTED and saved (enterprise_id = NULL).');
-    } catch (err) {
-      console.log('Error creating recorded beneficiary', err);
-      Alert.alert('Error', 'Failed to save record for this beneficiary. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBeneficiaryPress = async (row) => {
-    const hasExisting = row._isRecorded;
-
-    // If already recorded, do NOT open any form
-    if (hasExisting) {
-      Alert.alert('Already Recorded', 'This beneficiary enterprise has already been recorded.');
-      return;
-    }
-
-    const name = row.member_name || 'the beneficiary';
-
-    // Step 1: Ask whether the beneficiary already has an existing enterprise
-    Alert.alert(
-      `Does ${name} have an existing Enterprise?`,
-      '',
-      [
-        {
-          text: 'Yes',
-          onPress: () =>
-            navigation.navigate('ExistingEnterpriseForm', {
-              beneficiary: row,
-              recordedBenef: row._recordRow, // may be null
-              tempShg: selectedShg, // for lokos_shg_code / fallback
-              crpUserId, // for created_by in RecordedBenef
-            }),
-        },
-        {
-          text: 'No',
-          onPress: () => {
-            // Step 2: Ask if interested in opening a new enterprise
-            Alert.alert(
-              `Is ${name} interested in opening a new Enterprise?`,
-              '',
-              [
-                {
-                  text: 'Yes',
-                  onPress: () =>
-                    navigation.navigate('NewEnterpriseForm', {
-                      beneficiary: row,
-                      recordedBenef: row._recordRow,
-                      tempShg: selectedShg,
-                      crpUserId,
-                    }),
-                },
-                {
-                  text: 'No',
-                  onPress: async () => {
-                    // Create a recordBenef row with NULL enterprise_id (as requested)
-                    await createRecordedForNonInterested(row);
-
-                    // Ensure UI stays on beneficiaries list
-                    setStep('beneficiaries');
-                  },
-                  style: 'default',
-                },
-              ],
-              { cancelable: true }
-            );
-          },
-          style: 'default',
-        },
-        {
-          text: 'Cancel',
-          onPress: () => {},
-          style: 'cancel',
-        },
-      ],
-      { cancelable: true }
-    );
-  };
+  // ---------- UI helpers ----------
 
   const getTitle = () =>
     step === 'gp'
@@ -470,7 +617,6 @@ export default function CRPRecordFlowProduction({ navigation }) {
       ? 'Select SHG'
       : 'Select Beneficiary';
 
-  // Back button logic per step
   const handleStepBack = () => {
     if (step === 'gp') {
       navigation.goBack();
@@ -482,122 +628,151 @@ export default function CRPRecordFlowProduction({ navigation }) {
       setVillages([]);
       setShgs([]);
       setBeneficiaries([]);
+      setPageVillage(1);
+      setPageGp(1);
     } else if (step === 'shg') {
       setStep('village');
       setSelectedShg(null);
       setBeneficiaries([]);
+      setPageShg(1);
     } else if (step === 'beneficiaries') {
       setStep('shg');
       setBeneficiaries([]);
+      setPageBenef(1);
     }
   };
 
   const renderList = () => {
-    switch (step) {
-      case 'gp':
-        return (
-          <FlatList
-            data={filteredPanchayats}
-            keyExtractor={(item) => String(item.panchayat_id)}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.listItem}
-                onPress={() => handleSelectPanchayat(item)}
-              >
-                <Text style={styles.listText}>
-                  {item.panchayat_name_en || `Panchayat ${item.panchayat_id}`}
-                </Text>
-                <Text style={styles.metaText}>
-                  Recorded:{' '}
-                  {
-                    recorded.filter(
-                      (r) => String(r.panchayat_id) === String(item.panchayat_id)
-                    ).length
-                  }
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        );
-      case 'village':
-        return (
-          <FlatList
-            data={filteredVillages}
-            keyExtractor={(item) => String(item.village_id)}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.listItem}
-                onPress={() => handleSelectVillage(item)}
-              >
-                <Text style={styles.listText}>
-                  {item.village_name_english ||
-                    item.village_name ||
-                    `Village ${item.village_id}`}
-                </Text>
-                <Text style={styles.metaText}>
-                  Recorded: {filterRecordedCountForVillage(item.village_id)}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        );
-      case 'shg':
-        return (
-          <FlatList
-            data={filteredShgs}
-            keyExtractor={(item, idx) => item.code ?? String(idx)}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.listItem}
-                onPress={() => handleSelectShg(item)}
-              >
-                <Text style={styles.listText}>
-                  {item.name || item.name_en || item.code}
-                </Text>
-                <Text style={styles.metaText}>
-                  Recorded: {filterRecordedCountForShg(item.code)}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        );
-      default:
-        return (
-          <FlatList
-            data={filteredBeneficiaries}
-            keyExtractor={(item, idx) => item.member_code ?? String(idx)}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.listItem}
-                onPress={() => handleBeneficiaryPress(item)}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.listText}>
-                    {item.member_name}
-                    {item._isRecorded ? ' (Recorded)' : ''}
-                  </Text>
-                  <Text style={styles.metaText}>Member Code: {item.member_code}</Text>
-                </View>
-                <Text
-                  style={[
-                    styles.statusBadge,
-                    item._isRecorded
-                      ? { backgroundColor: '#D4EDDA', color: '#155724' }
-                      : { backgroundColor: '#F8D7DA', color: '#721C24' },
-                  ]}
-                >
-                  {item._isRecorded ? 'Recorded' : 'Not Recorded'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        );
+    const { currentPage } = paging;
+
+    if (step === 'gp') {
+      const data = paginate(filteredPanchayats, currentPage);
+      return (
+        <FlatList
+          data={data}
+          keyExtractor={(item) => String(item.panchayat_id)}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.listItem}
+              onPress={() => handleSelectPanchayat(item)}
+            >
+              <Text style={styles.listText}>
+                {item.panchayat_name_en || `Panchayat ${item.panchayat_id}`}
+              </Text>
+              <Text style={styles.metaText}>
+                Recorded:{' '}
+                {
+                  recorded.filter(
+                    (r) => String(r.panchayat_id) === String(item.panchayat_id)
+                  ).length
+                }
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+      );
     }
+
+    if (step === 'village') {
+      const data = paginate(filteredVillages, currentPage);
+      return (
+        <FlatList
+          data={data}
+          keyExtractor={(item) => String(item.village_id)}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.listItem}
+              onPress={() => handleSelectVillage(item)}
+            >
+              <Text style={styles.listText}>
+                {item.village_name_english ||
+                  item.village_name ||
+                  `Village ${item.village_id}`}
+              </Text>
+              <Text style={styles.metaText}>
+                Recorded: {filterRecordedCountForVillage(item.village_id)}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+      );
+    }
+
+    if (step === 'shg') {
+      const data = paginate(filteredShgs, currentPage);
+      return (
+        <FlatList
+          data={data}
+          keyExtractor={(item, idx) => item.code ?? String(idx)}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.listItem}
+              onPress={() => handleSelectShg(item)}
+            >
+              <Text style={styles.listText}>
+                {item.name || item.name_en || item.code}
+              </Text>
+              <Text style={styles.metaText}>
+                Recorded: {filterRecordedCountForShg(item.code)}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+      );
+    }
+
+    // beneficiaries
+    const data = paginate(filteredBeneficiaries, currentPage);
+    return (
+      <FlatList
+        data={data}
+        keyExtractor={(item, idx) => item.member_code ?? String(idx)}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.listItem}
+            onPress={() => handleBeneficiaryPress(item)}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.listText}>
+                {item.member_name}
+                {item._isRecorded ? ' (Recorded)' : ''}
+              </Text>
+              <Text style={styles.metaText}>Member Code: {item.member_code}</Text>
+            </View>
+            <Text
+              style={[
+                styles.statusBadge,
+                item._isRecorded
+                  ? { backgroundColor: '#D4EDDA', color: '#155724' }
+                  : { backgroundColor: '#F8D7DA', color: '#721C24' },
+              ]}
+            >
+              {item._isRecorded ? 'Recorded' : 'Not Recorded'}
+            </Text>
+          </TouchableOpacity>
+        )}
+      />
+    );
   };
+
+  const { currentPage, totalPages } = paging;
 
   return (
     <View style={styles.container}>
       <LoaderModal visible={loading} message="Loading..." />
+
       <View style={styles.headerRow}>
         <BackButton onPress={handleStepBack} />
         <Text style={styles.headerTitle}>{getTitle()}</Text>
@@ -610,6 +785,35 @@ export default function CRPRecordFlowProduction({ navigation }) {
       />
 
       {renderList()}
+
+      {/* bottom pagination controls */}
+      <View style={styles.paginationRow}>
+        <TouchableOpacity
+          style={[
+            styles.pageButton,
+            currentPage <= 1 && styles.pageButtonDisabled,
+          ]}
+          onPress={handlePrevPage}
+          disabled={currentPage <= 1}
+        >
+          <Text style={styles.pageButtonText}>{'<'}</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.pageInfo}>
+          Page {currentPage} / {totalPages}
+        </Text>
+
+        <TouchableOpacity
+          style={[
+            styles.pageButton,
+            currentPage >= totalPages && styles.pageButtonDisabled,
+          ]}
+          onPress={handleNextPage}
+          disabled={currentPage >= totalPages}
+        >
+          <Text style={styles.pageButtonText}>{'>'}</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -636,5 +840,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
+  },
+  paginationRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  pageButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderRadius: 16,
+    borderColor: '#ccc',
+    marginHorizontal: 8,
+  },
+  pageButtonDisabled: {
+    opacity: 0.4,
+  },
+  pageButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  pageInfo: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

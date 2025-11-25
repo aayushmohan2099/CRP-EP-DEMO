@@ -239,13 +239,44 @@ export async function getPanchayatsByBlock(blockId, page = 1, search = '') {
   return request(`/api/v1/lookups/panchayats/${blockId}/?${qs.toString()}`);
 }
 
-export async function getVillagesByPanchayat(panchayatId, page = 1, search = '') {
+/**
+ * Backward compatible:
+ *   - old: getVillagesByPanchayat(panchayatId, page = 1, search = '')
+ *   - new: getVillagesByPanchayat(panchayatId, { page, page_size, search, ... })
+ */
+export async function getVillagesByPanchayat(panchayatId, pageOrOptions = 1, search = '') {
   const qs = new URLSearchParams();
-  qs.append('page', String(page));
-  if (search) qs.append('search', search);
+
+  // NEW: support both legacy (number, search)
+  // and new style: (panchayatId, { page, page_size, search })
+  if (typeof pageOrOptions === 'object' && pageOrOptions !== null) {
+    const { page = 1, page_size, search: s } = pageOrOptions;
+
+    qs.append('page', String(page));
+    if (page_size !== undefined && page_size !== null && page_size !== '') {
+      qs.append('page_size', String(page_size));
+    }
+    if (s) {
+      qs.append('search', s);
+    }
+  } else {
+    // backward compatible behavior
+    qs.append('page', String(pageOrOptions));
+    if (search) qs.append('search', search);
+  }
 
   return request(`/api/v1/lookups/villages/${panchayatId}/?${qs.toString()}`);
 }
+
+
+/**
+ * NEW: Village detail lookup (used to get block_id for a village)
+ * Endpoint: GET /api/v1/lookups/villages/detail/<village_id>/
+ */
+export async function getVillageDetail(villageId) {
+  return request(`/api/v1/lookups/villages/detail/${villageId}/`);
+}
+
 
 // ======================= EP SAKHI HELPERS =======================
 
@@ -415,6 +446,7 @@ const api = {
   getBlocksByDistrict,
   getPanchayatsByBlock,
   getVillagesByPanchayat,
+  getVillageDetail,
 
   // CRP helpers
   getCrpDetailByUserId,
