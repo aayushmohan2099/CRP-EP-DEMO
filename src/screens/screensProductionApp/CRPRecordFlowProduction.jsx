@@ -64,7 +64,12 @@ export default function CRPRecordFlowProduction({ navigation }) {
     return items.slice(start, start + UI_PAGE_SIZE);
   };
 
-  const getPagingForStep = (filteredPanchayats, filteredVillages, filteredShgs, filteredBeneficiaries) => {
+  const getPagingForStep = (
+    filteredPanchayats,
+    filteredVillages,
+    filteredShgs,
+    filteredBeneficiaries
+  ) => {
     if (step === 'gp') {
       const total = Math.max(1, Math.ceil(filteredPanchayats.length / UI_PAGE_SIZE));
       const current = Math.min(pageGp, total);
@@ -80,7 +85,6 @@ export default function CRPRecordFlowProduction({ navigation }) {
       const current = Math.min(pageShg, total);
       return { currentPage: current, totalPages: total };
     }
-    // beneficiaries
     const total = Math.max(1, Math.ceil(filteredBeneficiaries.length / UI_PAGE_SIZE));
     const current = Math.min(pageBenef, total);
     return { currentPage: current, totalPages: total };
@@ -114,7 +118,9 @@ export default function CRPRecordFlowProduction({ navigation }) {
     recorded.filter((r) => String(r.lokos_shg_code) === String(shgCode)).length;
 
   const buildRecordedPayloadFromMember = (member, shg) => {
-    const addresses = Array.isArray(member?.member_addresses) ? member.member_addresses : [];
+    const addresses = Array.isArray(member?.member_addresses)
+      ? member.member_addresses
+      : [];
     const phones = Array.isArray(member?.member_phones) ? member.member_phones : [];
 
     const primaryAddress = addresses[0] || {};
@@ -234,35 +240,30 @@ export default function CRPRecordFlowProduction({ navigation }) {
 
   // ---------- Fetch helpers (API) ----------
 
-  // Fetch all villages for a panchayat (loop through backend pages if needed)
+  // Fetch all villages for a panchayat – SINGLE backend call, large page_size
   const fetchVillagesForPanchayat = async (panchayatId) => {
-    const all = [];
-    let page = 1;
-    while (true) {
-      try {
-        const res = await gsApi.getVillagesByPanchayat(panchayatId, {
-          page,
-          page_size: 10,
-        });
-        const rows = Array.isArray(res?.results)
-          ? res.results
-          : Array.isArray(res?.data)
-          ? res.data
-          : Array.isArray(res)
-          ? res
-          : [];
-        if (!rows.length) break;
-        all.push(...rows);
-        page += 1;
-      } catch (err) {
-        if (err?.status === 404) break;
-        throw err;
+    try {
+      const res = await gsApi.getVillagesByPanchayat(panchayatId, {
+        page: 1,
+        page_size: 5000,
+      });
+      const rows = Array.isArray(res?.results)
+        ? res.results
+        : Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res)
+        ? res
+        : [];
+      return rows;
+    } catch (err) {
+      if (err?.status === 404) {
+        return [];
       }
+      throw err;
     }
-    return all;
   };
 
-  // Fetch SHGs for a village: get block from village-detail, then call UPSRLM shg-list with village filter
+  // Fetch SHGs for a village: resolve block_id (from village or detail), then one UPSRLM call
   const fetchShgsForVillage = async (p, v) => {
     let vBlockId = v.block_id || v.blockId || null;
 
@@ -284,55 +285,50 @@ export default function CRPRecordFlowProduction({ navigation }) {
       throw new Error('Unable to resolve block_id for selected village');
     }
 
-    const cacheKey = makeVillageCacheKey(p.panchayat_id, v.village_id);
+    const cacheKey = makeVillageCacheKey(p?.panchayat_id, v.village_id);
     let cached = getShgListForPanchayat(cacheKey) || [];
     if (cached.length) {
       return cached;
     }
 
-    const all = [];
-    let page = 1;
-
-    while (true) {
-      try {
-        const res = await gsApi.getUpsrlmShgList(vBlockId, {
-          village_id: v.village_id,
-          // only needed fields to speed up
-          fields: 'name,code,villageId,village_id,shg_code',
-          page,
-          page_size: 10,
-        });
-
-        const rows = Array.isArray(res?.data)
-          ? res.data
-          : Array.isArray(res?.results)
-          ? res.results
-          : Array.isArray(res)
-          ? res
-          : [];
-
-        if (!rows.length) break;
-        all.push(...rows);
-        page += 1;
-      } catch (err) {
-        if (err?.status === 404) break;
-        throw err;
-      }
-    }
-
     try {
-      setShgListForPanchayat(cacheKey, all);
-    } catch (e) {
-      // ignore storage failure
+      const res = await gsApi.getUpsrlmShgList(vBlockId, {
+        village_id: v.village_id,
+        // only needed fields to speed up
+        fields: 'name,code,villageId,village_id,shg_code',
+        page_size: 5000,
+      });
+
+      const rows = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.results)
+        ? res.results
+        : Array.isArray(res)
+        ? res
+        : [];
+
+      try {
+        setShgListForPanchayat(cacheKey, rows);
+      } catch (e) {
+        // ignore storage failure
+      }
+      return rows;
+    } catch (err) {
+      // if backend ever returns 404, just treat as empty list
+      if (err?.status === 404) {
+        return [];
+      }
+      throw err;
     }
-    return all;
   };
 
-  // Fetch SHG members for a SHG (loop through pages)
+  // Fetch SHG members for a SHG (keep paging loop; members count is manageable)
   const fetchMembersForShg = async (shgCode) => {
     const all = [];
     let page = 1;
-    while (true) {
+    const MAX_PAGES = 50; // hard safety cap
+
+    while (page <= MAX_PAGES) {
       try {
         const res = await gsApi.getUpsrlmShgMembers(shgCode, {
           page,
@@ -394,7 +390,10 @@ export default function CRPRecordFlowProduction({ navigation }) {
 
     try {
       setLoading(true);
-      const cacheKey = makeVillageCacheKey(selectedPanchayat?.panchayat_id, v.village_id);
+      const cacheKey = makeVillageCacheKey(
+        selectedPanchayat?.panchayat_id,
+        v.village_id
+      );
       let shgRows = getShgListForPanchayat(cacheKey) || [];
 
       if (!shgRows.length) {
@@ -435,7 +434,6 @@ export default function CRPRecordFlowProduction({ navigation }) {
             String(r.lokos_shg_code) === String(s.code)
         );
 
-        // NEW LOGIC:
         // Recorded only if enterprise_id is present
         const isRecorded = !!(rec && rec.enterprise_id);
 
@@ -499,7 +497,6 @@ export default function CRPRecordFlowProduction({ navigation }) {
                       recordedBenef: row._recordRow,
                       tempShg: selectedShg,
                       crpUserId,
-                      // you can also pass buildRecordedPayloadFromMember if needed
                     }),
                   style: 'default',
                 },
@@ -525,7 +522,6 @@ export default function CRPRecordFlowProduction({ navigation }) {
     setRefreshing(true);
     try {
       if (step === 'gp') {
-        // Reload recorded beneficiaries & keep panchayats from tempStore
         const gps = getCrpPanchayats() || [];
         setPanchayats(gps);
         const panchayatIds = gps.map((p) => p.panchayat_id).filter(Boolean);
@@ -599,9 +595,8 @@ export default function CRPRecordFlowProduction({ navigation }) {
   const handleNextPage = () => {
     if (paging.currentPage >= paging.totalPages) return;
     if (step === 'gp') setPageGp((p) => Math.min(paging.totalPages, p + 1));
-    else if (step === 'village') setPageVillage((p) =>
-      Math.min(paging.totalPages, p + 1)
-    );
+    else if (step === 'village')
+      setPageVillage((p) => Math.min(paging.totalPages, p + 1));
     else if (step === 'shg') setPageShg((p) => Math.min(paging.totalPages, p + 1));
     else setPageBenef((p) => Math.min(paging.totalPages, p + 1));
   };
@@ -730,7 +725,6 @@ export default function CRPRecordFlowProduction({ navigation }) {
       );
     }
 
-    // beneficiaries
     const data = paginate(filteredBeneficiaries, currentPage);
     return (
       <FlatList

@@ -199,6 +199,16 @@ async function requestMultipart(
   }
 }
 
+// helper for query params
+function buildQuery(params = {}) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
+  });
+  const str = qs.toString();
+  return str ? `?${str}` : '';
+}
+
 // ======================= AUTH =======================
 
 export async function login(username, password) {
@@ -244,13 +254,16 @@ export async function getPanchayatsByBlock(blockId, page = 1, search = '') {
  *   - old: getVillagesByPanchayat(panchayatId, page = 1, search = '')
  *   - new: getVillagesByPanchayat(panchayatId, { page, page_size, search, ... })
  */
-export async function getVillagesByPanchayat(panchayatId, pageOrOptions = 1, search = '') {
+export async function getVillagesByPanchayat(
+  panchayatId,
+  pageOrOptions = 1,
+  search = ''
+) {
   const qs = new URLSearchParams();
 
-  // NEW: support both legacy (number, search)
-  // and new style: (panchayatId, { page, page_size, search })
   if (typeof pageOrOptions === 'object' && pageOrOptions !== null) {
-    const { page = 1, page_size, search: s } = pageOrOptions;
+    // new style: second arg is an options object
+    const { page = 1, page_size, search: s, ...rest } = pageOrOptions;
 
     qs.append('page', String(page));
     if (page_size !== undefined && page_size !== null && page_size !== '') {
@@ -259,45 +272,70 @@ export async function getVillagesByPanchayat(panchayatId, pageOrOptions = 1, sea
     if (s) {
       qs.append('search', s);
     }
+    // forward any extra params
+    Object.entries(rest).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        qs.append(k, String(v));
+      }
+    });
   } else {
-    // backward compatible behavior
+    // old style: (panchayatId, page, search)
     qs.append('page', String(pageOrOptions));
     if (search) qs.append('search', search);
   }
 
-  return request(`/api/v1/lookups/villages/${panchayatId}/?${qs.toString()}`);
+  const query = qs.toString();
+  return request(
+    `/api/v1/lookups/villages/${panchayatId}/${query ? `?${query}` : ''}`
+  );
 }
 
-
 /**
- * NEW: Village detail lookup (used to get block_id for a village)
+ * Village detail lookup (used to get block_id for a village)
  * Endpoint: GET /api/v1/lookups/villages/detail/<village_id>/
  */
 export async function getVillageDetail(villageId) {
   return request(`/api/v1/lookups/villages/detail/${villageId}/`);
 }
 
-
 // ======================= EP SAKHI HELPERS =======================
+
+// CRP helper APIs
 
 export async function getCrpDetailByUserId(userId, fields = null) {
   const query = fields ? `?fields=${encodeURIComponent(fields)}` : '';
   return request(`/api/v1/crp-detail/id/${userId}/${query}`);
 }
 
-export async function getPanchayatsUnderCrpByUserId(userId) {
-  return request(`/api/v1/panchayats-under-crp/id/${userId}/`);
+export async function getCrpDetailByMember(memberCode, fields = null) {
+  const query = fields ? `?fields=${encodeURIComponent(fields)}` : '';
+  return request(`/api/v1/crp-detail/${memberCode}/${query}`);
 }
 
-export async function getRecordedBeneficiaries(params = {}) {
-  const qs = new URLSearchParams();
-  Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
-  });
+export async function getCrpListByClf(clfCode, params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/crp-list/${clfCode}/${query}`);
+}
 
-  return request(
-    `/api/v1/recorded-beneficiaries/${qs.toString() ? '?' + qs.toString() : ''}`
-  );
+export async function getPanchayatsUnderCrpByUserId(userId, params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/panchayats-under-crp/id/${userId}/${query}`);
+}
+
+export async function getPanchayatsUnderCrpByMember(memberCode, params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/panchayats-under-crp/${memberCode}/${query}`);
+}
+
+// Recorded beneficiaries (main)
+
+export async function getRecordedBeneficiaries(params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/recorded-beneficiaries/${query}`);
+}
+
+export async function getRecordedBeneficiaryDetail(id) {
+  return request(`/api/v1/recorded-beneficiaries/${id}/`);
 }
 
 export async function createRecordedBeneficiary(payload) {
@@ -307,48 +345,41 @@ export async function createRecordedBeneficiary(payload) {
   });
 }
 
-export async function getUpsrlmShgList(blockId, params = {}) {
-  const qs = new URLSearchParams();
-  Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
+export async function updateRecordedBeneficiary(id, payload) {
+  return request(`/api/v1/recorded-beneficiaries/${id}/`, {
+    method: 'PATCH',
+    body: payload,
   });
+}
 
-  return request(
-    `/api/v1/upsrlm-shg-list/${blockId}/${qs.toString() ? '?' + qs.toString() : ''}`
-  );
+export async function deleteRecordedBeneficiary(id) {
+  return request(`/api/v1/recorded-beneficiaries/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
+// UPSRLM proxy APIs
+
+export async function getUpsrlmShgList(blockId, params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/upsrlm-shg-list/${blockId}/${query}`);
 }
 
 export async function getUpsrlmShgMembers(shgCode, params = {}) {
-  const qs = new URLSearchParams();
-  Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
-  });
-
-  return request(
-    `/api/v1/upsrlm-shg-members/${shgCode}/${qs.toString() ? '?' + qs.toString() : ''}`
-  );
+  const query = buildQuery(params);
+  return request(`/api/v1/upsrlm-shg-members/${shgCode}/${query}`);
 }
 
-export async function getEpsakhiListByShg(shgCode, params = {}) {
-  const qs = new URLSearchParams();
-  Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
-  });
+// epSakhi helper APIs (beneficiary/enterprise combined detail)
 
-  return request(
-    `/api/v1/epsakhi-list/${shgCode}/${qs.toString() ? '?' + qs.toString() : ''}`
-  );
+export async function getEpsakhiListByShg(shgCode, params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/epsakhi-list/${shgCode}/${query}`);
 }
 
 export async function getEpsakhiDetailByMember(memberCode, params = {}) {
-  const qs = new URLSearchParams();
-  Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
-  });
-
-  return request(
-    `/api/v1/epsakhi-detail/${memberCode}/${qs.toString() ? '?' + qs.toString() : ''}`
-  );
+  const query = buildQuery(params);
+  return request(`/api/v1/epsakhi-detail/${memberCode}/${query}`);
 }
 
 // ======================= ENTERPRISE (MAIN) =======================
@@ -365,6 +396,15 @@ export async function updateExistingEnterprise(id, payload) {
     method: 'PATCH',
     body: payload,
   });
+}
+
+export async function getExistingEnterprise(id) {
+  return request(`/api/v1/existing-enterprise/${id}/`);
+}
+
+export async function getExistingEnterprises(params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/existing-enterprise/${query}`);
 }
 
 function isFormData(obj) {
@@ -397,14 +437,18 @@ export async function updateNewEnterprise(id, payload) {
   });
 }
 
-export async function updateRecordedBeneficiary(id, payload) {
-  return request(`/api/v1/recorded-beneficiaries/${id}/`, {
-    method: 'PATCH',
-    body: payload,
-  });
+export async function getNewEnterprise(id) {
+  return request(`/api/v1/new-enterprise/${id}/`);
+}
+
+export async function getNewEnterprises(params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/new-enterprise/${query}`);
 }
 
 // ======================= ENTERPRISE CHILD MODELS =======================
+
+// Loan details
 
 export async function createEnterpriseLoanDetail(payload) {
   return request('/api/v1/enterprise-loan-details/', {
@@ -413,12 +457,52 @@ export async function createEnterpriseLoanDetail(payload) {
   });
 }
 
+export async function updateEnterpriseLoanDetail(id, payload) {
+  return request(`/api/v1/enterprise-loan-details/${id}/`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export async function deleteEnterpriseLoanDetail(id) {
+  return request(`/api/v1/enterprise-loan-details/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getEnterpriseLoanDetails(params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/enterprise-loan-details/${query}`);
+}
+
+// Subsidy / support details
+
 export async function createEnterpriseSupportDetail(payload) {
   return request('/api/v1/enterprise-support-details/', {
     method: 'POST',
     body: payload,
   });
 }
+
+export async function updateEnterpriseSupportDetail(id, payload) {
+  return request(`/api/v1/enterprise-support-details/${id}/`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export async function deleteEnterpriseSupportDetail(id) {
+  return request(`/api/v1/enterprise-support-details/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getEnterpriseSupportDetails(params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/enterprise-support-details/${query}`);
+}
+
+// Training requirements (existing/new/no-enterprise, form_type = rec/req)
 
 export async function createEnterpriseTrainingReq(payload) {
   return request('/api/v1/enterprise-training-reqs/', {
@@ -427,6 +511,26 @@ export async function createEnterpriseTrainingReq(payload) {
   });
 }
 
+export async function updateEnterpriseTrainingReq(id, payload) {
+  return request(`/api/v1/enterprise-training-reqs/${id}/`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export async function deleteEnterpriseTrainingReq(id) {
+  return request(`/api/v1/enterprise-training-reqs/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getEnterpriseTrainingReqs(params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/enterprise-training-reqs/${query}`);
+}
+
+// Media (existing/new enterprise)
+
 export async function uploadEnterpriseMedia(formData) {
   return requestMultipart('/api/v1/enterprise-media/', {
     method: 'POST',
@@ -434,7 +538,138 @@ export async function uploadEnterpriseMedia(formData) {
   });
 }
 
+export async function updateEnterpriseMedia(id, formData) {
+  return requestMultipart(`/api/v1/enterprise-media/${id}/`, {
+    method: 'PATCH',
+    body: formData,
+  });
+}
+
+export async function deleteEnterpriseMedia(id) {
+  return request(`/api/v1/enterprise-media/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getEnterpriseMediaList(params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/enterprise-media/${query}`);
+}
+
+// Products
+
+export async function createEnterpriseProduct(payload) {
+  return request('/api/v1/enterprise-products/', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export async function updateEnterpriseProduct(id, payload) {
+  return request(`/api/v1/enterprise-products/${id}/`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export async function deleteEnterpriseProduct(id) {
+  return request(`/api/v1/enterprise-products/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getEnterpriseProducts(params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/enterprise-products/${query}`);
+}
+
+// Enterprise type/category (existing/new/no)
+
+export async function createEnterpriseType(payload) {
+  return request('/api/v1/enterprise-types/', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export async function updateEnterpriseType(id, payload) {
+  return request(`/api/v1/enterprise-types/${id}/`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export async function deleteEnterpriseType(id) {
+  return request(`/api/v1/enterprise-types/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getEnterpriseTypes(params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/enterprise-types/${query}`);
+}
+
+// ======================= NO-ENTERPRISE FLOWS =======================
+
+// NoEnterpriseForm (for not interested)
+
+export async function createNoEnterpriseForm(payload) {
+  return request('/api/v1/no-enterprise-forms/', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export async function updateNoEnterpriseForm(id, payload) {
+  return request(`/api/v1/no-enterprise-forms/${id}/`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export async function deleteNoEnterpriseForm(id) {
+  return request(`/api/v1/no-enterprise-forms/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getNoEnterpriseForms(params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/no-enterprise-forms/${query}`);
+}
+
+// NoEnterpriseWage (wage placement preferences)
+
+export async function createNoEnterpriseWage(payload) {
+  return request('/api/v1/no-enterprise-wages/', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export async function updateNoEnterpriseWage(id, payload) {
+  return request(`/api/v1/no-enterprise-wages/${id}/`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export async function deleteNoEnterpriseWage(id) {
+  return request(`/api/v1/no-enterprise-wages/${id}/`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getNoEnterpriseWages(params = {}) {
+  const query = buildQuery(params);
+  return request(`/api/v1/no-enterprise-wages/${query}`);
+}
+
+// ======================= EXPORT AGGREGATED API =======================
+
 const api = {
+  // auth
   login,
   setAuthToken,
   getAuthToken,
@@ -450,28 +685,79 @@ const api = {
 
   // CRP helpers
   getCrpDetailByUserId,
+  getCrpDetailByMember,
+  getCrpListByClf,
   getPanchayatsUnderCrpByUserId,
+  getPanchayatsUnderCrpByMember,
+
+  // UPSRLM + epSakhi helper
   getUpsrlmShgList,
   getUpsrlmShgMembers,
   getEpsakhiListByShg,
   getEpsakhiDetailByMember,
 
-  // enterprise
+  // recorded beneficiaries
+  getRecordedBeneficiaries,
+  getRecordedBeneficiaryDetail,
+  createRecordedBeneficiary,
+  updateRecordedBeneficiary,
+  deleteRecordedBeneficiary,
+
+  // enterprise main (existing / new)
   createExistingEnterprise,
   updateExistingEnterprise,
+  getExistingEnterprise,
+  getExistingEnterprises,
   createNewEnterprise,
   updateNewEnterprise,
+  getNewEnterprise,
+  getNewEnterprises,
 
-  // recorded benef
-  createRecordedBeneficiary,
-  getRecordedBeneficiaries,
-  updateRecordedBeneficiary,
-
-  // child models
+  // child models - loan
   createEnterpriseLoanDetail,
+  updateEnterpriseLoanDetail,
+  deleteEnterpriseLoanDetail,
+  getEnterpriseLoanDetails,
+
+  // child models - subsidy/support
   createEnterpriseSupportDetail,
+  updateEnterpriseSupportDetail,
+  deleteEnterpriseSupportDetail,
+  getEnterpriseSupportDetails,
+
+  // child models - training
   createEnterpriseTrainingReq,
+  updateEnterpriseTrainingReq,
+  deleteEnterpriseTrainingReq,
+  getEnterpriseTrainingReqs,
+
+  // child models - media
   uploadEnterpriseMedia,
+  updateEnterpriseMedia,
+  deleteEnterpriseMedia,
+  getEnterpriseMediaList,
+
+  // child models - products
+  createEnterpriseProduct,
+  updateEnterpriseProduct,
+  deleteEnterpriseProduct,
+  getEnterpriseProducts,
+
+  // child models - type/category
+  createEnterpriseType,
+  updateEnterpriseType,
+  deleteEnterpriseType,
+  getEnterpriseTypes,
+
+  // no-enterprise flows
+  createNoEnterpriseForm,
+  updateNoEnterpriseForm,
+  deleteNoEnterpriseForm,
+  getNoEnterpriseForms,
+  createNoEnterpriseWage,
+  updateNoEnterpriseWage,
+  deleteNoEnterpriseWage,
+  getNoEnterpriseWages,
 };
 
 export default api;
