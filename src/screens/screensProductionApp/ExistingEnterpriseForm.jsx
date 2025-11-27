@@ -1,4 +1,4 @@
-// src/screens/epsakhi/ExistingEnterpriseForm.jsx
+// src/screens/screensProductionApp/ExistingEnterpriseForm.jsx
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -11,6 +11,11 @@ import {
 } from 'react-native';
 import gsApi from '../../api/gsApi';
 import { getUser } from '../../utils/auth';
+import {
+  getShgListForPanchayat,
+  getCrpPanchayats,
+  getCrpDetail,
+} from '../../utils/tempStore';
 
 // Section components
 import ExistingEnterpriseBasicInfoSection from './FormSections/ExistingEnterpriseBasicInfoSection';
@@ -23,9 +28,50 @@ import ExistingEnterpriseSupportSection from './FormSections/ExistingEnterpriseS
 import ExistingEnterpriseMediaSection from './FormSections/ExistingEnterpriseMediaSection';
 import ExistingEnterpriseDeclarationSection from './FormSections/ExistingEnterpriseDeclarationSection';
 
+// ---- helpers (same style as NewEnterpriseForm) ----
+
+const computeAgeFromDob = (dobStr) => {
+  if (!dobStr) return null;
+  const dob = new Date(dobStr);
+  if (Number.isNaN(dob.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+    age -= 1;
+  }
+  return age;
+};
+
+function extractLocationFromShg(shg) {
+  if (!shg) return null;
+  const district_id = shg.districtId ?? shg.district_id ?? null;
+  const block_id = shg.blockId ?? shg.block_id ?? null;
+  const panchayat_id = shg.panchayatId ?? shg.panchayat_id ?? null;
+  const village_id = shg.villageId ?? shg.village_id ?? null;
+  const lokos_shg_code = shg.code ?? shg.shg_code ?? shg.lokos_shg_code ?? null;
+  return { district_id, block_id, panchayat_id, village_id, lokos_shg_code };
+}
+
 export default function ExistingEnterpriseForm({ route, navigation }) {
   const recordedBenef = route?.params?.recordedBenef || null;
   const existingEnterprise = route?.params?.existingEnterprise || null;
+
+  // extra params from CRPRecordFlowProduction (same as NewEnterpriseForm)
+  const beneficiary = route?.params?.beneficiary || null;
+  const tempShg = route?.params?.tempShg || null;
+  const routeCrpUserId =
+    route?.params?.crpUserId ||
+    route?.params?.user_id ||
+    route?.params?.username ||
+    null;
+
+  const lokosShgCode =
+    route?.params?.lokos_shg_code ||
+    route?.params?.lokosShgCode ||
+    tempShg?.code ||
+    tempShg?.shg_code ||
+    null;
 
   // --- master form state (single source of truth) ---
   const [existingForm, setExistingForm] = useState({
@@ -75,9 +121,9 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
 
     // TRAINING RECEIVED / REQUIRED (child table)
     is_training_received: '',
-    training_received_rows: [], // [{ department, sector_tree, certificates_files }]
+    training_received_rows: [], // [{ department, sector_tree, duration, location, expected_income }]
     is_training_required: '',
-    training_required_rows: [], // [{ department, sector_tree, duration, location, expected_income }]
+    training_required_rows: [], // same structure as above
     nearest_skill_centre: '',
     skill_centre_loc: '',
     nearest_industry: '',
@@ -111,6 +157,24 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
   const [loadingUser, setLoadingUser] = useState(true);
   const [loggedUser, setLoggedUser] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const updateForm = (patch) => {
+    setExistingForm((prev) => ({ ...prev, ...patch }));
+  };
+
+  const getCreatedByNumeric = () => {
+    const candidate =
+      loggedUser?.id ??
+      loggedUser?.user_id ??
+      loggedUser?.pk ??
+      routeCrpUserId;
+    if (candidate == null) return null;
+    if (typeof candidate === 'number') return candidate;
+    if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
+      return parseInt(candidate.trim(), 10);
+    }
+    return null;
+  };
 
   // Load logged user + set auth token
   useEffect(() => {
@@ -161,12 +225,181 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     }));
   }, [existingEnterprise]);
 
-  const updateForm = (patch) => {
-    setExistingForm((prev) => ({ ...prev, ...patch }));
+  // ---- Recorded beneficiary helpers (taken from NewEnterpriseForm logic) ----
+
+  const findShgAcrossCachedPanchayats = async (shgCode) => {
+    if (!shgCode) return null;
+    try {
+      if (tempShg && (tempShg.code === shgCode || tempShg.shg_code === shgCode)) {
+        return extractLocationFromShg(tempShg);
+      }
+      const gps = getCrpPanchayats ? getCrpPanchayats() || [] : [];
+      for (const gp of gps) {
+        const pid = gp?.panchayat_id || gp?.panchayatId;
+        if (!pid) continue;
+        const cached = getShgListForPanchayat(pid) || [];
+        const found = cached.find((s) => {
+          const code = s.code ?? s.shg_code ?? s.lokos_shg_code ?? s.code;
+          return String(code) === String(shgCode);
+        });
+        if (found) return extractLocationFromShg(found);
+      }
+      return null;
+    } catch (e) {
+      console.warn('findShgAcrossCachedPanchayats error', e);
+      return null;
+    }
+  };
+
+  const ensureRecordedBeneficiary = async () => {
+    // 1. already present via route / existing enterprise
+    let recordedBenefId =
+      recordedBenef?.TH_urid ||
+      recordedBenef?.TH_URID ||
+      recordedBenef?.id ||
+      existingEnterprise?.recorded_beneficiary ||
+      null;
+
+    if (recordedBenefId) return recordedBenefId;
+
+    // 2. need beneficiary info to create
+    if (!beneficiary) {
+      throw new Error(
+        'Beneficiary data is missing. Please open this form again from SHG member list.'
+      );
+    }
+
+    const addr =
+      Array.isArray(beneficiary.member_addresses) &&
+      beneficiary.member_addresses.length > 0
+        ? beneficiary.member_addresses[0]
+        : null;
+
+    const phone =
+      Array.isArray(beneficiary.member_phones) &&
+      beneficiary.member_phones.length > 0
+        ? beneficiary.member_phones[0]
+        : null;
+
+    const addressText =
+      (addr?.address_line1 && String(addr.address_line1).trim()) ||
+      (addr?.address_line2 && String(addr.address_line2).trim()) ||
+      '';
+
+    const age = computeAgeFromDob(beneficiary.dob);
+
+    let district_id = addr?.district_id ?? addr?.districtId ?? null;
+    let block_id = addr?.block_id ?? addr?.blockId ?? null;
+    let panchayat_id = addr?.panchayat_id ?? addr?.panchayatId ?? null;
+    let village_id = addr?.village_id ?? addr?.villageId ?? null;
+    let member_mobile = phone?.phone_no ?? phone?.mobile ?? phone?.number ?? null;
+    let marital_status = beneficiary.marital_status ?? beneficiary.maritalStatus ?? '';
+    let father_husband_name =
+      beneficiary.father_husband ??
+      beneficiary.father_husband_name ??
+      beneficiary.relation_name ??
+      '';
+
+    let lokos_shg =
+      lokosShgCode ||
+      beneficiary.shg_code ||
+      beneficiary.lokos_shg_code ||
+      null;
+
+    // fallback from tempShg
+    if ((!district_id || !block_id || !panchayat_id || !village_id || !lokos_shg) && tempShg) {
+      const loc = extractLocationFromShg(tempShg);
+      if (loc) {
+        district_id = district_id || loc.district_id;
+        block_id = block_id || loc.block_id;
+        panchayat_id = panchayat_id || loc.panchayat_id;
+        village_id = village_id || loc.village_id;
+        lokos_shg = lokos_shg || loc.lokos_shg_code;
+      }
+    }
+
+    // cached SHG lists fallback
+    if ((!district_id || !block_id || !panchayat_id || !village_id || !lokos_shg) && lokos_shg) {
+      const fallback = await findShgAcrossCachedPanchayats(lokos_shg);
+      if (fallback) {
+        district_id = district_id || fallback.district_id;
+        block_id = block_id || fallback.block_id;
+        panchayat_id = panchayat_id || fallback.panchayat_id;
+        village_id = village_id || fallback.village_id;
+        lokos_shg = lokos_shg || fallback.lokos_shg_code;
+      }
+    }
+
+    // last resort: on-demand fetch from CRP block
+    if ((!district_id || !block_id || !panchayat_id || !village_id) && lokos_shg) {
+      try {
+        const crpDetail = getCrpDetail ? getCrpDetail() : null;
+        const cbid = crpDetail?.block_id ?? crpDetail?.blockId ?? null;
+        if (cbid) {
+          const shgRes = await gsApi.getUpsrlmShgList(cbid, { page_size: 5000 });
+          const shgRows = Array.isArray(shgRes?.data)
+            ? shgRes.data
+            : Array.isArray(shgRes?.results)
+            ? shgRes.results
+            : Array.isArray(shgRes)
+            ? shgRes
+            : [];
+          const found = shgRows.find((s) => {
+            const code = s.code ?? s.shg_code ?? s.lokos_shg_code ?? s.code;
+            return String(code) === String(lokos_shg);
+          });
+          if (found) {
+            const loc = extractLocationFromShg(found);
+            district_id = district_id || loc.district_id || null;
+            block_id = block_id || loc.block_id || null;
+            panchayat_id = panchayat_id || loc.panchayat_id || null;
+            village_id = village_id || loc.village_id || null;
+            lokos_shg = lokos_shg || loc.lokos_shg_code || null;
+          }
+        }
+      } catch (e) {
+        console.warn('on-demand SHG list fallback failed', e);
+      }
+    }
+
+    const createdBy = getCreatedByNumeric();
+
+    const recordedPayload = {
+      lokos_member_code:
+        beneficiary.member_code || beneficiary.nic_member_code || null,
+      applicant_name: beneficiary.member_name || '',
+      age,
+      gender: beneficiary.gender || '',
+      marital_status,
+      father_husband_name,
+      category: beneficiary.social_category || beneficiary.socialCategory || '',
+      education: beneficiary.education || '',
+      address: addressText,
+      district_id: district_id || null,
+      block_id: block_id || null,
+      panchayat_id: panchayat_id || null,
+      village_id: village_id || null,
+      mobile: member_mobile || null,
+      email: beneficiary.email || null,
+      lokos_shg_code: lokos_shg || null,
+    };
+
+    if (createdBy !== null) {
+      recordedPayload.created_by = createdBy;
+    }
+
+    const recRes = await gsApi.createRecordedBeneficiary(recordedPayload);
+    recordedBenefId =
+      recRes?.TH_urid || recRes?.TH_URID || recRes?.id || null;
+
+    if (!recordedBenefId) {
+      throw new Error('Recorded beneficiary created but ID missing in response.');
+    }
+
+    return recordedBenefId;
   };
 
   // Helpers to strip out child tables from main payload.
-  // Now explicitly inject recorded_beneficiary here.
   const buildMainPayload = (recordedBenefId) => {
     const {
       enterprise_types_tree,
@@ -182,8 +415,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
 
     const payload = {
       ...rest,
-      // FIRST: link to recorded beneficiary row
-      recorded_beneficiary: recordedBenefId || null,
+      recorded_benef_id: recordedBenefId || null,
     };
 
     return {
@@ -204,16 +436,12 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     for (const row of tree) {
       if (!row.parent || !Array.isArray(row.children) || row.children.length === 0)
         continue;
-
-      // Dictionary-style sub_category text per parent:
-      // [Parent: child1, child2]
-      const subCategoryText = `[${row.parent}: ${row.children.join(', ')}]`;
-
+      const mapped = `[${row.parent}: ${(row.children || []).join(', ')}]`;
       await gsApi.createEnterpriseType({
         enterprise: enterpriseId,
         form_type: 'exep',
         parent_category: row.parent,
-        sub_category: subCategoryText,
+        sub_category: mapped,
       });
     }
   };
@@ -293,13 +521,10 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
   };
 
   const saveInvestmentSources = async (enterpriseId, tree) => {
-    // dictionary-style string for each parent
     if (!Array.isArray(tree)) return;
     for (const row of tree) {
       if (!row.parent || !row.children || row.children.length === 0) continue;
-
-      const mapped = `[${row.parent}: ${row.children.join(', ')}]`;
-
+      const mapped = `[${row.parent}: ${(row.children || []).join(', ')}]`;
       await gsApi.createEnterpriseSupportDetail({
         enterprise: enterpriseId,
         form_type: 'exep',
@@ -407,47 +632,54 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
   };
 
   const handleSubmit = async () => {
-    // 1) Resolve recorded beneficiary row (must exist; created earlier from SHG member cache)
-    const recordedBenefId =
-      recordedBenef?.id || existingEnterprise?.recorded_beneficiary || null;
-
-    if (!recordedBenefId) {
-      Alert.alert(
-        'Missing Beneficiary',
-        'Beneficiary information is missing. Please open this form from a beneficiary context again.'
-      );
-      return;
-    }
-
-    // 2) Build payload (injecting recorded_beneficiary)
-    const {
-      payload,
-      enterpriseTypesTree,
-      products,
-      sourceOfInvestmentTree,
-      loans,
-      subsidies,
-      trainingReceivedRows,
-      trainingRequiredRows,
-      media,
-    } = buildMainPayload(recordedBenefId);
-
-    // basic validation
-    if (!payload.enterprise_name) {
-      Alert.alert('Missing information', 'Please fill the Enterprise Name.');
-      return;
-    }
-
-    if (!payload.declaration_confirmed || payload.declaration_confirmed !== 'Yes') {
-      Alert.alert(
-        'Declaration required',
-        'Please confirm the declaration before submitting.'
-      );
-      return;
-    }
-
-    setSubmitting(true);
     try {
+      // 1) ensure recorded beneficiary exists (inspired by NewEnterpriseForm)
+      let recordedBenefId =
+        recordedBenef?.TH_urid ||
+        recordedBenef?.TH_URID ||
+        recordedBenef?.id ||
+        existingEnterprise?.recorded_beneficiary ||
+        null;
+
+      if (!recordedBenefId) {
+        try {
+          recordedBenefId = await ensureRecordedBeneficiary();
+        } catch (e) {
+          Alert.alert('Missing Beneficiary', e.message || String(e));
+          return;
+        }
+      }
+
+      // 2) Build main payload with recorded_beneficiary injected
+      const {
+        payload,
+        enterpriseTypesTree,
+        products,
+        sourceOfInvestmentTree,
+        loans,
+        subsidies,
+        trainingReceivedRows,
+        trainingRequiredRows,
+        media,
+      } = buildMainPayload(recordedBenefId);
+
+      // basic validation
+      if (!payload.enterprise_name) {
+        Alert.alert('Missing information', 'Please fill the Enterprise Name.');
+        return;
+      }
+
+      if (!payload.declaration_confirmed || payload.declaration_confirmed !== 'Yes') {
+        Alert.alert(
+          'Declaration required',
+          'Please confirm the declaration before submitting.'
+        );
+        return;
+      }
+
+      setSubmitting(true);
+
+      // 3) create / update existing enterprise
       let enterpriseRes;
       if (existingEnterprise?.id) {
         enterpriseRes = await gsApi.updateExistingEnterprise(
@@ -457,22 +689,22 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       } else {
         enterpriseRes = await gsApi.createExistingEnterprise(payload);
       }
-      const enterpriseId = enterpriseRes.id || existingEnterprise?.id;
+      const enterpriseId = enterpriseRes.TH_urid || existingEnterprise?.TH_urid;
       if (!enterpriseId) {
         throw new Error('Enterprise ID not returned from API');
       }
 
-      // 3) Link recorded beneficiary with this enterprise + enterprise_type = "exep"
+      // 4) link recorded beneficiary with this enterprise + enterprise_type='exep'
       try {
         await gsApi.updateRecordedBeneficiary(recordedBenefId, {
-          enterprise: enterpriseId,
+          enterprise_id: enterpriseId,
           enterprise_type: 'exep',
         });
       } catch (e) {
         console.warn('Failed to link recorded beneficiary with enterprise', e);
       }
 
-      // 4) child tables (best-effort, don't hard-fail on individual errors)
+      // 5) child tables (best-effort, do not hard-fail)
       try {
         await saveEnterpriseTypes(enterpriseId, enterpriseTypesTree);
       } catch (e) {
@@ -583,6 +815,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
         setExistingForm={updateForm}
       />
 
+      {/* SINGLE submit button for the entire flow */}
       <TouchableOpacity
         style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
         disabled={submitting}

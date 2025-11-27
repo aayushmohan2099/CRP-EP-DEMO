@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  Modal,
   ScrollView,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
@@ -43,52 +42,6 @@ function buildAuthHeaders() {
   return headers;
 }
 
-// Generic DELETE helper used here only (does NOT touch gsApi)
-async function deleteResource(path) {
-  const url =
-    API_BASE_URL + (path.startsWith('/') ? path : `/${path}`);
-  const headers = buildAuthHeaders();
-
-  const res = await fetch(url, {
-    method: 'DELETE',
-    headers,
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    let data = null;
-    try {
-      data = text ? JSON.parse(text) : null;
-    } catch (e) {
-      data = text || null;
-    }
-    throw { status: res.status, data };
-  }
-}
-
-// Helper: RecordedBenef primary key
-function getRecordedBenefId(row) {
-  if (!row) return null;
-  return (
-    row.TH_urid ||
-    row.TH_URID ||
-    row.id ||
-    row.recorded_benef_id ||
-    null
-  );
-}
-
-// Helper: Enterprise primary key from enterprise object
-function getEnterprisePk(enterprise) {
-  if (!enterprise) return null;
-  return (
-    enterprise.TH_urid ||
-    enterprise.TH_URID ||
-    enterprise.id ||
-    null
-  );
-}
-
 // Helper: key generation for FlatList items
 function getRowKey(row, fallbackIndex, prefix = '') {
   const core =
@@ -100,38 +53,37 @@ function getRowKey(row, fallbackIndex, prefix = '') {
   return prefix ? `${prefix}-${core}` : core;
 }
 
-// Extract array from possible API shapes
-function extractResultsArray(data) {
-  if (!data) return [];
-  if (Array.isArray(data.results)) return data.results;
-  if (Array.isArray(data.data)) return data.data;
-  if (Array.isArray(data)) return data;
-  return [];
+// Meta keys we usually don't want to display
+const META_KEYS = new Set([
+  'TH_urid',
+  'TH_URID',
+  'created_at',
+  'updated_at',
+  'deleted_at',
+  'is_active',
+  'created_by',
+  'updated_by',
+  'deleted_by',
+]);
+
+// Convert enterprise_type code to label for list separation
+function labelFromEnterpriseTypeCode(code) {
+  const c = (code || '').toLowerCase();
+  if (c === 'exep') return 'Existing Enterprise';
+  if (c === 'newep') return 'New Enterprise';
+  if (c === 'noep') return 'No Enterprise';
+  return 'No Enterprise';
 }
 
-// Find a record whose ID actually matches the enterpriseId
-function findBestEnterpriseMatch(arr, enterpriseId) {
-  if (!arr.length || !enterpriseId) return null;
-  const target = String(enterpriseId);
-
-  for (const rec of arr) {
-    const candidates = [
-      rec.TH_urid,
-      rec.TH_URID,
-      rec.enterprise_id,
-      rec.enterpriseid,
-      rec.enterprise_ID,
-    ]
-      .filter((v) => v !== null && v !== undefined)
-      .map((v) => String(v));
-
-    if (candidates.includes(target)) {
-      return rec;
-    }
+// Convert top-level epsakhi-detail enterprise_type to human label
+function labelFromDetailEnterpriseType(detailType) {
+  const t = (detailType || '').toLowerCase();
+  if (t === 'existing' || t === 'exep') return 'Existing Enterprise';
+  if (t === 'new' || t === 'newep') return 'New Enterprise';
+  if (t === 'noep' || t === 'none' || t === 'no_enterprise') {
+    return 'No Enterprise';
   }
-
-  // IMPORTANT: NO FALLBACK – if nothing strictly matches, treat as no enterprise
-  return null;
+  return 'Not Specified';
 }
 
 export default function CRPViewRecordedProduction({ navigation }) {
@@ -145,21 +97,10 @@ export default function CRPViewRecordedProduction({ navigation }) {
   const [selectedVillageId, setSelectedVillageId] = useState('');
   const [searchText, setSearchText] = useState('');
 
-  // Detail modal state
-  const [detailVisible, setDetailVisible] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailRecordedRow, setDetailRecordedRow] = useState(null);
-  const [detailEnterprise, setDetailEnterprise] = useState(null);
-  const [detailEnterpriseType, setDetailEnterpriseType] = useState(null); // 'existing' | 'new' | null
-
-  // Cache: enterprise info by enterprise_id
-  // { [enterprise_id]: { type: 'existing'|'new'|null, enterprise: object|null } }
-  const [enterpriseInfoById, setEnterpriseInfoById] = useState({});
-
-  // Progress for arranging beneficiaries
-  const [classifying, setClassifying] = useState(false);
-  const [classifyTotal, setClassifyTotal] = useState(0);
-  const [classifyDone, setClassifyDone] = useState(0);
+  // "Page" mode: false => list page, true => epsakhi-detail page
+  const [detailMode, setDetailMode] = useState(false);
+  const [detailMemberCode, setDetailMemberCode] = useState(null);
+  const [epsakhiDetail, setEpsakhiDetail] = useState(null);
 
   // Initial data load
   useEffect(() => {
@@ -208,121 +149,6 @@ export default function CRPViewRecordedProduction({ navigation }) {
       ? villagesByPanchayat[selectedPanchayatId]
       : [];
 
-  // --- Helper: fetch enterprise form (existing AND new) by enterprise_id ---
-  async function fetchEnterpriseForId(enterpriseId) {
-    if (!enterpriseId) {
-      return { type: null, enterprise: null };
-    }
-
-    // use cache if already resolved
-    const cached = enterpriseInfoById[enterpriseId];
-    if (cached && (cached.type || cached.enterprise)) {
-      return cached;
-    }
-
-    const headers = buildAuthHeaders();
-    const enc = encodeURIComponent(enterpriseId);
-
-    let existingMatch = null;
-    let newMatch = null;
-
-    // 1. Try Existing Enterprise
-    try {
-      const urlExisting = `${API_BASE_URL}/api/v1/existing-enterprise/?search=${enc}`;
-      const res = await fetch(urlExisting, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        const arr = extractResultsArray(data);
-        existingMatch = findBestEnterpriseMatch(arr, enterpriseId);
-      }
-    } catch (e) {
-      console.error('Existing enterprise search failed', e);
-    }
-
-    // 2. Try New Enterprise
-    try {
-      const urlNew = `${API_BASE_URL}/api/v1/new-enterprise/?search=${enc}`;
-      const resNew = await fetch(urlNew, { headers });
-      if (resNew.ok) {
-        const dataNew = await resNew.json();
-        const arrNew = extractResultsArray(dataNew);
-        newMatch = findBestEnterpriseMatch(arrNew, enterpriseId);
-      }
-    } catch (e) {
-      console.error('New enterprise search failed', e);
-    }
-
-    let info = { type: null, enterprise: null };
-
-    if (existingMatch && !newMatch) {
-      info = { type: 'existing', enterprise: existingMatch };
-    } else if (!existingMatch && newMatch) {
-      info = { type: 'new', enterprise: newMatch };
-    } else if (existingMatch && newMatch) {
-      // very unlikely, but if both match, prefer existing
-      info = { type: 'existing', enterprise: existingMatch };
-    }
-
-    // Update cache
-    setEnterpriseInfoById((prev) => {
-      const prevVal = prev[enterpriseId];
-      if (prevVal && prevVal.enterprise) {
-        return prev; // don't override richer cached info
-      }
-      return { ...prev, [enterpriseId]: info };
-    });
-
-    return info;
-  }
-
-  // Resolve ALL enterprise_ids when recordedList changes (with progress)
-  useEffect(() => {
-    const run = async () => {
-      try {
-        const ids = Array.from(
-          new Set(
-            (recordedList || [])
-              .map((r) => r.enterprise_id)
-              .filter(
-                (id) => id !== null && id !== undefined && id !== ''
-              )
-          )
-        );
-
-        if (!ids.length) {
-          setClassifying(false);
-          setClassifyTotal(0);
-          setClassifyDone(0);
-          return;
-        }
-
-        setClassifying(true);
-        setClassifyTotal(ids.length);
-        setClassifyDone(0);
-
-        for (let i = 0; i < ids.length; i++) {
-          const id = ids[i];
-          await fetchEnterpriseForId(id);
-          setClassifyDone(i + 1);
-        }
-
-        setClassifying(false);
-      } catch (e) {
-        console.error('Error while arranging beneficiaries by enterprise_id', e);
-        setClassifying(false);
-      }
-    };
-
-    if (recordedList && recordedList.length) {
-      run();
-    } else {
-      setClassifying(false);
-      setClassifyTotal(0);
-      setClassifyDone(0);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recordedList]);
-
   // --- Filtering logic ---
   const filteredBeneficiaries = useMemo(
     () =>
@@ -364,55 +190,132 @@ export default function CRPViewRecordedProduction({ navigation }) {
     [recordedList, selectedPanchayatId, selectedVillageId, searchText]
   );
 
-  // --- Detail modal ---
+  // --- Build sectioned data for FlatList with headers based ONLY on enterprise_type ---
+  const sectionedData = useMemo(() => {
+    const existingItems = [];
+    const newItems = [];
+    const noneItems = [];
 
-  const openDetail = async (row) => {
-    setDetailRecordedRow(row);
-    setDetailEnterprise(null);
-    setDetailEnterpriseType(null);
-    setDetailVisible(true);
+    filteredBeneficiaries.forEach((row, idx) => {
+      const t = (row.enterprise_type || '').toLowerCase();
+      if (t === 'exep') {
+        existingItems.push({ row, idx });
+      } else if (t === 'newep') {
+        newItems.push({ row, idx });
+      } else {
+        // noep / null / anything else
+        noneItems.push({ row, idx });
+      }
+    });
 
-    const enterpriseId = row.enterprise_id;
-    if (!enterpriseId) {
-      // Beneficiary not interested / no enterprise form
+    const data = [];
+
+    if (existingItems.length) {
+      data.push({
+        type: 'header',
+        key: 'header-existing',
+        title: 'Existing Enterprise',
+      });
+      existingItems.forEach(({ row, idx }) =>
+        data.push({
+          type: 'item',
+          key: getRowKey(row, idx, 'existing'),
+          row,
+        })
+      );
+    }
+
+    if (newItems.length) {
+      data.push({
+        type: 'header',
+        key: 'header-new',
+        title: 'New Enterprise',
+      });
+      newItems.forEach(({ row, idx }) =>
+        data.push({
+          type: 'item',
+          key: getRowKey(row, idx, 'new'),
+          row,
+        })
+      );
+    }
+
+    if (noneItems.length) {
+      data.push({
+        type: 'header',
+        key: 'header-none',
+        title: 'No Enterprise',
+      });
+      noneItems.forEach(({ row, idx }) =>
+        data.push({
+          type: 'item',
+          key: getRowKey(row, idx, 'none'),
+          row,
+        })
+      );
+    }
+
+    return data;
+  }, [filteredBeneficiaries]);
+
+  // --- Detail: epsakhi-detail/<member_code> ---
+
+  const openDetailPage = async (row) => {
+    const memberCode = row.lokos_member_code || row.member_code;
+    if (!memberCode) {
+      Alert.alert(
+        'Error',
+        'Member code is missing for this record. Cannot open detail.'
+      );
       return;
     }
 
     try {
-      setDetailLoading(true);
-      const info = await fetchEnterpriseForId(enterpriseId);
-      setDetailEnterprise(info.enterprise || null);
-      setDetailEnterpriseType(info.type || null);
+      setDetailMode(true);
+      setDetailMemberCode(memberCode);
+      setEpsakhiDetail(null);
+      setLoading(true);
 
-      if (!info.enterprise) {
+      const headers = buildAuthHeaders();
+      const enc = encodeURIComponent(memberCode);
+      const url = `${API_BASE_URL}/api/v1/epsakhi-detail/${enc}/`;
+
+      const res = await fetch(url, { headers });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('epsakhi-detail error', res.status, text);
         Alert.alert(
-          'Info',
-          'No enterprise form data found for this beneficiary, or it has not been submitted yet.'
+          'Error',
+          'Unable to load beneficiary detail from server.'
         );
+        setDetailMode(false);
+        return;
       }
+
+      const data = await res.json();
+      setEpsakhiDetail(data);
     } catch (err) {
-      console.error('Failed to load enterprise detail by enterprise_id', err);
-      Alert.alert(
-        'Info',
-        'Unable to load enterprise details for this beneficiary.'
-      );
+      console.error('Failed to fetch epsakhi-detail', err);
+      Alert.alert('Error', 'Unable to load beneficiary detail.');
+      setDetailMode(false);
     } finally {
-      setDetailLoading(false);
+      setLoading(false);
     }
   };
 
-  const closeDetail = () => {
-    setDetailVisible(false);
-    setDetailRecordedRow(null);
-    setDetailEnterprise(null);
-    setDetailEnterpriseType(null);
-    setDetailLoading(false);
+  const goBackFromDetail = () => {
+    setDetailMode(false);
+    setDetailMemberCode(null);
+    setEpsakhiDetail(null);
   };
 
+  // Generic key/value section renderer
   const renderKeyValueSection = (title, obj) => {
     if (!obj) return null;
+
     const entries = Object.entries(obj).filter(([key, value]) => {
       if (value === null || value === undefined || value === '') return false;
+      if (META_KEYS.has(key)) return false;
       if (key === 'password') return false;
       return true;
     });
@@ -434,126 +337,37 @@ export default function CRPViewRecordedProduction({ navigation }) {
     );
   };
 
-  // --- Edit / Delete actions ---
+  // Render simple list of objects as multiple small sections
+  const renderArrayOfObjectsSection = (title, arr) => {
+    if (!arr || !arr.length) return null;
 
-  const handleDeleteSubmission = () => {
-    if (!detailRecordedRow) {
-      Alert.alert('Error', 'No recorded beneficiary selected.');
-      return;
-    }
+    return (
+      <View style={styles.detailSection}>
+        <Text style={styles.detailSectionTitle}>{title}</Text>
+        {arr.map((item, index) => {
+          const filtered = Object.entries(item).filter(([key, value]) => {
+            if (value === null || value === undefined || value === '') return false;
+            if (META_KEYS.has(key)) return false;
+            return true;
+          });
 
-    const enterprisePk = getEnterprisePk(detailEnterprise);
-    const recordedId = getRecordedBenefId(detailRecordedRow);
+          if (!filtered.length) return null;
 
-    if (!recordedId && !enterprisePk) {
-      Alert.alert(
-        'Error',
-        'Missing IDs for this submission. Cannot delete.'
-      );
-      return;
-    }
-
-    Alert.alert(
-      'Confirm Delete',
-      'This will permanently delete the recorded beneficiary entry and any linked enterprise form (if present). Do you want to continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-
-              // 1) Delete enterprise row (existing or new), if present
-              if (enterprisePk && detailEnterpriseType) {
-                let entPath = null;
-                if (detailEnterpriseType === 'existing') {
-                  entPath = `/api/v1/existing-enterprise/${enterprisePk}/`;
-                } else if (detailEnterpriseType === 'new') {
-                  entPath = `/api/v1/new-enterprise/${enterprisePk}/`;
-                }
-
-                if (entPath) {
-                  try {
-                    await deleteResource(entPath);
-                  } catch (e) {
-                    console.error('Enterprise delete failed', e);
-                    // we still attempt to delete recordedBenef below
-                  }
-                }
-              }
-
-              // 2) Delete recorded-beneficiaries row
-              if (recordedId) {
-                await deleteResource(
-                  `/api/v1/recorded-beneficiaries/${recordedId}/`
-                );
-              }
-
-              // 3) Update local list
-              if (recordedId) {
-                setRecordedList((prev) =>
-                  prev.filter(
-                    (r) => getRecordedBenefId(r) !== recordedId
-                  )
-                );
-              }
-
-              closeDetail();
-              Alert.alert(
-                'Deleted',
-                'Submission deleted successfully.'
-              );
-            } catch (err) {
-              console.error('Delete submission error', err);
-              const msg =
-                err?.data?.detail ||
-                (err?.data &&
-                typeof err.data === 'object'
-                  ? JSON.stringify(err.data)
-                  : null) ||
-                'Failed to delete submission. Please try again.';
-              Alert.alert('Error', msg);
-            } finally {
-              setLoading(false);
-            }
-          },
-        },
-      ]
+          return (
+            <View key={index} style={styles.card}>
+              {filtered.map(([key, value]) => (
+                <View key={key} style={styles.detailRow}>
+                  <Text style={styles.detailKey}>
+                    {key.replace(/_/g, ' ')}
+                  </Text>
+                  <Text style={styles.detailValue}>{String(value)}</Text>
+                </View>
+              ))}
+            </View>
+          );
+        })}
+      </View>
     );
-  };
-
-  const handleEditSubmission = () => {
-    if (!detailRecordedRow || !detailEnterprise || !detailEnterpriseType) {
-      Alert.alert(
-        'Info',
-        'Enterprise form is not available for editing for this beneficiary.'
-      );
-      return;
-    }
-
-    const type = detailEnterpriseType;
-
-    // Close modal before navigating
-    closeDetail();
-
-    if (type === 'existing') {
-      navigation.navigate('ExistingEnterpriseForm', {
-        recordedBenef: detailRecordedRow,
-        existingEnterprise: detailEnterprise,
-      });
-    } else if (type === 'new') {
-      navigation.navigate('NewEnterpriseForm', {
-        recordedBenef: detailRecordedRow,
-        newEnterprise: detailEnterprise,
-      });
-    } else {
-      Alert.alert(
-        'Info',
-        'Unknown enterprise type. Please open this beneficiary from the main flow to edit.'
-      );
-    }
   };
 
   const renderBeneficiaryItem = ({ item }) => {
@@ -564,6 +378,7 @@ export default function CRPViewRecordedProduction({ navigation }) {
       'Unnamed';
     const memberCode = item.lokos_member_code || item.member_code || 'NA';
     const mobile = item.mobile || item.phone || 'NA';
+    const typeLabel = labelFromEnterpriseTypeCode(item.enterprise_type);
 
     return (
       <View style={styles.listItem}>
@@ -571,10 +386,11 @@ export default function CRPViewRecordedProduction({ navigation }) {
           <Text style={styles.listText}>{name}</Text>
           <Text style={styles.metaText}>Member code: {memberCode}</Text>
           <Text style={styles.metaText}>Mobile: {mobile}</Text>
+          <Text style={styles.typeText}>Enterprise: {typeLabel}</Text>
         </View>
         <TouchableOpacity
           style={styles.viewBtn}
-          onPress={() => openDetail(item)}
+          onPress={() => openDetailPage(item)}
         >
           <Text style={styles.viewBtnText}>View</Text>
         </TouchableOpacity>
@@ -582,82 +398,136 @@ export default function CRPViewRecordedProduction({ navigation }) {
     );
   };
 
-  // --- Build sectioned data for FlatList with headers ---
-  const sectionedData = useMemo(() => {
-    const existingItems = [];
-    const newItems = [];
-    const noneItems = [];
+  // ============ RENDER DETAIL PAGE ============
 
-    filteredBeneficiaries.forEach((row, idx) => {
-      const eid = row.enterprise_id;
-      if (!eid) {
-        // No enterprise_id => not interested
-        noneItems.push({ row, idx });
-        return;
-      }
+  if (detailMode) {
+    const detail = epsakhiDetail || {};
+    const beneficiary = detail.beneficiary || null;
+    const enterpriseTypeLabel = labelFromDetailEnterpriseType(
+      detail.enterprise_type
+    );
+    const enterprise = detail.enterprise || null;
+    const enterpriseLoanDetails = detail.enterprise_loan_details || [];
+    const enterpriseSupportDetails = detail.enterprise_support_details || [];
+    const enterpriseTrainingReqs = detail.enterprise_training_reqs || [];
+    const enterpriseMedia = detail.enterprise_media || [];
+    const enterpriseProducts = detail.enterprise_products || [];
+    const enterpriseTypeCategories = detail.enterprise_type_categories || [];
+    const noEnterpriseForm = detail.no_enterprise_form || null;
+    const noEnterpriseTrainingReqs = detail.no_enterprise_training_reqs || [];
+    const noEnterpriseWageDetails = detail.no_enterprise_wage_details || [];
 
-      const info = enterpriseInfoById[eid];
-      if (info?.type === 'existing') {
-        existingItems.push({ row, idx });
-      } else if (info?.type === 'new') {
-        newItems.push({ row, idx });
-      } else {
-        // Unknown / not resolved yet => treat temporarily as "not interested"
-        noneItems.push({ row, idx });
-      }
-    });
+    const trainingReceived = enterpriseTrainingReqs.filter(
+      (t) => (t.form_type || '').toLowerCase() === 'rec'
+    );
+    const trainingRequired = enterpriseTrainingReqs.filter(
+      (t) => (t.form_type || '').toLowerCase() === 'req'
+    );
 
-    const data = [];
+    return (
+      <View style={styles.container}>
+        <LoaderModal visible={loading} message="Loading..." />
 
-    if (existingItems.length) {
-      data.push({
-        type: 'header',
-        key: 'header-existing',
-        title: 'Beneficiaries with Existing Enterprise',
-      });
-      existingItems.forEach(({ row, idx }) =>
-        data.push({
-          type: 'item',
-          key: getRowKey(row, idx, 'existing'),
-          row,
-        })
-      );
-    }
+        {/* Header for detail page */}
+        <View style={styles.headerRow}>
+          <BackButton onPress={goBackFromDetail} />
+          <Text style={styles.headerTitle}>Beneficiary Detail</Text>
+        </View>
 
-    if (newItems.length) {
-      data.push({
-        type: 'header',
-        key: 'header-new',
-        title:
-          'Beneficiaries interested in opening New Enterprise',
-      });
-      newItems.forEach(({ row, idx }) =>
-        data.push({
-          type: 'item',
-          key: getRowKey(row, idx, 'new'),
-          row,
-        })
-      );
-    }
+        <ScrollView style={{ flex: 1 }}>
+          {/* Summary */}
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryTitle}>
+              Member Code:{' '}
+              {beneficiary?.lokos_member_code || detailMemberCode || 'NA'}
+            </Text>
+            <Text style={styles.summaryText}>
+              Name: {beneficiary?.applicant_name || 'NA'}
+            </Text>
+            <Text style={styles.summaryText}>
+              Enterprise Type: {enterpriseTypeLabel}
+            </Text>
+          </View>
 
-    if (noneItems.length) {
-      data.push({
-        type: 'header',
-        key: 'header-none',
-        title:
-          'Beneficiaries not interested in opening Enterprise',
-      });
-      noneItems.forEach(({ row, idx }) =>
-        data.push({
-          type: 'item',
-          key: getRowKey(row, idx, 'none'),
-          row,
-        })
-      );
-    }
+          {/* Beneficiary section */}
+          {renderKeyValueSection('Beneficiary (Recorded Beneficiary)', beneficiary)}
 
-    return data;
-  }, [filteredBeneficiaries, enterpriseInfoById]);
+          {/* Enterprise section */}
+          {enterprise ? (
+            renderKeyValueSection('Enterprise Details', enterprise)
+          ) : (
+            <View style={styles.detailSection}>
+              <Text style={styles.detailSectionTitle}>Enterprise Details</Text>
+              <Text style={{ fontSize: 12, color: '#666' }}>
+                No enterprise form data found for this beneficiary, or it has not been
+                submitted yet.
+              </Text>
+            </View>
+          )}
+
+          {/* Enterprise Type Categories */}
+          {renderArrayOfObjectsSection(
+            'Enterprise Type Categories',
+            enterpriseTypeCategories
+          )}
+
+          {/* Trainings received / required */}
+          {renderArrayOfObjectsSection(
+            'Trainings Received (Enterprise)',
+            trainingReceived
+          )}
+          {renderArrayOfObjectsSection(
+            'Trainings Required (Enterprise)',
+            trainingRequired
+          )}
+
+          {/* Loan & Support Details */}
+          {renderArrayOfObjectsSection(
+            'Enterprise Loan Details',
+            enterpriseLoanDetails
+          )}
+          {renderArrayOfObjectsSection(
+            'Enterprise Support Details',
+            enterpriseSupportDetails
+          )}
+
+          {/* Enterprise Products */}
+          {renderArrayOfObjectsSection(
+            'Enterprise Products',
+            enterpriseProducts
+          )}
+
+          {/* Enterprise Media (meta only – no actual images shown here) */}
+          {renderArrayOfObjectsSection(
+            'Enterprise Media (Meta Information)',
+            enterpriseMedia
+          )}
+
+          {/* No Enterprise related blocks */}
+          {noEnterpriseForm &&
+            renderKeyValueSection('No Enterprise Form', noEnterpriseForm)}
+          {renderArrayOfObjectsSection(
+            'No Enterprise Trainings',
+            noEnterpriseTrainingReqs
+          )}
+          {renderArrayOfObjectsSection(
+            'No Enterprise Wage Details',
+            noEnterpriseWageDetails
+          )}
+
+          {!epsakhiDetail && !loading && (
+            <Text style={styles.emptyText}>
+              No detail data available for this beneficiary.
+            </Text>
+          )}
+
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ============ RENDER LIST PAGE ============
 
   return (
     <View style={styles.container}>
@@ -738,16 +608,7 @@ export default function CRPViewRecordedProduction({ navigation }) {
         </View>
       </View>
 
-      {/* Classification progress (non-blocking) */}
-      {classifying && classifyTotal > 0 && (
-        <View style={styles.progressBar}>
-          <Text style={styles.progressText}>
-            Arranging beneficiaries ({classifyDone}/{classifyTotal})
-          </Text>
-        </View>
-      )}
-
-      {/* List with headers for 3 categories */}
+      {/* List with headers for 3 categories by enterprise_type */}
       <FlatList
         data={sectionedData}
         keyExtractor={(item) => item.key}
@@ -768,87 +629,6 @@ export default function CRPViewRecordedProduction({ navigation }) {
           </Text>
         }
       />
-
-      {/* Detail Modal */}
-      <Modal
-        visible={detailVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={closeDetail}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Beneficiary Detail</Text>
-            </View>
-
-            <ScrollView style={{ maxHeight: '80%' }}>
-              {detailLoading && (
-                <Text style={{ margin: 8, color: '#666' }}>
-                  Loading enterprise details...
-                </Text>
-              )}
-
-              {renderKeyValueSection(
-                'Recorded Beneficiary (recorded-beneficiaries table)',
-                detailRecordedRow
-              )}
-
-              {detailEnterprise ? (
-                renderKeyValueSection(
-                  `Enterprise Form (${
-                    detailEnterpriseType === 'existing'
-                      ? 'Existing Enterprise'
-                      : detailEnterpriseType === 'new'
-                      ? 'New Enterprise'
-                      : 'Unknown Type'
-                  })`,
-                  detailEnterprise
-                )
-              ) : (
-                <View style={{ paddingHorizontal: 10, paddingBottom: 12 }}>
-                  <Text style={{ fontSize: 13, color: '#666' }}>
-                    {detailLoading
-                      ? ''
-                      : 'No enterprise form data found for this beneficiary, or it has not been submitted yet.'}
-                  </Text>
-                </View>
-              )}
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <View style={styles.modalFooterRow}>
-                {detailRecordedRow && (
-                  <TouchableOpacity
-                    style={styles.deleteBtn}
-                    onPress={handleDeleteSubmission}
-                  >
-                    <Text style={styles.deleteBtnText}>
-                      Delete Submission
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {detailEnterprise && detailEnterpriseType && (
-                  <TouchableOpacity
-                    style={styles.editBtn}
-                    onPress={handleEditSubmission}
-                  >
-                    <Text style={styles.editBtnText}>Edit Form</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <TouchableOpacity
-                style={styles.closeBtn}
-                onPress={closeDetail}
-              >
-                <Text style={styles.closeBtnText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -887,22 +667,11 @@ const styles = StyleSheet.create({
     borderColor: '#EE6969',
     borderRadius: 6,
     overflow: 'hidden',
-    minHeight: 48, // bigger for better visibility
+    minHeight: 48,
     justifyContent: 'center',
   },
   picker: {
-    height: 48, // taller picker so selected value is clearly visible
-  },
-  progressBar: {
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    marginBottom: 6,
-    backgroundColor: '#FFF4E5',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 11,
-    color: '#AA6B00',
+    height: 48,
   },
   sectionHeader: {
     paddingVertical: 8,
@@ -927,6 +696,7 @@ const styles = StyleSheet.create({
   },
   listText: { flex: 1, fontSize: 14, color: '#222' },
   metaText: { fontSize: 12, color: '#777' },
+  typeText: { fontSize: 12, color: '#444', marginTop: 2 },
   emptyText: { marginTop: 12, textAlign: 'center', color: '#777' },
   viewBtn: {
     paddingHorizontal: 12,
@@ -939,32 +709,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  // Modal
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 12,
+  // Detail page styles
+  summaryCard: {
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#FFF4E5',
+    marginBottom: 12,
   },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    width: '100%',
-    maxHeight: '90%',
-    overflow: 'hidden',
-  },
-  modalHeader: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-    backgroundColor: '#FFEAEA',
-  },
-  modalTitle: {
+  summaryTitle: {
+    fontSize: 15,
     fontWeight: '700',
-    fontSize: 16,
-    color: '#AA2E2E',
+    color: '#AA6B00',
+    marginBottom: 4,
+  },
+  summaryText: {
+    fontSize: 13,
+    color: '#444',
   },
   detailSection: {
     paddingHorizontal: 10,
@@ -992,50 +752,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#222',
   },
-  modalFooter: {
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#EEE',
-  },
-  modalFooterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  card: {
+    borderWidth: 1,
+    borderColor: '#EEE',
+    borderRadius: 8,
+    padding: 8,
     marginBottom: 8,
-  },
-  closeBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#EE6969',
-    alignSelf: 'flex-end',
-  },
-  closeBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
-  editBtn: {
-    flex: 1,
-    marginLeft: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#FF9F43',
-    alignItems: 'center',
-  },
-  editBtnText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  deleteBtn: {
-    flex: 1,
-    marginRight: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#CC3333',
-    alignItems: 'center',
-  },
-  deleteBtnText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 13,
+    backgroundColor: '#FAFAFA',
   },
 });

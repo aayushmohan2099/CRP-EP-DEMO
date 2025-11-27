@@ -1,4 +1,4 @@
-// src/screens/epsakhi/ExistingEnterpriseTrainingSkillsSection.jsx
+// src/screens/screensProductionApp/FormSections/ExistingEnterpriseTrainingSkillsSection.jsx
 import React from 'react';
 import {
   View,

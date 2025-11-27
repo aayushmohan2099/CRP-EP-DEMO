@@ -1,4 +1,4 @@
-// src/screens/epsakhi/ExistingEnterpriseEnterpriseDetailsSection.jsx
+// src/screens/screensProductionApp/FormSections/ExistingEnterpriseEnterpriseDetailsSection.jsx
 import React from 'react';
 import {
   View,
@@ -43,10 +43,8 @@ const TRANSPORT_AVAILABILITY_OPTIONS = [
 ];
 
 const BIJNOR_OPTIONS = [
-  'Yes, easily',
-  'Yes, but with difficulty',
+  'Yes',
   'No',
-  'Not applicable',
 ];
 
 export default function ExistingEnterpriseEnterpriseDetailsSection({

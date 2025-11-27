@@ -1,4 +1,4 @@
-// src/screens/epsakhi/ExistingEnterpriseDeclarationSection.jsx
+// src/screens/screensProductionApp/FormSections/ExistingEnterpriseDeclarationSection.jsx
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -12,11 +12,13 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import { launchImageLibrary } from 'react-native-image-picker';
 
+// Yes/No toggle that works with STRING values: "Yes" / "No"
 const YesNoToggle = ({ value, onChange }) => {
-  const current = value === true ? 'Yes' : value === false ? 'No' : '';
+  const current = value === 'Yes' ? 'Yes' : value === 'No' ? 'No' : '';
+
   const handlePress = (opt) => {
-    if (opt === 'Yes') onChange(true);
-    else if (opt === 'No') onChange(false);
+    // we store strings so that parent validation `=== 'Yes'` works
+    onChange(opt);
   };
 
   return (
@@ -50,6 +52,7 @@ export default function ExistingEnterpriseDeclarationSection({
   onSubmit,
   submitting = false,
 }) {
+  // parent passes a "patch" function; just forward patches to it
   const update = (patch) => setExistingForm(patch);
 
   // Local state for date picker (DD / MM / YYYY)
@@ -103,7 +106,8 @@ export default function ExistingEnterpriseDeclarationSection({
       if (!assets.length) return;
 
       update({
-        declaration_signature_files: assets, // wrapper will upload to /enterprise-media/ with field "others"
+        // wrapper will later upload to /enterprise-media/ with field "others"
+        declaration_signature_files: assets,
       });
     } catch (e) {
       console.warn('Signature pick failed', e);
@@ -142,25 +146,21 @@ export default function ExistingEnterpriseDeclarationSection({
 
       {/* 1) Declaration confirmed */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>
-          1) Declaration
-        </Text>
+        <Text style={styles.label}>1) Declaration</Text>
         <Text style={styles.helpText}>
           I hereby declare that all information provided above is correct
           and checked by me.
         </Text>
 
         <YesNoToggle
-          value={existingForm.declaration_confirmed}
+          value={existingForm.declaration_confirmed || ''}
           onChange={(val) => update({ declaration_confirmed: val })}
         />
       </View>
 
       {/* 2) Declaration Date */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>
-          2) Declaration Date
-        </Text>
+        <Text style={styles.label}>2) Declaration Date</Text>
         <Text style={styles.helpText}>
           Please select the date on which this form is being completed.
           The selected date will be clearly stored as YYYY-MM-DD.
@@ -176,7 +176,7 @@ export default function ExistingEnterpriseDeclarationSection({
         </TouchableOpacity>
       </View>
 
-      {/* Date picker modal with big, clear pickers */}
+      {/* Date picker modal */}
       <Modal
         visible={dateModalVisible}
         transparent
@@ -187,6 +187,7 @@ export default function ExistingEnterpriseDeclarationSection({
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Select Declaration Date</Text>
             <View style={styles.modalPickerRow}>
+              {/* Day */}
               <View style={styles.modalPickerCol}>
                 <Text style={styles.modalLabel}>Day</Text>
                 <View style={styles.modalPickerBox}>
@@ -202,6 +203,7 @@ export default function ExistingEnterpriseDeclarationSection({
                 </View>
               </View>
 
+              {/* Month */}
               <View style={styles.modalPickerCol}>
                 <Text style={styles.modalLabel}>Month</Text>
                 <View style={styles.modalPickerBox}>
@@ -221,6 +223,7 @@ export default function ExistingEnterpriseDeclarationSection({
                 </View>
               </View>
 
+              {/* Year */}
               <View style={styles.modalPickerCol}>
                 <Text style={styles.modalLabel}>Year</Text>
                 <View style={styles.modalPickerBox}>
@@ -257,9 +260,7 @@ export default function ExistingEnterpriseDeclarationSection({
 
       {/* 3) Applicant Signature upload */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>
-          3) Applicant Signature
-        </Text>
+        <Text style={styles.label}>3) Applicant Signature</Text>
         <Text style={styles.helpText}>
           Please upload a clear photo or scanned copy of your signature.
           This will be stored securely with your application.
@@ -276,7 +277,7 @@ export default function ExistingEnterpriseDeclarationSection({
         )}
       </View>
 
-      {/* Optional verifier name if you want to keep it from old form */}
+      {/* Optional verifier name */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>Verifier Name (optional)</Text>
         <Text style={styles.helpText}>
@@ -291,22 +292,24 @@ export default function ExistingEnterpriseDeclarationSection({
         />
       </View>
 
-      {/* SUBMIT BUTTON */}
-      <View style={styles.submitRow}>
-        <TouchableOpacity
-          style={[
-            styles.submitBtn,
-            (!existingForm.declaration_confirmed || submitting) &&
-              styles.submitBtnDisabled,
-          ]}
-          disabled={!existingForm.declaration_confirmed || submitting}
-          onPress={onSubmit}
-        >
-          <Text style={styles.submitBtnText}>
-            {submitting ? 'Submitting...' : 'Submit Existing Enterprise Form'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {/* Section-level submit (optional). If you don't pass onSubmit from parent, this will do nothing. */}
+      {onSubmit && (
+        <View style={styles.submitRow}>
+          <TouchableOpacity
+            style={[
+              styles.submitBtn,
+              (!existingForm.declaration_confirmed || submitting) &&
+                styles.submitBtnDisabled,
+            ]}
+            disabled={!existingForm.declaration_confirmed || submitting}
+            onPress={onSubmit}
+          >
+            <Text style={styles.submitBtnText}>
+              {submitting ? 'Submitting...' : 'Submit Existing Enterprise Form'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -317,45 +320,37 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    marginBottom: 12,
-    color: '#222',
+    marginBottom: 10,
+    color: '#333',
   },
   fieldBlock: {
     marginBottom: 16,
   },
   label: {
-    fontWeight: 'bold',
-    marginBottom: 4,
+    fontSize: 14,
+    fontWeight: '600',
     color: '#333',
+    marginBottom: 4,
   },
   helpText: {
     fontSize: 12,
     color: '#666',
     marginBottom: 6,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#bbb',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 15,
-    backgroundColor: '#fff',
-  },
   yesNoRow: {
     flexDirection: 'row',
+    gap: 10,
     marginTop: 4,
   },
   yesNoBtn: {
-    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#ccc',
-    paddingVertical: 8,
-    borderRadius: 6,
-    alignItems: 'center',
-    marginRight: 6,
+    backgroundColor: '#f7f7f7',
   },
   yesNoBtnActive: {
     backgroundColor: '#EE6969',
@@ -364,6 +359,7 @@ const styles = StyleSheet.create({
   yesNoText: {
     fontSize: 14,
     color: '#333',
+    fontWeight: '500',
   },
   yesNoTextActive: {
     color: '#fff',
@@ -371,27 +367,25 @@ const styles = StyleSheet.create({
   },
   dateDisplay: {
     borderWidth: 1,
-    borderColor: '#bbb',
+    borderColor: '#ccc',
     borderRadius: 6,
-    paddingVertical: 10,
     paddingHorizontal: 12,
+    paddingVertical: 10,
     backgroundColor: '#fff',
-    justifyContent: 'center',
+    marginTop: 4,
   },
   dateDisplayText: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#333',
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center',
+    backgroundColor: '#0009',
     justifyContent: 'center',
-    padding: 16,
+    alignItems: 'center',
   },
   modalCard: {
-    width: '100%',
-    maxWidth: 420,
+    width: '85%',
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 16,
@@ -405,6 +399,7 @@ const styles = StyleSheet.create({
   modalPickerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginVertical: 10,
   },
   modalPickerCol: {
     flex: 1,
@@ -412,20 +407,19 @@ const styles = StyleSheet.create({
   },
   modalLabel: {
     fontSize: 12,
-    fontWeight: '600',
     marginBottom: 4,
+    color: '#555',
   },
   modalPickerBox: {
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 6,
-    overflow: 'hidden',
-    backgroundColor: '#fafafa',
+    backgroundColor: '#fff',
   },
   modalBtnRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 14,
+    marginTop: 12,
   },
   modalBtn: {
     paddingHorizontal: 16,
@@ -438,41 +432,49 @@ const styles = StyleSheet.create({
   },
   modalBtnPrimaryText: {
     color: '#fff',
-    fontWeight: '700',
+    fontWeight: '600',
   },
   modalBtnSecondary: {
     backgroundColor: '#eee',
   },
   modalBtnSecondaryText: {
     color: '#333',
-    fontWeight: '600',
+    fontWeight: '500',
   },
   mediaBtn: {
     marginTop: 6,
-    borderWidth: 1,
-    borderColor: '#666',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    backgroundColor: '#eee',
     alignSelf: 'flex-start',
   },
   mediaBtnText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#333',
   },
   mediaInfo: {
+    marginTop: 4,
     fontSize: 12,
     color: '#555',
-    marginTop: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    backgroundColor: '#fff',
   },
   submitRow: {
-    marginTop: 10,
+    marginTop: 16,
   },
   submitBtn: {
     backgroundColor: '#EE6969',
-    borderRadius: 8,
     paddingVertical: 12,
+    borderRadius: 8,
     alignItems: 'center',
   },
   submitBtnDisabled: {
