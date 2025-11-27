@@ -39,7 +39,6 @@ const TRANSPORT_AVAILABILITY_OPTIONS = [
   'Very limited transport',
   'No transport',
   'Need Help',
-  'Others',
 ];
 
 const BIJNOR_OPTIONS = [

@@ -3,9 +3,6 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 
-/**
- * Parent–child multiselect for Enterprise Type, using the tree you specified.
- */
 const ENTERPRISE_TYPE_TREE = [
   {
     parent: 'Food Processing Sector',
@@ -170,7 +167,6 @@ const ENTERPRISE_TYPE_TREE = [
     children: ['Others'],
   },
 ];
-
 const OWNERSHIP_OPTIONS = [
   { label: 'Individual', value: 'Individual' },
   { label: 'Partnership', value: 'Partnership' },
@@ -188,7 +184,7 @@ const EnterpriseTypeTree = ({ value, onChange }) => {
     if (exists) {
       updated = selectedTree.filter((row) => row.parent !== parent);
     } else {
-      updated = [...selectedTree, { parent, children: [] }];
+      updated = [...selectedTree, { parent, children: [], parentOtherText: '' }];
     }
     onChange(updated);
   };
@@ -197,7 +193,7 @@ const EnterpriseTypeTree = ({ value, onChange }) => {
     const existing = selectedTree.find((row) => row.parent === parent);
     let updated = [...selectedTree];
     if (!existing) {
-      updated.push({ parent, children: [child] });
+      updated.push({ parent, children: [child], childOtherText: {} });
     } else {
       const children = existing.children || [];
       const has = children.includes(child);
@@ -219,10 +215,31 @@ const EnterpriseTypeTree = ({ value, onChange }) => {
     return !!row && row.children?.includes(child);
   };
 
+  const updateParentOtherText = (parent, text) => {
+    const updated = selectedTree.map((row) =>
+      row.parent === parent ? { ...row, parentOtherText: text } : row
+    );
+    onChange(updated);
+  };
+
+  const updateChildOtherText = (parent, child, text) => {
+    const updated = selectedTree.map((row) => {
+      if (row.parent === parent) {
+        return {
+          ...row,
+          childOtherText: { ...(row.childOtherText || {}), [child]: text },
+        };
+      }
+      return row;
+    });
+    onChange(updated);
+  };
+
   return (
     <View style={{ marginTop: 8 }}>
       {ENTERPRISE_TYPE_TREE.map((group) => {
         const parentSelected = isParentSelected(group.parent);
+        const rowData = selectedTree.find((r) => r.parent === group.parent) || {};
         return (
           <View
             key={group.parent}
@@ -249,17 +266,35 @@ const EnterpriseTypeTree = ({ value, onChange }) => {
             {parentSelected && (
               <View style={{ marginTop: 8, paddingLeft: 8 }}>
                 {group.children.map((child) => (
-                  <TouchableOpacity
-                    key={child}
-                    onPress={() => toggleChild(group.parent, child)}
-                    style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}
-                  >
-                    <Text style={{ marginRight: 6 }}>
-                      {isChildSelected(group.parent, child) ? '☑' : '☐'}
-                    </Text>
-                    <Text style={{ flex: 1 }}>{child}</Text>
-                  </TouchableOpacity>
+                  <View key={child}>
+                    <TouchableOpacity
+                      onPress={() => toggleChild(group.parent, child)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Text style={{ marginRight: 6 }}>
+                        {isChildSelected(group.parent, child) ? '☑' : '☐'}
+                      </Text>
+                      <Text style={{ flex: 1 }}>{child}</Text>
+                    </TouchableOpacity>
+
+                    {/* Child "Others → Specify" field */}
+                    {isChildSelected(group.parent, child) && child === 'Others' && (
+                      <TextInput
+                        style={[styles.input, { marginBottom: 6, marginLeft: 20 }]}
+                        placeholder="Please specify"
+                        value={(rowData.childOtherText && rowData.childOtherText[child]) || ''}
+                        onChangeText={(text) => updateChildOtherText(group.parent, child, text)}
+                      />
+                    )}
+                  </View>
                 ))}
+
+                {/* Parent "Others → Specify" field */}
+                
               </View>
             )}
           </View>
@@ -269,10 +304,7 @@ const EnterpriseTypeTree = ({ value, onChange }) => {
   );
 };
 
-export default function ExistingEnterpriseBasicInfoSection({
-  existingForm,
-  setExistingForm,
-}) {
+export default function ExistingEnterpriseBasicInfoSection({ existingForm, setExistingForm }) {
   const [yearPickerVisible, setYearPickerVisible] = useState(false);
 
   const currentYear = new Date().getFullYear();
@@ -286,7 +318,7 @@ export default function ExistingEnterpriseBasicInfoSection({
     <View style={styles.sectionContainer}>
       <Text style={styles.sectionTitle}>1) Basic Information</Text>
 
-      {/* 1) Enterprise Name */}
+      {/* Enterprise Name */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>What is the name of your Enterprise?</Text>
         <Text style={styles.helpText}>
@@ -299,7 +331,7 @@ export default function ExistingEnterpriseBasicInfoSection({
         />
       </View>
 
-      {/* 2) Enterprise Type – tree multiselect */}
+      {/* Enterprise Type */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>What is the type of your Enterprise?</Text>
         <Text style={styles.helpText}>
@@ -311,7 +343,7 @@ export default function ExistingEnterpriseBasicInfoSection({
         />
       </View>
 
-      {/* 3) Ownership type */}
+      {/* Ownership type */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>What is your Enterprise Ownership type?</Text>
         <Text style={styles.helpText}>
@@ -338,7 +370,7 @@ export default function ExistingEnterpriseBasicInfoSection({
         )}
       </View>
 
-      {/* 4) Special category */}
+      {/* Special category */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>
           Please specify your special category (If applicable)
@@ -353,22 +385,17 @@ export default function ExistingEnterpriseBasicInfoSection({
         />
       </View>
 
-      {/* 5) Year of establishment – modal year picker */}
+      {/* Year of establishment */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>
-          What year was your Enterprise established in?
-        </Text>
+        <Text style={styles.label}>What year was your Enterprise established in?</Text>
         <Text style={styles.helpText}>
-          Please select the year when you started this enterprise. If unsure, give your best
-          estimate.
+          Please select the year when you started this enterprise. If unsure, give your best estimate.
         </Text>
         <TouchableOpacity
           style={styles.input}
           onPress={() => setYearPickerVisible(true)}
         >
-          <Text>
-            {existingForm.year_of_establishment || 'Select Year'}
-          </Text>
+          <Text>{existingForm.year_of_establishment || 'Select Year'}</Text>
         </TouchableOpacity>
 
         <Modal visible={yearPickerVisible} transparent animationType="slide">
@@ -402,11 +429,9 @@ export default function ExistingEnterpriseBasicInfoSection({
         </Modal>
       </View>
 
-      {/* 6) UDDYAM AADHAR */}
+      {/* UDDYAM AADHAR */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>
-          Please Specify the correct UDDYAM AADHAR NUMBER (If Applicable)
-        </Text>
+        <Text style={styles.label}>Please Specify the correct UDDYAM AADHAR NUMBER (If Applicable)</Text>
         <Text style={styles.helpText}>
           Please enter the Udyam Aadhar Number carefully. This will be used for verification.
         </Text>
@@ -417,14 +442,11 @@ export default function ExistingEnterpriseBasicInfoSection({
         />
       </View>
 
-      {/* 7) Total employees */}
+      {/* Total employees */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>
-          What are the total number of employees working under your Enterprise?
-        </Text>
+        <Text style={styles.label}>What are the total number of employees working under your Enterprise?</Text>
         <Text style={styles.helpText}>
-          Please enter the total number of people working in your enterprise. If none, please
-          enter 0.
+          Please enter the total number of people working in your enterprise. If none, please enter 0.
         </Text>
         <TextInput
           style={styles.input}
@@ -434,11 +456,9 @@ export default function ExistingEnterpriseBasicInfoSection({
         />
       </View>
 
-      {/* 8) SHG employees */}
+      {/* SHG employees */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>
-          Are there any SHG members working under your Enterprise?
-        </Text>
+        <Text style={styles.label}>Are there any SHG members working under your Enterprise?</Text>
         <Text style={styles.helpText}>
           Please enter the number of SHG members working here. If none, please enter 0.
         </Text>
@@ -454,28 +474,11 @@ export default function ExistingEnterpriseBasicInfoSection({
 }
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 10,
-    color: '#222',
-  },
-  fieldBlock: {
-    marginBottom: 12,
-  },
-  label: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-    color: '#333',
-  },
-  helpText: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
+  sectionContainer: { marginBottom: 24 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 10, color: '#222' },
+  fieldBlock: { marginBottom: 12 },
+  label: { fontWeight: 'bold', marginBottom: 4, color: '#333' },
+  helpText: { fontSize: 12, color: '#666', marginBottom: 4 },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -485,20 +488,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     backgroundColor: '#fff',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '85%',
-    padding: 16,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-  },
-  cancelBtn: {
-    marginTop: 12,
-    alignSelf: 'flex-end',
-  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { width: '85%', padding: 16, borderRadius: 8, backgroundColor: '#fff' },
+  cancelBtn: { marginTop: 12, alignSelf: 'flex-end' },
 });

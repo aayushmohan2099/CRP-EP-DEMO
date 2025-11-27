@@ -400,6 +400,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
   };
 
   // Helpers to strip out child tables from main payload.
+  // Helpers to strip out child tables from main payload.
   const buildMainPayload = (recordedBenefId) => {
     const {
       enterprise_types_tree,
@@ -420,25 +421,40 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
 
     return {
       payload,
-      enterpriseTypesTree: enterprise_types_tree || [],
-      products: products || [],
-      sourceOfInvestmentTree: source_of_investment_tree || [],
-      loans: loans || [],
-      subsidies: subsidies || [],
-      trainingReceivedRows: training_received_rows || [],
-      trainingRequiredRows: training_required_rows || [],
-      media,
+      enterpriseTypesTree: Array.isArray(enterprise_types_tree)
+        ? enterprise_types_tree
+        : [],
+      products: Array.isArray(products) ? products : [],
+      sourceOfInvestmentTree: Array.isArray(source_of_investment_tree)
+        ? source_of_investment_tree
+        : [],
+      loans: Array.isArray(loans) ? loans : [],
+      subsidies: Array.isArray(subsidies) ? subsidies : [],
+      trainingReceivedRows: Array.isArray(training_received_rows)
+        ? training_received_rows
+        : [],
+      trainingRequiredRows: Array.isArray(training_required_rows)
+        ? training_required_rows
+        : [],
+      media: media || {},
     };
   };
 
+  // ============ CHILD TABLE SAVERS (ALL USING TH_urid IN enterprise_id) ============
+
+  // 1) Enterprise type sub-table
   const saveEnterpriseTypes = async (enterpriseId, tree) => {
-    if (!Array.isArray(tree)) return;
+    if (!enterpriseId || !Array.isArray(tree)) return;
+
     for (const row of tree) {
       if (!row.parent || !Array.isArray(row.children) || row.children.length === 0)
         continue;
+
       const mapped = `[${row.parent}: ${(row.children || []).join(', ')}]`;
+
       await gsApi.createEnterpriseType({
-        enterprise: enterpriseId,
+        // IMPORTANT: enterprise_id uses TH_urid of ExistingEnterpriseForm
+        enterprise_id: enterpriseId,
         form_type: 'exep',
         parent_category: row.parent,
         sub_category: mapped,
@@ -446,8 +462,10 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     }
   };
 
+  // 2) Products + product-level media
   const saveProductsAndMedia = async (enterpriseId, products) => {
-    if (!Array.isArray(products)) return;
+    if (!enterpriseId || !Array.isArray(products)) return;
+
     for (const product of products) {
       const {
         media,
@@ -468,8 +486,9 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
         avg_monthly_sales,
       } = product;
 
+      // Product rows are created with TH_urid of ExistingEnterpriseForm in enterprise_id
       const prodRes = await gsApi.createEnterpriseProduct({
-        enterprise: enterpriseId,
+        enterprise_id: enterpriseId,
         form_type: 'exep',
         main_product_name,
         activity_or_product_type,
@@ -494,16 +513,19 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
         avg_monthly_sales,
       });
 
-      const productEnterpriseId = prodRes?.enterprise || enterpriseId;
+      // TH_urid of the *product* row – this is what media should point to
+      const productUrid =
+        prodRes?.TH_urid || prodRes?.TH_URID || prodRes?.id || null;
 
-      // media per product
-      if (media) {
+      // Media per product: media.enterprise_id = TH_urid of the product row
+      if (productUrid && media) {
         const uploadGroup = async (fieldName, assets) => {
           if (!Array.isArray(assets) || assets.length === 0) return;
           for (const asset of assets) {
             if (!asset?.uri) continue;
+
             const formData = new FormData();
-            formData.append('enterprise', String(productEnterpriseId));
+            formData.append('enterprise_id', String(productUrid));
             formData.append('form_type', 'exep');
             formData.append(fieldName, {
               uri: asset.uri,
@@ -513,6 +535,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
             await gsApi.uploadEnterpriseMedia(formData);
           }
         };
+
         await uploadGroup('open_box_photo', media.open_box || []);
         await uploadGroup('close_box_photo', media.close_box || []);
         await uploadGroup('others', media.others || []);
@@ -520,13 +543,18 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     }
   };
 
+  // 3) Investment sources (SupportDetail with subsidy_type="Investment Source")
   const saveInvestmentSources = async (enterpriseId, tree) => {
-    if (!Array.isArray(tree)) return;
+    if (!enterpriseId || !Array.isArray(tree)) return;
+
     for (const row of tree) {
       if (!row.parent || !row.children || row.children.length === 0) continue;
+
       const mapped = `[${row.parent}: ${(row.children || []).join(', ')}]`;
+
       await gsApi.createEnterpriseSupportDetail({
-        enterprise: enterpriseId,
+        // TH_urid of ExistingEnterpriseForm
+        enterprise_id: enterpriseId,
         form_type: 'exep',
         subsidy_type: 'Investment Source',
         subsidy_name: mapped,
@@ -535,10 +563,13 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     }
   };
 
+  // 4) Loan details sub-table
   const saveLoans = async (enterpriseId, loans) => {
-    if (!Array.isArray(loans)) return;
+    if (!enterpriseId || !Array.isArray(loans)) return;
+
     for (const loan of loans) {
       const { institution_tree, loan_amount, date_taken, repayment_status } = loan;
+
       let institutionText = '';
       if (Array.isArray(institution_tree) && institution_tree.length > 0) {
         institutionText = institution_tree
@@ -548,8 +579,10 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
           )
           .join(', ');
       }
+
       await gsApi.createEnterpriseLoanDetail({
-        enterprise: enterpriseId,
+        // TH_urid of ExistingEnterpriseForm
+        enterprise_id: enterpriseId,
         form_type: 'exep',
         institution_name: institutionText,
         loan_amount,
@@ -559,10 +592,13 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     }
   };
 
+  // 5) Subsidy / support details sub-table
   const saveSubsidies = async (enterpriseId, subsidies) => {
-    if (!Array.isArray(subsidies)) return;
+    if (!enterpriseId || !Array.isArray(subsidies)) return;
+
     for (const sub of subsidies) {
       const { subsidy_type, subsidy_name_tree, subsidy_detail } = sub;
+
       let subsidyName = '';
       if (Array.isArray(subsidy_name_tree) && subsidy_name_tree.length > 0) {
         subsidyName = subsidy_name_tree
@@ -572,8 +608,10 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
           )
           .join(', ');
       }
+
       await gsApi.createEnterpriseSupportDetail({
-        enterprise: enterpriseId,
+        // TH_urid of ExistingEnterpriseForm
+        enterprise_id: enterpriseId,
         form_type: 'exep',
         subsidy_type,
         subsidy_name: subsidyName,
@@ -582,10 +620,21 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
     }
   };
 
+  // 6) Training received / required + training-level media
   const saveTrainingReqs = async (enterpriseId, rows, formType) => {
-    if (!Array.isArray(rows)) return;
+    if (!enterpriseId || !Array.isArray(rows)) return;
+
     for (const r of rows) {
-      const { department, sector_tree, duration, location, expected_income } = r;
+      const {
+        department,
+        sector_tree,
+        duration,
+        location,
+        expected_income,
+        // only present for "training received" rows
+        certificates_files,
+      } = r;
+
       let trainingModuleText = '';
       if (Array.isArray(sector_tree) && sector_tree.length > 0) {
         trainingModuleText = sector_tree
@@ -595,8 +644,10 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
           )
           .join(', ');
       }
-      await gsApi.createEnterpriseTrainingReq({
-        enterprise: enterpriseId,
+
+      // Training row with enterprise_id = TH_urid of ExistingEnterpriseForm
+      const trRes = await gsApi.createEnterpriseTrainingReq({
+        enterprise_id: enterpriseId,
         form_type: formType, // 'rec' or 'req'
         department,
         sector: (sector_tree || []).map((row) => row.parent).join(', '),
@@ -605,17 +656,50 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
         location: location || '',
         expected_income: expected_income || '',
       });
+
+      const trainingUrid =
+        trRes?.TH_urid || trRes?.TH_URID || trRes?.id || null;
+
+      // For Training/Skills: media.enterprise_id = TH_urid of *training* row
+      // Each training row can have its own certificates (comma-separated URLs in DB)
+      if (
+        formType === 'rec' &&
+        trainingUrid &&
+        Array.isArray(certificates_files) &&
+        certificates_files.length > 0
+      ) {
+        for (const asset of certificates_files) {
+          if (!asset?.uri) continue;
+
+          const fd = new FormData();
+          fd.append('enterprise_id', String(trainingUrid));
+          fd.append('form_type', 'exep'); // still tagged as existing-enterprise flow
+          // store certificates in "others" field
+          fd.append('others', {
+            uri: asset.uri,
+            name: asset.fileName || 'certificate.jpg',
+            type: asset.type || 'image/jpeg',
+          });
+
+          await gsApi.uploadEnterpriseMedia(fd);
+        }
+      }
     }
   };
 
+  // 7) Standalone enterprise media + declaration signature
   const saveStandaloneMedia = async (enterpriseId, media) => {
-    if (!media) return;
+    if (!enterpriseId || !media) return;
+
     const upload = async (fieldName, assets) => {
       if (!Array.isArray(assets) || assets.length === 0) return;
+
       for (const asset of assets) {
         if (!asset?.uri) continue;
+
         const formData = new FormData();
-        formData.append('enterprise', String(enterpriseId));
+        // TH_urid of ExistingEnterpriseForm
+        formData.append('enterprise_id', String(enterpriseId));
         formData.append('form_type', 'exep');
         formData.append(fieldName, {
           uri: asset.uri,
@@ -626,10 +710,15 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       }
     };
 
+    // Enterprise-level photos
     await upload('photo_entrepreneur', media.photo_entrepreneur || []);
     await upload('photo_enterprise', media.photo_enterprise || []);
+
+    // Declaration: signature media rows will have enterprise_id = TH_urid of the
+    // existing-enterprise "declaration" row (here, the main ExistingEnterpriseForm row)
     await upload('others', media.declaration_signature || []);
   };
+
 
   const handleSubmit = async () => {
     try {

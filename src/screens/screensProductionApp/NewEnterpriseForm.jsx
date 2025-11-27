@@ -1421,6 +1421,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
         infrastructure_support_type: form.infrastructure_support_type || null,
         infrastructure_support_detail: form.infrastructure_support_detail || null,
         digital_emarket_support,
+        enterprise_type: 'newep',
         other_support: form.other_support || null,
         declaration_confirmed: !!form.declaration_confirmed,
         declaration_date: form.declaration_date || null,

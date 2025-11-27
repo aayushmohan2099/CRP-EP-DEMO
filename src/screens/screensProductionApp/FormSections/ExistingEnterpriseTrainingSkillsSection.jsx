@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
+import { launchCamera } from 'react-native-image-picker';
+
 
 const YES_NO = ['Yes', 'No'];
 
@@ -610,7 +612,7 @@ export default function ExistingEnterpriseTrainingSkillsSection({
                   </View>
 
                   {/* 3) Certificates upload */}
-                  <View style={styles.fieldBlock}>
+                  {/* <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
                       3) Please upload if you have any certificates for your trainings
                     </Text>
@@ -630,7 +632,55 @@ export default function ExistingEnterpriseTrainingSkillsSection({
                           Selected: {row.certificates_files.length} file(s)
                         </Text>
                       )}
-                  </View>
+                  </View> */}
+
+                  {/* 3) Certificates upload */}
+<View style={styles.fieldBlock}>
+  <Text style={styles.label}>
+    3) Please upload if you have any certificates for your trainings
+  </Text>
+  <Text style={styles.helpText}>
+    You can upload photos or PDF copies of your training certificates. Each file will be stored separately.
+  </Text>
+  <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
+    {/* Upload button */}
+    <TouchableOpacity
+      style={styles.mediaBtn}
+      onPress={() => pickCertificates(index)}
+    >
+      <Text style={styles.mediaBtnText}>Upload Certificates</Text>
+    </TouchableOpacity>
+
+    {/* Camera button */}
+    <TouchableOpacity
+      style={styles.mediaBtn}
+      onPress={async () => {
+        try {
+          const res = await launchCamera({
+            mediaType: 'photo',
+          });
+          if (res.didCancel) return;
+          const assets = res.assets || [];
+          const row = trainingReceived[index];
+          const current = Array.isArray(row.certificates_files) ? row.certificates_files : [];
+          const combined = [...current, ...assets];
+          updateTrainingReceivedRow(index, { certificates_files: combined });
+        } catch (err) {
+          console.warn('Camera capture failed', err);
+        }
+      }}
+    >
+      <Text style={styles.mediaBtnText}>Camera</Text>
+    </TouchableOpacity>
+  </View>
+
+  {Array.isArray(row.certificates_files) && row.certificates_files.length > 0 && (
+    <Text style={styles.mediaInfo}>
+      Selected: {row.certificates_files.length} file(s)
+    </Text>
+  )}
+</View>
+
                 </View>
               )}
             </View>

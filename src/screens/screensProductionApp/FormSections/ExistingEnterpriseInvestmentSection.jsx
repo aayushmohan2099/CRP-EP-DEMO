@@ -1,5 +1,5 @@
 // src/screens/screensProductionApp/FormSections/ExistingEnterpriseInvestmentSection.jsx
-import React from 'react';
+import React, { useState } from 'react'; // <-- Added useState
 import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 
 const YES_NO = ['Yes', 'No'];
@@ -95,6 +95,7 @@ const INVESTMENT_SOURCE_TREE = [
 
 const SourceOfInvestmentTree = ({ value, onChange }) => {
   const selectedTree = Array.isArray(value) ? value : [];
+  const [othersText, setOthersText] = useState(''); // <-- Added state for "Others"
 
   const isParentSelected = (parent) =>
     !!selectedTree.find((row) => row.parent === parent);
@@ -137,11 +138,14 @@ const SourceOfInvestmentTree = ({ value, onChange }) => {
     <View style={{ marginTop: 8 }}>
       {INVESTMENT_SOURCE_TREE.map((group) => {
         const parentSelected = isParentSelected(group.parent);
+        const isOthersGroup = group.parent === 'Others (Specify)';
+        const isOthersSelected =
+          isOthersGroup &&
+          parentSelected &&
+          isChildSelected(group.parent, 'Others'); // <-- check if Others is selected
+
         return (
-          <View
-            key={group.parent}
-            style={styles.treeGroup}
-          >
+          <View key={group.parent} style={styles.treeGroup}>
             <TouchableOpacity
               onPress={() => toggleParent(group.parent)}
               style={styles.treeParentRow}
@@ -164,6 +168,25 @@ const SourceOfInvestmentTree = ({ value, onChange }) => {
                     <Text style={styles.treeChildLabel}>{child}</Text>
                   </TouchableOpacity>
                 ))}
+
+                {/* <-- TextInput only visible when Others is selected */}
+                {isOthersSelected && (
+                  <TextInput
+                    style={[styles.input, { marginTop: 6 }]}
+                    placeholder="Specify"
+                    value={othersText}
+                    onChangeText={(txt) => {
+                      setOthersText(txt);
+                      onChange(
+                        selectedTree.map((row) =>
+                          row.parent === group.parent
+                            ? { ...row, others_specify: txt }
+                            : row
+                        )
+                      );
+                    }}
+                  />
+                )}
               </View>
             )}
           </View>
@@ -178,17 +201,11 @@ const YesNoToggle = ({ value, onChange }) => (
     {YES_NO.map((opt) => (
       <TouchableOpacity
         key={opt}
-        style={[
-          styles.yesNoBtn,
-          value === opt && styles.yesNoBtnActive,
-        ]}
+        style={[styles.yesNoBtn, value === opt && styles.yesNoBtnActive]}
         onPress={() => onChange(opt)}
       >
         <Text
-          style={[
-            styles.yesNoText,
-            value === opt && styles.yesNoTextActive,
-          ]}
+          style={[styles.yesNoText, value === opt && styles.yesNoTextActive]}
         >
           {opt}
         </Text>
@@ -202,7 +219,6 @@ export default function ExistingEnterpriseInvestmentSection({
   setExistingForm,
 }) {
   const update = (patch) => setExistingForm(patch);
-
   const hasShgCifYes = existingForm.has_shg_cif === 'Yes';
 
   return (
@@ -244,9 +260,7 @@ export default function ExistingEnterpriseInvestmentSection({
 
       {/* 14) Gross profit */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>
-          14) What is your Gross Profit?
-        </Text>
+        <Text style={styles.label}>14) What is your Gross Profit?</Text>
         <Text style={styles.helpText}>
           Please enter your gross profit (income minus direct expenses) as you understand it.
           You may put an approximate value.
@@ -261,9 +275,7 @@ export default function ExistingEnterpriseInvestmentSection({
 
       {/* 15) Working capital */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>
-          15) What is your Monthly Working Capital?
-        </Text>
+        <Text style={styles.label}>15) What is your Monthly Working Capital?</Text>
         <Text style={styles.helpText}>
           Please enter how much money you normally need every month to run your business
           (for raw material, wages, transport, etc.).
@@ -278,9 +290,7 @@ export default function ExistingEnterpriseInvestmentSection({
 
       {/* 16) SHG CIF funds */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>
-          16) Has your SHG received CIF Funds?
-        </Text>
+        <Text style={styles.label}>16) Has your SHG received CIF Funds?</Text>
         <Text style={styles.helpText}>
           Please select Yes if your Self Help Group (SHG) has received Community Investment Fund (CIF) support.
         </Text>

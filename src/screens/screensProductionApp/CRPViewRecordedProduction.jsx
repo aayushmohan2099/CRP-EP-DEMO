@@ -70,8 +70,8 @@ const META_KEYS = new Set([
 function labelFromEnterpriseTypeCode(code) {
   const c = (code || '').toLowerCase();
   if (c === 'exep') return 'Existing Enterprise';
-  if (c === 'newep') return 'New Enterprise';
-  if (c === 'noep') return 'No Enterprise';
+  if (c === 'newep') return 'Interested in opening New Enterprise';
+  if (c === 'noep') return 'Not Interested';
   return 'No Enterprise';
 }
 
@@ -79,8 +79,8 @@ function labelFromEnterpriseTypeCode(code) {
 function labelFromDetailEnterpriseType(detailType) {
   const t = (detailType || '').toLowerCase();
   if (t === 'existing' || t === 'exep') return 'Existing Enterprise';
-  if (t === 'new' || t === 'newep') return 'New Enterprise';
-  if (t === 'noep' || t === 'none' || t === 'no_enterprise') {
+  if (t === 'new' || t === 'newep') return 'Interested in opening New Enterprise';
+  if (t === 'noep' || t === 'none' || t === 'Not Interested') {
     return 'No Enterprise';
   }
   return 'Not Specified';
@@ -229,7 +229,7 @@ export default function CRPViewRecordedProduction({ navigation }) {
       data.push({
         type: 'header',
         key: 'header-new',
-        title: 'New Enterprise',
+        title: 'Interested in opening New Enterprise',
       });
       newItems.forEach(({ row, idx }) =>
         data.push({
@@ -244,7 +244,7 @@ export default function CRPViewRecordedProduction({ navigation }) {
       data.push({
         type: 'header',
         key: 'header-none',
-        title: 'No Enterprise',
+        title: 'Not Interested',
       });
       noneItems.forEach(({ row, idx }) =>
         data.push({

@@ -6,22 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
-
-/**
- * Props:
- *  - existingForm (object from wrapper)
- *  - setExistingForm (wrapper setter)
- *
- * Fields populated in wrapper:
- *  - enterprise_photos_files: []
- *  - enterprise_videos_files: []
- *  - enterprise_documents_files: []
- *
- * The wrapper will then loop these arrays and POST each file to:
- *   /enterprise-media/
- *   with body { enterprise_id, field: "enterprise_photos" | "enterprise_videos" | "enterprise_documents" }
- */
+import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 
 export default function ExistingEnterpriseMediaSection({
   existingForm,
@@ -32,7 +17,7 @@ export default function ExistingEnterpriseMediaSection({
   const pickFiles = async (fieldName, allowedTypes) => {
     try {
       const res = await launchImageLibrary({
-        mediaType: allowedTypes, // "photo" | "video" | "mixed"
+        mediaType: allowedTypes,
         selectionLimit: 20,
       });
 
@@ -46,83 +31,80 @@ export default function ExistingEnterpriseMediaSection({
     }
   };
 
+  const captureFromCamera = async (fieldName, allowedTypes) => {
+    try {
+      const res = await launchCamera({
+        mediaType: allowedTypes,
+      });
+
+      if (res.didCancel) return;
+
+      const assets = res.assets || [];
+      const existing = existingForm[fieldName] || [];
+      update({ [fieldName]: [...existing, ...assets] });
+    } catch (err) {
+      console.warn('Camera capture failed:', err);
+    }
+  };
+
+  const renderUploadBlock = (label, fieldName, type, helpText) => (
+    <View style={styles.fieldBlock}>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.helpText}>{helpText}</Text>
+
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <TouchableOpacity
+          style={styles.mediaBtn}
+          onPress={() => pickFiles(fieldName, type)}
+        >
+          <Text style={styles.mediaBtnText}>Upload</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.mediaBtn}
+          onPress={() => captureFromCamera(fieldName, type)}
+        >
+          <Text style={styles.mediaBtnText}>Camera</Text>
+        </TouchableOpacity>
+      </View>
+
+      {Array.isArray(existingForm[fieldName]) &&
+        existingForm[fieldName].length > 0 && (
+          <Text style={styles.mediaInfo}>
+            Selected: {existingForm[fieldName].length}
+          </Text>
+        )}
+    </View>
+  );
+
   return (
     <View style={styles.sectionContainer}>
       <Text style={styles.sectionTitle}>8) Enterprise Media Upload</Text>
-
       <Text style={styles.helpText}>
         Please upload photos, videos and documents related to your enterprise.
         This helps in better verification and support.
       </Text>
 
-      {/* ------------------ PHOTOS UPLOAD ------------------ */}
-      <View style={styles.fieldBlock}>
-        <Text style={styles.label}>1) Upload Enterprise Photos</Text>
-        <Text style={styles.helpText}>
-          Please upload clear photos of your enterprise such as:
-          workplace, machinery, products, workers, raw materials etc.
-        </Text>
+      {renderUploadBlock(
+        '1) Upload Enterprise Photos',
+        'enterprise_photos_files',
+        'photo',
+        'Please upload clear photos of your enterprise such as: workplace, machinery, products, workers, raw materials etc.'
+      )}
 
-        <TouchableOpacity
-          style={styles.mediaBtn}
-          onPress={() => pickFiles('enterprise_photos_files', 'photo')}
-        >
-          <Text style={styles.mediaBtnText}>Select Photos</Text>
-        </TouchableOpacity>
+      {renderUploadBlock(
+        '2) Upload Entreprenuer Photo',
+        'photo_entreprenuer_files',
+        'photo',
+        'Please upload clear photo of applicant/entreprenure.'
+      )}
 
-        {Array.isArray(existingForm.enterprise_photos_files) &&
-          existingForm.enterprise_photos_files.length > 0 && (
-            <Text style={styles.mediaInfo}>
-              Selected Photos: {existingForm.enterprise_photos_files.length}
-            </Text>
-          )}
-      </View>
-
-      {/* ------------------ VIDEOS UPLOAD ------------------ */}
-      <View style={styles.fieldBlock}>
-        <Text style={styles.label}>2) Upload Enterprise Videos</Text>
-        <Text style={styles.helpText}>
-          Please upload short videos showing your enterprise setup,
-          business activities or demonstrations.
-        </Text>
-
-        <TouchableOpacity
-          style={styles.mediaBtn}
-          onPress={() => pickFiles('enterprise_videos_files', 'video')}
-        >
-          <Text style={styles.mediaBtnText}>Select Videos</Text>
-        </TouchableOpacity>
-
-        {Array.isArray(existingForm.enterprise_videos_files) &&
-          existingForm.enterprise_videos_files.length > 0 && (
-            <Text style={styles.mediaInfo}>
-              Selected Videos: {existingForm.enterprise_videos_files.length}
-            </Text>
-          )}
-      </View>
-
-      {/* ------------------ DOCUMENTS UPLOAD ------------------ */}
-      <View style={styles.fieldBlock}>
-        <Text style={styles.label}>3) Upload Enterprise Documents</Text>
-        <Text style={styles.helpText}>
-          You may upload any relevant documents (registration certificate,
-          invoices, bills, ID proofs, training certificates etc.)
-        </Text>
-
-        <TouchableOpacity
-          style={styles.mediaBtn}
-          onPress={() => pickFiles('enterprise_documents_files', 'mixed')}
-        >
-          <Text style={styles.mediaBtnText}>Select Documents</Text>
-        </TouchableOpacity>
-
-        {Array.isArray(existingForm.enterprise_documents_files) &&
-          existingForm.enterprise_documents_files.length > 0 && (
-            <Text style={styles.mediaInfo}>
-              Selected Documents: {existingForm.enterprise_documents_files.length}
-            </Text>
-          )}
-      </View>
+      {renderUploadBlock(
+        '3) Upload Enterprise Documents',
+        'enterprise_documents_files',
+        'mixed',
+        'You may upload any relevant documents (registration certificate, invoices, bills, ID proofs, training certificates etc.)'
+      )}
     </View>
   );
 }
