@@ -48,196 +48,424 @@ function extractLocationFromShg(shg) {
 // ========= Training sector config =========
 
 const TRAINING_SECTORS = [
+  // {
+  //   parent: 'Agriculture and Allied Activities',
+  //   children: [
+  //     'Organic Farming',
+  //     'Dairy Farming',
+  //     'Poultry Farming',
+  //     'Mushroom Cultivation',
+  //     'Beekeeping and Honey Production',
+  //     'Goat Rearing',
+  //     'Vermicomposting',
+  //     'Fish Farming',
+  //     'Floriculture (Flower Cultivation)',
+  //     'Medicinal Plant Cultivation',
+  //     'Organic Fertilizer Production',
+  //     'Ayurvedic Medicine Manufacturing',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Food Processing and Snacks Business',
+  //   children: [
+  //     'Pickle and Papad Making',
+  //     'Bakery and Cake Production',
+  //     'Spice Powder Making',
+  //     'Flour Mill',
+  //     'Dairy Product Manufacturing (Paneer, Ghee)',
+  //     'Ready-to-Eat Food Preparation',
+  //     'Herbal Tea Manufacturing',
+  //     'Jam and Jelly Production',
+  //     'Frozen Food Business',
+  //     'Edible Oil Extraction',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Handicrafts and Traditional Skills',
+  //   children: [
+  //     'Banarasi Saree Weaving',
+  //     'Chikankari Embroidery',
+  //     'Wooden Handicrafts',
+  //     'Terracotta Pottery',
+  //     'Jute Bag Manufacturing',
+  //     'Handmade Jewelry',
+  //     'Toy Manufacturing',
+  //     'Paper Mache Art',
+  //     'Bamboo Craft',
+  //     'Leather Product Manufacturing',
+  //     'Handloom Weaving Cooperative Society',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Service-Based Businesses',
+  //   children: [
+  //     'Catering Service',
+  //     'Tailoring and Garment Making',
+  //     'Event Decoration',
+  //     'Beautician and Salon',
+  //     'Coaching Classes',
+  //     'Mobile Repairing',
+  //     'Home Cleaning Services',
+  //     'Photography Studio',
+  //     'Cyber Café',
+  //     'Wedding Planning',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Waste Management and Eco-Friendly Ventures',
+  //   children: [
+  //     'Paper Bag Manufacturing',
+  //     'Cloth Bag Manufacturing',
+  //     'Plastic Recycling',
+  //     'E-waste Recycling',
+  //     'Compost Manufacturing',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Home and Personal Care Products',
+  //   children: [
+  //     'Candle Manufacturing',
+  //     'Incense Stick Making',
+  //     'Soap and Detergent Manufacturing',
+  //     'Bindi and Nail Polish Manufacturing',
+  //     'Herbal Shampoo and Cosmetic Products',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Low-Scale Production',
+  //   children: [
+  //     'Paper Plate and Cup Manufacturing',
+  //     'LED Bulb Assembly',
+  //     'Stationery Production',
+  //     'Environment-Friendly Disposable Cutlery',
+  //     'Chalk and Whiteboard Marker Manufacturing',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Textile and Apparel Business',
+  //   children: [
+  //     'Wool Weaving and Sweater Production',
+  //     'Bedsheet and Curtain Stitching',
+  //     'T-shirt Printing',
+  //     'School Uniform Manufacturing',
+  //     'Handloom Carpet Weaving',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Animal Husbandry and Agri-Based Enterprises',
+  //   children: [
+  //     'Pig Rearing',
+  //     'Emu Farming',
+  //     'Duck Rearing',
+  //     'Organic Fruit and Vegetable Farming',
+  //     'Poultry Egg Incubation',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'E-commerce and Online Business',
+  //   children: [
+  //     'Online Handicraft Selling',
+  //     'Home-Based Bakery on Food Delivery Platforms',
+  //     'Dropshipping Business',
+  //     'Print-on-Demand T-shirts',
+  //     'YouTube Channel (DIY or Tutorials)',
+  //     'Others',
+  //   ],
+  // },
+  //  {
+  //   parent: 'FMCG',
+  //   children: [
+  //     'Handwash',
+  //     'Soap',
+  //     'Floor Cleaner',
+  //     'Detergents',
+  //     'Air fresheners',
+  //     'Face wash & creams',
+  //     'Shampoo & conditioner',
+  //     'Sponges',
+  //     'Toothpaste & toothbrushes',
+  //     'Others',
+  //   ],
+  // },
+  //  {
+  //   parent: 'Transport',
+  //   children: [
+  //     'Loader',
+  //     'E-Rikshaw',
+  //     'Taxi',
+  //     'Auto',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Prerna Canteen',
+  //   children: [
+  //   ],
+  // },
+  // {
+  //   parent: 'Renewable Energy and Environment-Friendly Enterprises',
+  //   children: [
+  //     'Solar Panel Installation Services',
+  //     'Bio-Gas Plant Setup',
+  //     'Electric Vehicle Charging Station',
+  //     'Waste Paper Recycling',
+  //     'Bamboo Toothbrush and Cutlery Manufacturing',
+  //     'Solar Lamp Assembly',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Tourism and Local Experience Businesses',
+  //   children: [
+  //     'Homestays for Tourists',
+  //     'Heritage Walk Guide Services',
+  //     'Rural Adventure Camps',
+  //     'Boat Tours on Ganges',
+  //     'Organic Farm Tour Business',
+  //     'Rural Tourism and Homestay',
+  //     'Others',
+  //   ],
+  // },
+  //  {
+  //   parent: 'EDP|Entrepreneurship Development Programme',
+  //   children: [
+      
+  //   ],
+  // },
+  // {
+  //   parent: 'Transport and Logistics Business',
+  //   children: [
+  //     'E-rickshaw Rental Service',
+  //     'Pack and Move Services',
+  //     'Small Courier Delivery Service',
+  //     'Bike Rental Business',
+  //     'Agricultural Equipment Rental Service',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Miscellaneous and Innovative Businesses',
+  //   children: [
+  //     'Toy Library for Children',
+  //     'DIY Craft Kit Shop and Classes',
+  //     'Community Kitchen',
+  //     'Custom Gift Box Manufacturing',
+  //     'Pet Grooming Services',
+  //     'Digital Marketing for Local Businesses',
+  //     'Document and Resume Writing Services',
+  //     'Resale of Used Goods',
+  //     'Organic Soap Manufacturing Kit Shop',
+  //     'Wedding Invitation Card Designing',
+  //     'Others',
+  //   ],
+  // },
+
+
   {
-    parent: 'Agriculture and Allied Activities',
+    parent: 'Food Processing Sector',
     children: [
-      'Organic Farming',
-      'Dairy Farming',
-      'Poultry Farming',
-      'Mushroom Cultivation',
-      'Beekeeping and Honey Production',
-      'Goat Rearing',
-      'Vermicomposting',
-      'Fish Farming',
-      'Floriculture (Flower Cultivation)',
-      'Medicinal Plant Cultivation',
+      'Spice manufacturing',
+      'Pickles, preserves (murabba), papad',
+      'Savoury snacks, bhujiya, namkeen',
+      'Instant mixes (idli mix, gram flour mix, kheer mix)',
+      'Bakery items (cookies, cake, bread)',
+      'Millet-based products (jowar, bajra cookies, snacks)',
+      'Cold-pressed oils (mustard/sesame)',
+      'Honey processing',
+      'Jam–jelly–squash',
+      'Ready-to-eat products',
+      'Whole grain/pulses/flour sorting–grading–packaging unit​',
       'Others',
     ],
   },
   {
-    parent: 'Food Processing and Snacks Business',
+    parent: 'Handicraft & Artisan Sector',
     children: [
-      'Pickle and Papad Making',
-      'Bakery and Cake Production',
-      'Spice Powder Making',
-      'Flour Mill',
-      'Dairy Product Manufacturing (Paneer, Ghee)',
-      'Ready-to-Eat Food Preparation',
-      'Herbal Tea Manufacturing',
-      'Jam and Jelly Production',
-      'Frozen Food Business',
-      'Edible Oil Extraction',
+      'Zari and zardozi work',
+      'Chikankari embroidery',
+      'Woodwork',
+      'Terracotta / clay products',
+      'Bamboo / cane craft',
+      'Handmade jewellery (terracotta jewellery, oxidised jewellery)',
+      'Handmade candles',
+      'Crochet / woollen products',
+      'Paper craft, greeting cards',
+      'Handbags, jute bags, embroidered bags',
+      'Ration/vegetable/shopping bags (non-woven alternatives)​',
       'Others',
     ],
   },
   {
-    parent: 'Handicrafts and Traditional Skills',
+    parent: 'Textile & Apparel Sector',
     children: [
-      'Banarasi Saree Weaving',
-      'Chikankari Embroidery',
-      'Wooden Handicrafts',
-      'Terracotta Pottery',
-      'Jute Bag Manufacturing',
-      'Handmade Jewelry',
-      'Toy Manufacturing',
-      'Paper Mache Art',
-      'Bamboo Craft',
-      'Leather Product Manufacturing',
+      'Boutique unit (stitching–cutting–embellishment)',
+      'School uniform stitching unit',
+      'Ladies’ garments',
+      'Bedsheet/quilt/pillow cover unit',
+      'ODOP textile-based products (Varanasi saree, Bhadohi carpet finishing etc.)',
+      'Home linen (curtains, table cloth, sofa covers)',
+      'Jute/cotton carry bags',
+      'Mask/apron/hospital gown manufacturing​',
       'Others',
     ],
   },
   {
-    parent: 'Service-Based Businesses',
+    parent: 'Agriculture & Allied Sector',
     children: [
-      'Catering Service',
-      'Tailoring and Garment Making',
-      'Event Decoration',
-      'Beautician and Salon',
-      'Coaching Classes',
-      'Mobile Repairing',
-      'Home Cleaning Services',
-      'Photography Studio',
-      'Cyber Café',
-      'Wedding Planning',
+      'Vegetable cultivation and group supply',
+      'Flower cultivation (marigold, rose)',
+      'Mushroom production',
+      'Nursery (fruit/flower/vegetable saplings)',
+      'Beekeeping (honey production)',
+      'Organic manure/vermi-compost',
+      'Animal feed unit',
+      'Mini mill (flour/pulse grinding)',
+      'Fruit–vegetable dehydration unit',
+      'Fish farming',
       'Others',
     ],
   },
   {
-    parent: 'Waste Management and Eco-Friendly Ventures',
+    parent: 'Dairy & Animal Husbandry Sector',
     children: [
-      'Paper Bag Manufacturing',
-      'Cloth Bag Manufacturing',
-      'Plastic Recycling',
-      'E-waste Recycling',
-      'Compost Manufacturing',
+      'Dairy unit (2–10 cows/buffaloes)',
+      'Milk collection centre',
+      'Paneer/khoya/curd/ghee manufacturing',
+      'Goat rearing',
+      'Poultry unit (egg/broiler)',
+      'Pig rearing (in specific areas)',
+      'Fodder production',
+      'Milk packaging and branding unit​',
       'Others',
     ],
   },
   {
-    parent: 'Government Assisted Enterprises',
+    parent: 'Beauty, Wellness & Personal Services',
     children: [
-      'Solar Lamp Assembly',
-      'Rural Tourism and Homestay',
-      'Organic Fertilizer Production',
-      'Ayurvedic Medicine Manufacturing',
-      'Handloom Weaving Cooperative Society',
+      'Beauty parlour',
+      'Mehndi (henna) training and services',
+      'Spa / therapy unit',
+      'Home-care services (home nursing, baby care training)',
+      'Mobile salon / village-based services',
+      'Fitness group / yoga classes​',
       'Others',
     ],
   },
   {
-    parent: 'Home and Personal Care Products',
+    parent: 'Retail & Micro Trading Sector',
     children: [
-      'Candle Manufacturing',
-      'Incense Stick Making',
-      'Soap and Detergent Manufacturing',
-      'Bindi and Nail Polish Manufacturing',
-      'Herbal Shampoo and Cosmetic Products',
+      'Grocery/provision store',
+      'Stationery / general store',
+      'Group sale of vegetables/fruits',
+      'Fast food cart',
+      'Mobile recharge shop / bill payment kiosk',
+      'Jan Aushadhi/Medical Store',
+      'PET Shop and disposable alternatives distribution​',
       'Others',
     ],
   },
   {
-    parent: 'Low-Scale Production',
+    parent: 'Cleaning & Hygiene Products Sector',
     children: [
-      'Paper Plate and Cup Manufacturing',
-      'LED Bulb Assembly',
-      'Stationery Production',
-      'Environment-Friendly Disposable Cutlery',
-      'Chalk and Whiteboard Marker Manufacturing',
+      'Phenyl/detergent manufacturing',
+      'Liquid handwash',
+      'Sanitizer',
+      'Incense sticks and dhoop sticks',
+      'Napkin / sanitary pad unit',
+      'Biodegradable plate and bowl manufacturing​',
       'Others',
     ],
   },
   {
-    parent: 'Textile and Apparel Business',
+    parent: 'Packaging & Utility Products Sector',
     children: [
-      'Wool Weaving and Sweater Production',
-      'Bedsheet and Curtain Stitching',
-      'T-shirt Printing',
-      'School Uniform Manufacturing',
-      'Handloom Carpet Weaving',
+      'Paper bag unit',
+      'Jute bag unit',
+      'Box manufacturing',
+      'Recycled paper packaging unit',
+      'Food-grade packaging​',
+      'FMCG-(Handwash/Soap/Floor Cleaner, etc)',
+      'Transport-(Taxi/Auto/E-Rikshaw,etc)',
+      'Machinery',
       'Others',
     ],
   },
   {
-    parent: 'Animal Husbandry and Agri-Based Enterprises',
+    parent: 'FMCG',
     children: [
-      'Pig Rearing',
-      'Emu Farming',
-      'Duck Rearing',
-      'Organic Fruit and Vegetable Farming',
-      'Poultry Egg Incubation',
+      'Handwash',
+      'Soap',
+      'Floor Cleaner',
+      'Detergents',
+      'Air fresheners',
+      'Face wash & creams',
+      'Shampoo & conditioner',
+      'Sponges',
+      'Toothpaste & toothbrushes',
+      'Others',
+    ],
+  },
+   {
+    parent: 'Transport',
+    children: [
+      'Loader',
+      'E-Rikshaw',
+      'Taxi',
+      'Auto',
       'Others',
     ],
   },
   {
-    parent: 'E-commerce and Online Business',
+    parent: 'Prerna Canteen',
     children: [
-      'Online Handicraft Selling',
-      'Home-Based Bakery on Food Delivery Platforms',
-      'Dropshipping Business',
-      'Print-on-Demand T-shirts',
-      'YouTube Channel (DIY or Tutorials)',
+    ],
+  },
+  {
+    parent: 'Digital & Service Sector',
+    children: [
+      'Data entry / digital services',
+      'CSC (Common Service Center) operations',
+      'Online product sales (e-commerce)',
+      'SHG product branding',
+      'Social media management for local shops​',
       'Others',
     ],
   },
   {
-    parent: 'Renewable Energy and Environment-Friendly Enterprises',
+    parent: 'Solid Waste & Green Sector',
     children: [
-      'Solar Panel Installation Services',
-      'Bio-Gas Plant Setup',
-      'Electric Vehicle Charging Station',
-      'Waste Paper Recycling',
-      'Bamboo Toothbrush and Cutlery Manufacturing',
+      'Plastic waste sorting',
+      'Fuel/briquettes from waste',
+      'Composting unit',
+      'Recycled paper products',
+      'E-waste collection micro centre​',
       'Others',
     ],
   },
   {
-    parent: 'Tourism and Local Experience Businesses',
+    parent: 'Construction & Fabrication Micro Enterprises',
     children: [
-      'Homestays for Tourists',
-      'Heritage Walk Guide Services',
-      'Rural Adventure Camps',
-      'Boat Tours on Ganges',
-      'Organic Farm Tour Business',
+      'Brick and tiles cleaning/polishing unit',
+      'Interior decoration (fabric, flowers, décor)',
+      'Painting/plumbing/carpentry group',
+      'POP artwork / wall decoration',
       'Others',
     ],
   },
   {
-    parent: 'Transport and Logistics Business',
-    children: [
-      'E-rickshaw Rental Service',
-      'Pack and Move Services',
-      'Small Courier Delivery Service',
-      'Bike Rental Business',
-      'Agricultural Equipment Rental Service',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Miscellaneous and Innovative Businesses',
-    children: [
-      'Toy Library for Children',
-      'DIY Craft Kit Shop and Classes',
-      'Community Kitchen',
-      'Custom Gift Box Manufacturing',
-      'Pet Grooming Services',
-      'Digital Marketing for Local Businesses',
-      'Document and Resume Writing Services',
-      'Resale of Used Goods',
-      'Organic Soap Manufacturing Kit Shop',
-      'Wedding Invitation Card Designing',
-      'Others',
-    ],
-  },
+   parent: 'EDP|Entrepreneurship Development Programme',
+   children: [
+   ],
+   },
   {
     parent: 'Others',
     children: ['Others'],
@@ -329,6 +557,8 @@ export default function NoEnterpriseForm({ route, navigation }) {
   const [futureWillingYesNo, setFutureWillingYesNo] = useState('');
   const [hasShgCifYesNo, setHasShgCifYesNo] = useState('');
   const [cifAmount, setCifAmount] = useState('');
+const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
+  const [plannedBusiness, setPlannedBusiness] = useState('');
 
   // ---------------- Effects: load user and auth token ----------------
 
@@ -544,37 +774,37 @@ export default function NoEnterpriseForm({ route, navigation }) {
     // Returns { location_scope, location } based on wageLocationChoice and wageDesiredLocationText
     if (!wageLocationChoice) return { location_scope: null, location: null };
 
+    if (wageLocationChoice === 'District') {
+      return { location_scope: 'National', location: 'District' };
+    }
+
+    if (wageLocationChoice === 'Other District') {
+      return { location_scope: 'National', location: 'Other District' };
+    }
+
+    if (wageLocationChoice === 'Other State') {
+      return { location_scope: 'National', location: 'Other State' };
+    }
+
     if (wageLocationChoice === 'Other Countries') {
-      return { location_scope: 'International', location: 'Other Countries' };
+      return { location_scope: 'National', location: 'Other Countries' };
     }
 
-    if (wageLocationChoice === 'In my Country') {
-      return { location_scope: 'National', location: 'In my Country' };
-    }
+    // if (wageLocationChoice === 'Desired State') {
+    //   const txt = (wageDesiredLocationText || '').trim();
+    //   return {
+    //     location_scope: 'National',
+    //     location: txt ? `Desired State, ${txt}` : 'Desired State',
+    //   };
+    // }
 
-    if (wageLocationChoice === 'In my State') {
-      return { location_scope: 'National', location: 'In my State' };
-    }
-
-    if (wageLocationChoice === 'In my District') {
-      return { location_scope: 'National', location: 'In my District' };
-    }
-
-    if (wageLocationChoice === 'Desired State') {
-      const txt = (wageDesiredLocationText || '').trim();
-      return {
-        location_scope: 'National',
-        location: txt ? `Desired State, ${txt}` : 'Desired State',
-      };
-    }
-
-    if (wageLocationChoice === 'Desired District') {
-      const txt = (wageDesiredLocationText || '').trim();
-      return {
-        location_scope: 'National',
-        location: txt ? `Desired District, ${txt}` : 'Desired District',
-      };
-    }
+    // if (wageLocationChoice === 'Desired District') {
+    //   const txt = (wageDesiredLocationText || '').trim();
+    //   return {
+    //     location_scope: 'National',
+    //     location: txt ? `Desired District, ${txt}` : 'Desired District',
+    //   };
+    // }
 
     return { location_scope: null, location: null };
   };
@@ -676,170 +906,283 @@ export default function NoEnterpriseForm({ route, navigation }) {
   };
 
   // ---------------- Submit handler ----------------
-
   const handleSubmit = async () => {
-    // Basic validations
-    if (!activityOption) {
+  // ===== Enhanced Validations =====
+
+  // Current Activity
+  if (!activityOption) {
+    Alert.alert(
+      'Validation',
+      'Please answer "Are you involved in any activity currently?"'
+    );
+    return;
+  }
+  if (activityOption && (!activitySpecify || activitySpecify.trim() === '')) {
+    Alert.alert(
+      'Validation',
+      'Please specify the details of your current activity.'
+    );
+    return;
+  }
+
+  // Reason for Not Opening Enterprise
+  if (!noInterestOption) {
+    Alert.alert(
+      'Validation',
+      'Please answer "Why are you not interested in opening an enterprise?"'
+    );
+    return;
+  }
+  if (noInterestOption === 'Others' && (!noInterestSpecify || noInterestSpecify.trim() === '')) {
+    Alert.alert(
+      'Validation',
+      'Please specify your reason for not opening an enterprise.'
+    );
+    return;
+  }
+
+  // Wage sub-form
+  const wantsWageForm =
+    noInterestOption === 'Interested in Wage Employment?' &&
+    wageInterestYesNo === 'Yes';
+
+  // if (noInterestOption === 'Interested in Wage Employment?' && !wageInterestYesNo) {
+  //   Alert.alert(
+  //     'Validation',
+  //     'Please select Yes / No for "Interested in Wage Employment?"'
+  //   );
+  //   return;
+  // }
+
+  if (wantsWageForm) {
+    if (!wageEmpTypes.length) {
       Alert.alert(
         'Validation',
-        'Please answer "Are you involved in any activity currently?"'
+        'Please select at least one option for "What type of Wage Employment are you interested in?"'
       );
       return;
     }
-
-    if (!noInterestOption) {
+    if (!wagePlacementSectors.length) {
       Alert.alert(
         'Validation',
-        'Please answer "Why are you not interested in opening an enterprise?"'
+        'Please select at least one option for "What type of Placement Sector have you thought of?"'
       );
       return;
     }
-
+    if (!wageExpSalary) {
+      Alert.alert(
+        'Validation',
+        'Please select "What is your expected Salary?"'
+      );
+      return;
+    }
+    const { location_scope, location } = wageLocationToFields();
+    if (!location_scope || !location) {
+      Alert.alert(
+        'Validation',
+        'Please answer "What location are you comfortable with?"'
+      );
+      return;
+    }
+    // Desired State / District text
     if (
-      noInterestOption === 'Interested in Wage Employment?' &&
-      !wageInterestYesNo
+      (wageLocationChoice === 'Desired State' || wageLocationChoice === 'Desired District') &&
+      (!wageDesiredLocationText || wageDesiredLocationText.trim() === '')
     ) {
       Alert.alert(
         'Validation',
-        'Please select Yes / No for "Interested in Wage Employment?"'
+        'Please specify your desired location for wage employment.'
       );
       return;
     }
+  }
 
-    if (!trainingRequiredYesNo) {
+  // Training sub-form
+  const wantsTrainingForm = trainingRequiredYesNo === 'Yes';
+
+  if (!trainingRequiredYesNo) {
+    Alert.alert(
+      'Validation',
+      'Please answer "Do you require any training?"'
+    );
+    return;
+  }
+
+  if (wantsTrainingForm) {
+    if (!trainingDepartmentOption) {
       Alert.alert(
         'Validation',
-        'Please answer "Do you require any training?"'
+        'Please select your preferred department for training.'
       );
       return;
     }
-
-    if (!futureWillingYesNo) {
+    if (trainingDepartmentOption === 'Others' && (!trainingDepartmentOtherText || trainingDepartmentOtherText.trim() === '')) {
       Alert.alert(
         'Validation',
-        'Please answer "Are you willing to start a business in future?"'
+        'Please specify your preferred department.'
       );
       return;
     }
-
-    if (!hasShgCifYesNo) {
+    const { sector, training_module_name } = buildTrainingSectorFields();
+    if (!sector || !training_module_name) {
       Alert.alert(
         'Validation',
-        'Please answer "Has your SHG received CIF Funds?"'
+        'Please select at least one sector and training module.'
       );
       return;
     }
-
-    // Some extra validations for sub-forms
-    const wantsWageForm =
-      noInterestOption === 'Interested in Wage Employment?' &&
-      wageInterestYesNo === 'Yes';
-
-    if (wantsWageForm) {
-      if (!wageEmpTypes.length) {
+    // Children "Others" text validation
+    for (const parent of selectedTrainingParents) {
+      const kidsState = trainingChildrenByParent[parent] || {};
+      if (kidsState['Others'] && (!kidsState.__otherText || kidsState.__otherText.trim() === '')) {
         Alert.alert(
           'Validation',
-          'Please select at least one option for "What type of Wage Employment are you interested in?"'
-        );
-        return;
-      }
-      if (!wagePlacementSectors.length) {
-        Alert.alert(
-          'Validation',
-          'Please select at least one option for "What type of Placement Sector have you thought of?"'
-        );
-        return;
-      }
-      if (!wageExpSalary) {
-        Alert.alert(
-          'Validation',
-          'Please select "What is your expected Salary?"'
-        );
-        return;
-      }
-      const { location_scope, location } = wageLocationToFields();
-      if (!location_scope || !location) {
-        Alert.alert(
-          'Validation',
-          'Please answer "What location are you comfortable with?"'
+          `Please specify the "Others" text for ${parent} sector.`
         );
         return;
       }
     }
+    if (!trainingDuration) {
+      Alert.alert(
+        'Validation',
+        'Please select how many days of training you are comfortable with.'
+      );
+      return;
+    }
+    if (!trainingLocationDistrict || !trainingLocationBlock || !trainingLocationState) {
+      Alert.alert(
+        'Validation',
+        'Please fill all the preferred training location details (District, Block, Village).'
+      );
+      return;
+    }
+    if (!trainingExpectedIncome) {
+      Alert.alert(
+        'Validation',
+        'Please select expected salary after training.'
+      );
+      return;
+    }
+  }
 
-    const wantsTrainingForm = trainingRequiredYesNo === 'Yes';
+  // Future Plans
+  if (!futureWillingYesNo) {
+    Alert.alert(
+      'Validation',
+      'Please answer "Are you willing to start a business in future?"'
+    );
+    return;
+  }
+  if (futureWillingYesNo === 'Yes' && (!plannedBusiness || plannedBusiness.trim() === '')) {
+    Alert.alert(
+      'Validation',
+      'Please describe your planned business.'
+    );
+    return;
+  }
 
-    if (wantsTrainingForm) {
-      if (!trainingDepartmentOption) {
-        Alert.alert(
-          'Validation',
-          'Please select your preferred department for training.'
-        );
-        return;
-      }
-      const { sector, training_module_name } = buildTrainingSectorFields();
-      if (!sector || !training_module_name) {
-        Alert.alert(
-          'Validation',
-          'Please select at least one sector and training module.'
-        );
-        return;
-      }
-      if (!trainingDuration) {
-        Alert.alert(
-          'Validation',
-          'Please select how many days of training you are comfortable with.'
-        );
-        return;
-      }
-      if (!buildTrainingLocation()) {
-        Alert.alert(
-          'Validation',
-          'Please fill State, District or Block for preferred training location.'
-        );
-        return;
-      }
-      if (!trainingExpectedIncome) {
-        Alert.alert(
-          'Validation',
-          'Please select expected salary after training.'
-        );
-        return;
+  // CIF Details
+  if (!hasShgCifYesNo) {
+    Alert.alert(
+      'Validation',
+      'Please answer "Has your SHG received CIF Funds?"'
+    );
+    return;
+  }
+  if (hasShgCifYesNo === 'Yes' && (!cifAmount || cifAmount.trim() === '' || isNaN(cifAmount))) {
+    Alert.alert(
+      'Validation',
+      'Please enter a valid numeric CIF amount.'
+    );
+    return;
+  }
+
+  // ===== Proceed to submit =====
+  try {
+    setLoading(true);
+
+    // STEP 1: ensure recorded beneficiary exists
+    const recordedBenefId = await ensureRecordedBeneficiary();
+
+    // STEP 2: build NoEnterpriseForm payload
+    const activityFullValue = activityOption
+      ? `${activityOption}${activitySpecify ? `, ${activitySpecify}` : ''}`
+      : '';
+
+    let noIntReasonValue = '';
+    if (noInterestOption === 'Personal Reasons') {
+      noIntReasonValue = 'Personal Reasons';
+    } else if (noInterestOption === 'Family Business') {
+      noIntReasonValue = 'Family Business';
+    } else if (noInterestOption === 'Others') {
+      noIntReasonValue = noInterestSpecify || '';
+    } else if (noInterestOption === 'Interested in Wage Employment?') {
+      if (wageInterestYesNo === 'Yes') {
+        noIntReasonValue = 'Interested in Wage Employment';
+      } else if (wageInterestYesNo === 'No') {
+        noIntReasonValue = 'Not interested in Wage Employment';
       }
     }
 
+    const isTrainingRequiredField = trainingRequiredYesNo;
+
+    // created_by logic
+    let created_by_to_send = null;
+    const candidate =
+      loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? routeCrpUserId;
+    if (candidate !== null && candidate !== undefined) {
+      if (typeof candidate === 'number') {
+        created_by_to_send = candidate;
+      } else if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
+        created_by_to_send = parseInt(candidate.trim(), 10);
+      } else {
+        created_by_to_send = null;
+      }
+    }
+
+    const payloadNoEnterprise = {
+      recorded_benef_id: recordedBenefId,
+      if_shg_member_inv: activityFullValue || null,
+      no_int_reason: noIntReasonValue || null,
+      is_training_required: isTrainingRequiredField || null,
+      future_willing: futureWillingYesNo === 'Yes',
+      has_shg_cif: hasShgCifYesNo === 'Yes',
+      cif_fund_amt: cifAmount || null,
+      planned_business: plannedBusiness || null,
+    };
+
+    if (created_by_to_send !== null) {
+      payloadNoEnterprise.created_by = created_by_to_send;
+    }
+
+    // STEP 3: create NoEnterpriseForm
+    const noEpRes = await gsApi.createNoEnterpriseForm(payloadNoEnterprise);
+
+    const noEpId =
+      noEpRes?.TH_urid || noEpRes?.TH_URID || noEpRes?.id || null;
+
+    if (!noEpId) {
+      throw new Error(
+        'No Enterprise form saved but ID missing in response.'
+      );
+    }
+
+    // STEP 4: link recorded-beneficiaries.enterprise_id
     try {
-      setLoading(true);
+      await gsApi.updateRecordedBeneficiary(recordedBenefId, {
+        enterprise_id: noEpId,
+      });
+    } catch (e) {
+      console.warn(
+        'Failed to update recorded beneficiary enterprise_id for NoEnterpriseForm',
+        e
+      );
+    }
 
-      // STEP 1: ensure recorded beneficiary exists
-      const recordedBenefId = await ensureRecordedBeneficiary();
+    // STEP 5: create sub-forms (wage / training) if required
+    if (wantsWageForm) {
+      const { location_scope, location } = wageLocationToFields();
 
-      // STEP 2: build NoEnterpriseForm payload
-
-      // Q1: if_shg_member_inv
-      const activityFullValue = activityOption
-        ? `${activityOption}${activitySpecify ? `, ${activitySpecify}` : ''}`
-        : '';
-
-      // Q2: no_int_reason
-      let noIntReasonValue = '';
-      if (noInterestOption === 'Personal Reasons') {
-        noIntReasonValue = 'Personal Reasons';
-      } else if (noInterestOption === 'Family Business') {
-        noIntReasonValue = 'Family Business';
-      } else if (noInterestOption === 'Others') {
-        noIntReasonValue = noInterestSpecify || '';
-      } else if (noInterestOption === 'Interested in Wage Employment?') {
-        if (wageInterestYesNo === 'Yes') {
-          noIntReasonValue = 'Interested in Wage Employment';
-        } else if (wageInterestYesNo === 'No') {
-          noIntReasonValue = 'Not interested in Wage Employment';
-        }
-      }
-
-      const isTrainingRequiredField = trainingRequiredYesNo; // "Yes" / "No" as asked
-
-      // created_by: prefer loggedUser numeric PK; fallback to routeCrpUserId if numeric
       let created_by_to_send = null;
       const candidate =
         loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? routeCrpUserId;
@@ -853,148 +1196,411 @@ export default function NoEnterpriseForm({ route, navigation }) {
         }
       }
 
-      const payloadNoEnterprise = {
-        recorded_benef_id: recordedBenefId,
-        if_shg_member_inv: activityFullValue || null,
-        no_int_reason: noIntReasonValue || null,
-        is_training_required: isTrainingRequiredField || null,
-        future_willing: futureWillingYesNo === 'Yes',
-        has_shg_cif: hasShgCifYesNo === 'Yes',
-        cif_fund_amt: cifAmount || null,
+      const payloadWage = {
+        enterprise_id: noEpId,
+        type_of_emp: wageEmpTypes.join(', '),
+        placement_sector: wagePlacementSectors.join(', '),
+        exp_salary: wageExpSalary,
+        location_scope,
+        location,
       };
 
       if (created_by_to_send !== null) {
-        payloadNoEnterprise.created_by = created_by_to_send;
+        payloadWage.created_by = created_by_to_send;
       }
 
-      // STEP 3: create NoEnterpriseForm
-      const noEpRes = await gsApi.createNoEnterpriseForm(payloadNoEnterprise);
-
-      const noEpId =
-        noEpRes?.TH_urid || noEpRes?.TH_URID || noEpRes?.id || null;
-
-      if (!noEpId) {
-        throw new Error(
-          'No Enterprise form saved but ID missing in response.'
-        );
-      }
-
-      // STEP 4: link recorded-beneficiaries.enterprise_id
       try {
-        await gsApi.updateRecordedBeneficiary(recordedBenefId, {
-          enterprise_id: noEpId,
-        });
+        await gsApi.createNoEnterpriseWage(payloadWage);
       } catch (e) {
-        console.warn(
-          'Failed to update recorded beneficiary enterprise_id for NoEnterpriseForm',
-          e
-        );
+        console.warn('Failed to create NoEnterpriseWage', e);
       }
-
-      // STEP 5: create sub-forms (wage / training) if required
-
-      if (wantsWageForm) {
-        const { location_scope, location } = wageLocationToFields();
-
-        // created_by: prefer loggedUser numeric PK; fallback to routeCrpUserId if numeric
-        let created_by_to_send = null;
-        const candidate =
-          loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? routeCrpUserId;
-        if (candidate !== null && candidate !== undefined) {
-          if (typeof candidate === 'number') {
-            created_by_to_send = candidate;
-          } else if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
-            created_by_to_send = parseInt(candidate.trim(), 10);
-          } else {
-            created_by_to_send = null;
-          }
-        }
-
-        const payloadWage = {
-          enterprise_id: noEpId,
-          type_of_emp: wageEmpTypes.join(', '),
-          placement_sector: wagePlacementSectors.join(', '),
-          exp_salary: wageExpSalary,
-          location_scope,
-          location,
-        };
-
-        if (created_by_to_send !== null) {
-          payloadWage.created_by = created_by_to_send;
-        }
-
-        try {
-          await gsApi.createNoEnterpriseWage(payloadWage);
-        } catch (e) {
-          console.warn('Failed to create NoEnterpriseWage', e);
-        }
-      }
-
-      if (wantsTrainingForm) {
-        const actualDepartment =
-          trainingDepartmentOption === 'Others'
-            ? trainingDepartmentOtherText || 'Others'
-            : trainingDepartmentOption;
-
-        const { sector, training_module_name } = buildTrainingSectorFields();
-        const trainingLocation = buildTrainingLocation();
-
-        const payloadTraining = {
-          enterprise_id: noEpId,
-          form_type: 'req',
-          department: actualDepartment || null,
-          sector: sector || null,
-          training_module_name: training_module_name || null,
-          duration: trainingDuration || null,
-          location: trainingLocation || null,
-          expected_income: trainingExpectedIncome || null,
-        };
-
-        // created_by: prefer loggedUser numeric PK; fallback to routeCrpUserId if numeric
-        let created_by_to_send = null;
-        const candidate =
-          loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? routeCrpUserId;
-        if (candidate !== null && candidate !== undefined) {
-          if (typeof candidate === 'number') {
-            created_by_to_send = candidate;
-          } else if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
-            created_by_to_send = parseInt(candidate.trim(), 10);
-          } else {
-            created_by_to_send = null;
-          }
-        }
-
-        if (created_by_to_send !== null) {
-          payloadTraining.created_by = created_by_to_send;
-        }
-
-        try {
-          await gsApi.createEnterpriseTrainingReq(payloadTraining);
-        } catch (e) {
-          console.warn('Failed to create EnterpriseTrainingReq for NoEnterpriseForm', e);
-        }
-      }
-
-      Alert.alert('Success', 'Details saved successfully.', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
-    } catch (err) {
-      console.error('NoEnterpriseForm submit error', err);
-      const serverMsg =
-        err?.data?.detail ||
-        (err?.data && typeof err.data === 'object'
-          ? JSON.stringify(err.data)
-          : null) ||
-        err?.message ||
-        'Failed to save details. Please try again.';
-      Alert.alert('Error', serverMsg);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    if (wantsTrainingForm) {
+      const actualDepartment =
+        trainingDepartmentOption === 'Others'
+          ? trainingDepartmentOtherText || 'Others'
+          : trainingDepartmentOption;
+
+      const { sector, training_module_name } = buildTrainingSectorFields();
+      const trainingLocation = buildTrainingLocation();
+
+      const payloadTraining = {
+        enterprise_id: noEpId,
+        form_type: 'req',
+        department: actualDepartment || null,
+        sector: sector || null,
+        training_module_name: training_module_name || null,
+        duration: trainingDuration || null,
+        location: trainingLocation || null,
+        expected_income: trainingExpectedIncome || null,
+      };
+
+      let created_by_to_send = null;
+      const candidate =
+        loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? routeCrpUserId;
+      if (candidate !== null && candidate !== undefined) {
+        if (typeof candidate === 'number') {
+          created_by_to_send = candidate;
+        } else if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
+          created_by_to_send = parseInt(candidate.trim(), 10);
+        } else {
+          created_by_to_send = null;
+        }
+      }
+
+      if (created_by_to_send !== null) {
+        payloadTraining.created_by = created_by_to_send;
+      }
+
+      try {
+        await gsApi.createEnterpriseTrainingReq(payloadTraining);
+      } catch (e) {
+        console.warn('Failed to create EnterpriseTrainingReq for NoEnterpriseForm', e);
+      }
+    }
+
+    Alert.alert('Success', 'Details saved successfully.', [
+      {
+        text: 'OK',
+        onPress: () => navigation.goBack(),
+      },
+    ]);
+  } catch (err) {
+    console.error('NoEnterpriseForm submit error', err);
+    const serverMsg =
+      err?.data?.detail ||
+      (err?.data && typeof err.data === 'object'
+        ? JSON.stringify(err.data)
+        : null) ||
+      err?.message ||
+      'Failed to save details. Please try again.';
+    Alert.alert('Error', serverMsg);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  // const handleSubmit = async () => {
+  //   // Basic validations
+  //   if (!activityOption) {
+  //     Alert.alert(
+  //       'Validation',
+  //       'Please answer "Are you involved in any activity currently?"'
+  //     );
+  //     return;
+  //   }
+
+  //   if (!noInterestOption) {
+  //     Alert.alert(
+  //       'Validation',
+  //       'Please answer "Why are you not interested in opening an enterprise?"'
+  //     );
+  //     return;
+  //   }
+
+  //   if (
+  //     noInterestOption === 'Interested in Wage Employment?' &&
+  //     !wageInterestYesNo
+  //   ) {
+  //     Alert.alert(
+  //       'Validation',
+  //       'Please select Yes / No for "Interested in Wage Employment?"'
+  //     );
+  //     return;
+  //   }
+
+  //   if (!trainingRequiredYesNo) {
+  //     Alert.alert(
+  //       'Validation',
+  //       'Please answer "Do you require any training?"'
+  //     );
+  //     return;
+  //   }
+
+  //   if (!futureWillingYesNo) {
+  //     Alert.alert(
+  //       'Validation',
+  //       'Please answer "Are you willing to start a business in future?"'
+  //     );
+  //     return;
+  //   }
+
+  //   if (!hasShgCifYesNo) {
+  //     Alert.alert(
+  //       'Validation',
+  //       'Please answer "Has your SHG received CIF Funds?"'
+  //     );
+  //     return;
+  //   }
+
+  //   // Some extra validations for sub-forms
+  //   const wantsWageForm =
+  //     noInterestOption === 'Interested in Wage Employment?' &&
+  //     wageInterestYesNo === 'Yes';
+
+  //   if (wantsWageForm) {
+  //     if (!wageEmpTypes.length) {
+  //       Alert.alert(
+  //         'Validation',
+  //         'Please select at least one option for "What type of Wage Employment are you interested in?"'
+  //       );
+  //       return;
+  //     }
+  //     if (!wagePlacementSectors.length) {
+  //       Alert.alert(
+  //         'Validation',
+  //         'Please select at least one option for "What type of Placement Sector have you thought of?"'
+  //       );
+  //       return;
+  //     }
+  //     if (!wageExpSalary) {
+  //       Alert.alert(
+  //         'Validation',
+  //         'Please select "What is your expected Salary?"'
+  //       );
+  //       return;
+  //     }
+  //     const { location_scope, location } = wageLocationToFields();
+  //     if (!location_scope || !location) {
+  //       Alert.alert(
+  //         'Validation',
+  //         'Please answer "What location are you comfortable with?"'
+  //       );
+  //       return;
+  //     }
+  //   }
+
+  //   const wantsTrainingForm = trainingRequiredYesNo === 'Yes';
+
+  //   if (wantsTrainingForm) {
+  //     if (!trainingDepartmentOption) {
+  //       Alert.alert(
+  //         'Validation',
+  //         'Please select your preferred department for training.'
+  //       );
+  //       return;
+  //     }
+  //     const { sector, training_module_name } = buildTrainingSectorFields();
+  //     if (!sector || !training_module_name) {
+  //       Alert.alert(
+  //         'Validation',
+  //         'Please select at least one sector and training module.'
+  //       );
+  //       return;
+  //     }
+  //     if (!trainingDuration) {
+  //       Alert.alert(
+  //         'Validation',
+  //         'Please select how many days of training you are comfortable with.'
+  //       );
+  //       return;
+  //     }
+  //     if (!buildTrainingLocation()) {
+  //       Alert.alert(
+  //         'Validation',
+  //         'Please fill State, District or Block for preferred training location.'
+  //       );
+  //       return;
+  //     }
+  //     if (!trainingExpectedIncome) {
+  //       Alert.alert(
+  //         'Validation',
+  //         'Please select expected salary after training.'
+  //       );
+  //       return;
+  //     }
+  //   }
+
+  //   try {
+  //     setLoading(true);
+
+  //     // STEP 1: ensure recorded beneficiary exists
+  //     const recordedBenefId = await ensureRecordedBeneficiary();
+
+  //     // STEP 2: build NoEnterpriseForm payload
+
+  //     // Q1: if_shg_member_inv
+  //     const activityFullValue = activityOption
+  //       ? `${activityOption}${activitySpecify ? `, ${activitySpecify}` : ''}`
+  //       : '';
+
+  //     // Q2: no_int_reason
+  //     let noIntReasonValue = '';
+  //     if (noInterestOption === 'Personal Reasons') {
+  //       noIntReasonValue = 'Personal Reasons';
+  //     } else if (noInterestOption === 'Family Business') {
+  //       noIntReasonValue = 'Family Business';
+  //     } else if (noInterestOption === 'Others') {
+  //       noIntReasonValue = noInterestSpecify || '';
+  //     } else if (noInterestOption === 'Interested in Wage Employment?') {
+  //       if (wageInterestYesNo === 'Yes') {
+  //         noIntReasonValue = 'Interested in Wage Employment';
+  //       } else if (wageInterestYesNo === 'No') {
+  //         noIntReasonValue = 'Not interested in Wage Employment';
+  //       }
+  //     }
+
+  //     const isTrainingRequiredField = trainingRequiredYesNo; // "Yes" / "No" as asked
+
+  //     // created_by: prefer loggedUser numeric PK; fallback to routeCrpUserId if numeric
+  //     let created_by_to_send = null;
+  //     const candidate =
+  //       loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? routeCrpUserId;
+  //     if (candidate !== null && candidate !== undefined) {
+  //       if (typeof candidate === 'number') {
+  //         created_by_to_send = candidate;
+  //       } else if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
+  //         created_by_to_send = parseInt(candidate.trim(), 10);
+  //       } else {
+  //         created_by_to_send = null;
+  //       }
+  //     }
+
+  //     const payloadNoEnterprise = {
+  //       recorded_benef_id: recordedBenefId,
+  //       if_shg_member_inv: activityFullValue || null,
+  //       no_int_reason: noIntReasonValue || null,
+  //       is_training_required: isTrainingRequiredField || null,
+  //       future_willing: futureWillingYesNo === 'Yes',
+  //       has_shg_cif: hasShgCifYesNo === 'Yes',
+  //       cif_fund_amt: cifAmount || null,
+  //       planned_business: plannedBusiness || null,
+  //     };
+
+  //     if (created_by_to_send !== null) {
+  //       payloadNoEnterprise.created_by = created_by_to_send;
+  //     }
+
+  //     // STEP 3: create NoEnterpriseForm
+  //     const noEpRes = await gsApi.createNoEnterpriseForm(payloadNoEnterprise);
+
+  //     const noEpId =
+  //       noEpRes?.TH_urid || noEpRes?.TH_URID || noEpRes?.id || null;
+
+  //     if (!noEpId) {
+  //       throw new Error(
+  //         'No Enterprise form saved but ID missing in response.'
+  //       );
+  //     }
+
+  //     // STEP 4: link recorded-beneficiaries.enterprise_id
+  //     try {
+  //       await gsApi.updateRecordedBeneficiary(recordedBenefId, {
+  //         enterprise_id: noEpId,
+  //       });
+  //     } catch (e) {
+  //       console.warn(
+  //         'Failed to update recorded beneficiary enterprise_id for NoEnterpriseForm',
+  //         e
+  //       );
+  //     }
+
+  //     // STEP 5: create sub-forms (wage / training) if required
+
+  //     if (wantsWageForm) {
+  //       const { location_scope, location } = wageLocationToFields();
+
+  //       // created_by: prefer loggedUser numeric PK; fallback to routeCrpUserId if numeric
+  //       let created_by_to_send = null;
+  //       const candidate =
+  //         loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? routeCrpUserId;
+  //       if (candidate !== null && candidate !== undefined) {
+  //         if (typeof candidate === 'number') {
+  //           created_by_to_send = candidate;
+  //         } else if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
+  //           created_by_to_send = parseInt(candidate.trim(), 10);
+  //         } else {
+  //           created_by_to_send = null;
+  //         }
+  //       }
+
+  //       const payloadWage = {
+  //         enterprise_id: noEpId,
+  //         type_of_emp: wageEmpTypes.join(', '),
+  //         placement_sector: wagePlacementSectors.join(', '),
+  //         exp_salary: wageExpSalary,
+  //         location_scope,
+  //         location,
+  //       };
+
+  //       if (created_by_to_send !== null) {
+  //         payloadWage.created_by = created_by_to_send;
+  //       }
+
+  //       try {
+  //         await gsApi.createNoEnterpriseWage(payloadWage);
+  //       } catch (e) {
+  //         console.warn('Failed to create NoEnterpriseWage', e);
+  //       }
+  //     }
+
+  //     if (wantsTrainingForm) {
+  //       const actualDepartment =
+  //         trainingDepartmentOption === 'Others'
+  //           ? trainingDepartmentOtherText || 'Others'
+  //           : trainingDepartmentOption;
+
+  //       const { sector, training_module_name } = buildTrainingSectorFields();
+  //       const trainingLocation = buildTrainingLocation();
+
+  //       const payloadTraining = {
+  //         enterprise_id: noEpId,
+  //         form_type: 'req',
+  //         department: actualDepartment || null,
+  //         sector: sector || null,
+  //         training_module_name: training_module_name || null,
+  //         duration: trainingDuration || null,
+  //         location: trainingLocation || null,
+  //         expected_income: trainingExpectedIncome || null,
+  //       };
+
+  //       // created_by: prefer loggedUser numeric PK; fallback to routeCrpUserId if numeric
+  //       let created_by_to_send = null;
+  //       const candidate =
+  //         loggedUser?.id ?? loggedUser?.user_id ?? loggedUser?.pk ?? routeCrpUserId;
+  //       if (candidate !== null && candidate !== undefined) {
+  //         if (typeof candidate === 'number') {
+  //           created_by_to_send = candidate;
+  //         } else if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
+  //           created_by_to_send = parseInt(candidate.trim(), 10);
+  //         } else {
+  //           created_by_to_send = null;
+  //         }
+  //       }
+
+  //       if (created_by_to_send !== null) {
+  //         payloadTraining.created_by = created_by_to_send;
+  //       }
+
+  //       try {
+  //         await gsApi.createEnterpriseTrainingReq(payloadTraining);
+  //       } catch (e) {
+  //         console.warn('Failed to create EnterpriseTrainingReq for NoEnterpriseForm', e);
+  //       }
+  //     }
+
+  //     Alert.alert('Success', 'Details saved successfully.', [
+  //       {
+  //         text: 'OK',
+  //         onPress: () => navigation.goBack(),
+  //       },
+  //     ]);
+  //   } catch (err) {
+  //     console.error('NoEnterpriseForm submit error', err);
+  //     const serverMsg =
+  //       err?.data?.detail ||
+  //       (err?.data && typeof err.data === 'object'
+  //         ? JSON.stringify(err.data)
+  //         : null) ||
+  //       err?.message ||
+  //       'Failed to save details. Please try again.';
+  //     Alert.alert('Error', serverMsg);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const benefName =
     beneficiary?.member_name ||
@@ -1024,6 +1630,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
         'Others',
       ].map((opt) => (
         <CheckboxRow
+        required
           key={opt}
           label={opt}
           checked={activityOption === opt}
@@ -1033,6 +1640,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
 
       {activityOption ? (
         <TextInput
+        required
           style={[styles.input, { minHeight: 60, marginTop: 6 }]}
           placeholder="Please specify the details of your activity"
           multiline
@@ -1040,6 +1648,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
           onChangeText={setActivitySpecify}
         />
       ) : null}
+   
 
       {/* Q2: Why are you not interested in opening an enterprise? */}
       <Text style={styles.sectionHeading}>Reason for Not Opening Enterprise</Text>
@@ -1054,6 +1663,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
         'Others',
       ].map((opt) => (
         <CheckboxRow
+        required
           key={opt}
           label={opt}
           checked={noInterestOption === opt}
@@ -1069,6 +1679,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
 
       {noInterestOption === 'Others' && (
         <TextInput
+          required
           style={[styles.input, { minHeight: 60, marginTop: 6 }]}
           placeholder="Please specify your reason"
           multiline
@@ -1079,15 +1690,15 @@ export default function NoEnterpriseForm({ route, navigation }) {
 
       {noInterestOption === 'Interested in Wage Employment?' && (
         <>
-          <Text style={[styles.label, { marginTop: 10 }]}>
+          {/* <Text style={[styles.label, { marginTop: 10 }]}>
             Are you interested in Wage Employment?
           </Text>
           <YesNoToggle
             value={wageInterestYesNo}
             onChange={setWageInterestYesNo}
-          />
+          /> */}
 
-          {wageInterestYesNo === 'Yes' && (
+          {/* {wageInterestYesNo === 'Yes' && ( */}
             <>
               {/* Wage sub-form */}
               <Text style={styles.sectionHeading}>
@@ -1103,6 +1714,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
               </Text>
               {['Full Time', 'Part Time'].map((opt) => (
                 <CheckboxRow
+                required
                   key={opt}
                   label={opt}
                   checked={wageEmpTypes.includes(opt)}
@@ -1125,6 +1737,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
                 'Agriculture Based Jobs',
               ].map((opt) => (
                 <CheckboxRow
+                required
                   key={opt}
                   label={opt}
                   checked={wagePlacementSectors.includes(opt)}
@@ -1148,6 +1761,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
                 'Above 30,000',
               ].map((opt) => (
                 <CheckboxRow
+                required
                   key={opt}
                   label={opt}
                   checked={wageExpSalary === opt}
@@ -1164,14 +1778,21 @@ export default function NoEnterpriseForm({ route, navigation }) {
               </Text>
 
               {[
-                'In my State',
-                'Desired State',
-                'In my District',
-                'Desired District',
-                'In my Country',
+                ' District',
+                'Other District',
+                'Other State',
                 'Other Countries',
+                // 'Desired State',
+                // ' In my Neighbouring District',
+                // 'Anywhere in my State',
+                // ' In other States',
+                // 'In my District',
+                // 'Desired District',
+                // 'In my Country',
+                // 'Other Country (International)',
               ].map((opt) => (
                 <CheckboxRow
+                required
                   key={opt}
                   label={opt}
                   checked={wageLocationChoice === opt}
@@ -1190,6 +1811,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
               {(wageLocationChoice === 'Desired State' ||
                 wageLocationChoice === 'Desired District') && (
                 <TextInput
+                required
                   style={[styles.input, { marginTop: 6 }]}
                   placeholder={
                     wageLocationChoice === 'Desired State'
@@ -1201,7 +1823,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
                 />
               )}
             </>
-          )}
+          {/* )} */}
         </>
       )}
 
@@ -1209,34 +1831,14 @@ export default function NoEnterpriseForm({ route, navigation }) {
       <Text style={styles.sectionHeading}>Training Requirement</Text>
       <Text style={styles.label}>Do you require any training?</Text>
       <YesNoToggle
+      required
         value={trainingRequiredYesNo}
         onChange={setTrainingRequiredYesNo}
       />
 
       {trainingRequiredYesNo === 'Yes' && (
         <>
-          {/* Department */}
-          <Text style={[styles.label, { marginTop: 10 }]}>
-            Which is your preferred department for training?
-          </Text>
-          {['NRLM', 'RCT', 'NABARD', 'UPSDM', 'Others'].map((opt) => (
-            <CheckboxRow
-              key={opt}
-              label={opt}
-              checked={trainingDepartmentOption === opt}
-              onPress={() => setTrainingDepartmentOption(opt)}
-            />
-          ))}
-          {trainingDepartmentOption === 'Others' && (
-            <TextInput
-              style={[styles.input, { marginTop: 6 }]}
-              placeholder="Please specify the department"
-              value={trainingDepartmentOtherText}
-              onChangeText={setTrainingDepartmentOtherText}
-            />
-          )}
-
-          {/* Sectors / modules */}
+         {/* Sectors / modules */}
           <Text style={styles.sectionHeading}>
             Preferred Sector for Training
           </Text>
@@ -1252,6 +1854,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
             return (
               <View key={parent} style={{ marginTop: 10 }}>
                 <CheckboxRow
+                required
                   label={parent}
                   checked={parentSelected}
                   onPress={() => toggleTrainingParent(parent)}
@@ -1263,12 +1866,14 @@ export default function NoEnterpriseForm({ route, navigation }) {
                         return (
                           <View key={`${parent}-${child}`} style={{ marginTop: 6 }}>
                             <CheckboxRow
+                            required
                               label="Others (Please specify)"
                               checked={!!kidsState['Others']}
                               onPress={() => toggleTrainingChild(parent, 'Others')}
                             />
                             {kidsState['Others'] && (
                               <TextInput
+                              required
                                 style={[styles.input, { marginTop: 4 }]}
                                 placeholder="Please specify"
                                 value={kidsState.__otherText || ''}
@@ -1282,6 +1887,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
                       }
                       return (
                         <CheckboxRow
+                        required
                           key={`${parent}-${child}`}
                           label={child}
                           checked={!!kidsState[child]}
@@ -1291,6 +1897,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
                     })}
                     {parent === 'Others' && (
                       <TextInput
+                      required
                         style={[styles.input, { marginTop: 4 }]}
                         placeholder="Please specify sub-sector"
                         value={kidsState.__otherText || ''}
@@ -1307,6 +1914,122 @@ export default function NoEnterpriseForm({ route, navigation }) {
 
           {/* Duration */}
           <Text style={[styles.label, { marginTop: 12 }]}>
+            How many days of training are you comfortable in one slot?
+          </Text>
+          {[
+            'Under 7 days',
+            '7 days',
+            '15 days',
+            '30 days',
+            'Over 30 days',
+          ].map((opt) => (
+            <CheckboxRow
+            required
+              key={opt}
+              label={opt}
+              checked={trainingDuration === opt}
+              onPress={() => setTrainingDuration(opt)}
+            />
+          ))}
+          {/* Department */}
+          <Text style={[styles.label, { marginTop: 10 }]}>
+            Which is your preferred department for training?
+          </Text>
+          {['NRLM', 'RSETI', 'NABARD', 'UPSDM', 'Others'].map((opt) => (
+            <CheckboxRow
+            required
+              key={opt}
+              label={opt}
+              checked={trainingDepartmentOption === opt}
+              onPress={() => setTrainingDepartmentOption(opt)}
+            />
+          ))}
+          {trainingDepartmentOption === 'Others' && (
+            <TextInput
+            required
+              style={[styles.input, { marginTop: 6 }]}
+              placeholder="Please specify the department"
+              value={trainingDepartmentOtherText}
+              onChangeText={setTrainingDepartmentOtherText}
+            />
+          )}
+
+          {/* Sectors / modules */}
+          {/* <Text style={styles.sectionHeading}>
+            Preferred Sector for Training
+          </Text>
+          <Text style={styles.helpText}>
+            First select parent sectors. After selecting a parent sector, choose
+            the related business / activity under it.
+          </Text>
+
+          {TRAINING_SECTORS.map(({ parent, children }) => {
+            const parentSelected = selectedTrainingParents.includes(parent);
+            const kidsState = trainingChildrenByParent[parent] || {};
+            const hasOthersChild = children.includes('Others');
+            return (
+              <View key={parent} style={{ marginTop: 10 }}>
+                <CheckboxRow
+                required
+                  label={parent}
+                  checked={parentSelected}
+                  onPress={() => toggleTrainingParent(parent)}
+                />
+                {parentSelected && (
+                  <View style={{ marginLeft: 16, marginTop: 4 }}>
+                    {children.map((child) => {
+                      if (child === 'Others') {
+                        return (
+                          <View key={`${parent}-${child}`} style={{ marginTop: 6 }}>
+                            <CheckboxRow
+                            required
+                              label="Others (Please specify)"
+                              checked={!!kidsState['Others']}
+                              onPress={() => toggleTrainingChild(parent, 'Others')}
+                            />
+                            {kidsState['Others'] && (
+                              <TextInput
+                              required
+                                style={[styles.input, { marginTop: 4 }]}
+                                placeholder="Please specify"
+                                value={kidsState.__otherText || ''}
+                                onChangeText={(txt) =>
+                                  setTrainingOtherChildText(parent, txt)
+                                }
+                              />
+                            )}
+                          </View>
+                        );
+                      }
+                      return (
+                        <CheckboxRow
+                        required
+                          key={`${parent}-${child}`}
+                          label={child}
+                          checked={!!kidsState[child]}
+                          onPress={() => toggleTrainingChild(parent, child)}
+                        />
+                      );
+                    })}
+                    {parent === 'Others' && (
+                      <TextInput
+                      required
+                        style={[styles.input, { marginTop: 4 }]}
+                        placeholder="Please specify sub-sector"
+                        value={kidsState.__otherText || ''}
+                        onChangeText={(txt) =>
+                          setTrainingOtherChildText(parent, txt)
+                        }
+                      />
+                    )}
+                  </View>
+                )}
+              </View>
+            );
+          })} */}
+
+          {/* Duration */}
+          {/* <Text style={[styles.label, { marginTop: 12 }]}>
             How many days of training are you comfortable with?
           </Text>
           {[
@@ -1317,12 +2040,13 @@ export default function NoEnterpriseForm({ route, navigation }) {
             'Over 30 days',
           ].map((opt) => (
             <CheckboxRow
+            required
               key={opt}
               label={opt}
               checked={trainingDuration === opt}
               onPress={() => setTrainingDuration(opt)}
             />
-          ))}
+          ))} */}
 
           {/* Training location */}
           <Text style={[styles.label, { marginTop: 12 }]}>
@@ -1331,16 +2055,9 @@ export default function NoEnterpriseForm({ route, navigation }) {
           <Text style={styles.helpText}>
             Please fill your preferred State, District and Block.
           </Text>
-
-          <Text style={[styles.smallLabel, { marginTop: 4 }]}>State</Text>
-          <TextInput
-            style={styles.input}
-            value={trainingLocationState}
-            onChangeText={setTrainingLocationState}
-            placeholder="Please enter State"
-          />
           <Text style={[styles.smallLabel, { marginTop: 8 }]}>District</Text>
           <TextInput
+          required
             style={styles.input}
             value={trainingLocationDistrict}
             onChangeText={setTrainingLocationDistrict}
@@ -1348,10 +2065,19 @@ export default function NoEnterpriseForm({ route, navigation }) {
           />
           <Text style={[styles.smallLabel, { marginTop: 8 }]}>Block</Text>
           <TextInput
+          required
             style={styles.input}
             value={trainingLocationBlock}
             onChangeText={setTrainingLocationBlock}
             placeholder="Please enter Block"
+          />
+            <Text style={[styles.smallLabel, { marginTop: 4 }]}>Village</Text>
+          <TextInput
+          required
+            style={styles.input}
+            value={trainingLocationState}
+            onChangeText={setTrainingLocationState}
+            placeholder="Please enter Village"
           />
 
           {/* Expected income after training */}
@@ -1365,6 +2091,7 @@ export default function NoEnterpriseForm({ route, navigation }) {
             'Above 30,000',
           ].map((opt) => (
             <CheckboxRow
+            required
               key={opt}
               label={opt}
               checked={trainingExpectedIncome === opt}
@@ -1380,23 +2107,57 @@ export default function NoEnterpriseForm({ route, navigation }) {
         Are you willing to start a business in future?
       </Text>
       <YesNoToggle
+      required
         value={futureWillingYesNo}
         onChange={setFutureWillingYesNo}
       />
+      
+{/* {futureWillingYesNo === 'Yes' && (
+  <>
+    <Text style={[styles.label, { marginTop: 8 }]}>
+      What kind of business do you plan?
+    </Text>
+    <TextInput
+    required
+      style={styles.input}
+      placeholder="Describe your planned business"
+      multiline
+      value={plannedBusiness}
+      onChangeText={setPlannedBusiness}
+    />
+  </>
+)} */}
 
       {/* Q5: CIF */}
-      <Text style={styles.sectionHeading}>CIF Details</Text>
-      <Text style={styles.label}>Has your SHG received CIF Funds?</Text>
+      {/* <Text style={styles.sectionHeading}>CIF Details</Text> */}
+      {/* <Text style={styles.label}>Have you received any portion of CIF Fund? If Yes, specify amount.</Text> */}
+      {/* <Text style={styles.label}>Have Your SHG recieved CIF Fund.?</Text>
       <YesNoToggle
         value={hasShgCifYesNo}
         onChange={setHasShgCifYesNo}
       />
       {hasShgCifYesNo === 'Yes' && (
         <>
-          <Text style={[styles.label, { marginTop: 8 }]}>
-            Please specify the amount of financial assistance your SHG received
+          <Text style={[styles.label, { marginTop: 8 }]}> */}
+            {/* Please specify the amount of financial assistance your SHG received */}
+
+            {/* Have you recieved part of that CIF Fund
           </Text>
           <TextInput
+          required
+            style={styles.input}
+            keyboardType="numeric"
+            placeholder="Enter CIF amount"
+            value={cifAmount}
+            onChangeText={setCifAmount}
+          /> */}
+          {/* <Text style={[styles.label, { marginTop: 8 }]}> */}
+            {/* Please specify the amount of financial assistance your SHG received */}
+
+           {/* Specify the Amount recieved
+          </Text>
+          <TextInput
+          required
             style={styles.input}
             keyboardType="numeric"
             placeholder="Enter CIF amount"
@@ -1404,7 +2165,44 @@ export default function NoEnterpriseForm({ route, navigation }) {
             onChangeText={setCifAmount}
           />
         </>
-      )}
+      )} */}
+
+      <Text style={styles.sectionHeading}>CIF Details</Text>
+
+<Text style={styles.label}>Have Your SHG received CIF Fund?</Text>
+<YesNoToggle
+  value={hasShgCifYesNo}
+  onChange={setHasShgCifYesNo}
+/>
+
+{hasShgCifYesNo === 'Yes' && (
+  <>
+    <Text style={[styles.label, { marginTop: 8 }]}>
+      Have you received part of that CIF Fund?
+    </Text>
+    <YesNoToggle
+      value={hasReceivedPartYesNo}
+      onChange={setHasReceivedPartYesNo}
+    />
+
+    {hasReceivedPartYesNo === 'Yes' && (
+      <>
+        <Text style={[styles.label, { marginTop: 8 }]}>
+          Specify the amount received
+        </Text>
+        <TextInput
+          required
+          style={styles.input}
+          keyboardType="numeric"
+          placeholder="Enter CIF amount"
+          value={cifAmount}
+          onChangeText={setCifAmount}
+        />
+      </>
+    )}
+  </>
+)}
+
 
       {/* Submit button */}
       <TouchableOpacity
@@ -1461,7 +2259,7 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#CCCCCC',
+    borderColor: '#EE6969',
     borderRadius: 8,
     padding: 10,
     fontSize: 14,
@@ -1476,13 +2274,13 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderWidth: 1,
-    borderColor: '#555555',
+    borderColor: '#EE6969',
     borderRadius: 4,
     marginRight: 8,
   },
   checkboxChecked: {
-    backgroundColor: '#FFCC00',
-    borderColor: '#FFCC00',
+    backgroundColor: '#EE6969',
+    borderColor: '#EE6969',
   },
   checkboxLabel: {
     fontSize: 14,
@@ -1495,9 +2293,10 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     minWidth: 70,
     alignItems: 'center',
+    borderColor: '#EE6969',
   },
   submitButton: {
-    backgroundColor: '#FFCC00',
+    backgroundColor: '#EE6969',
     padding: 14,
     borderRadius: 8,
     alignItems: 'center',
@@ -1506,6 +2305,6 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#000000',
+    color: 'white',
   },
 });

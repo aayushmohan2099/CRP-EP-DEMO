@@ -18,15 +18,19 @@ const YES_NO_OPTIONS = [
 
 const OTHER_SUPPORT_TYPES = [
   { label: 'Select...', value: '' },
-  { label: 'Cash', value: 'Cash' },
+  { label: 'Grant and Subsidy', value: 'Grant and Subsidy' },
   { label: 'Loan', value: 'Loan' },
+    { label: 'Interest Subvention', value: 'Interest Subvention' },
   { label: 'Others', value: 'Others' },
 ];
 
 const LOAN_AMOUNT_OPTIONS = [
+   { label: 'Below to 50,000', value: 'Below to 50,000'},
   { label: '50,000 - 1,00,000', value: '50,000 - 1,00,000' },
   { label: '1,00,000 - 2,00,000', value: '1,00,000 - 2,00,000' },
   { label: '2,00,000 - 5,00,000', value: '2,00,000 - 5,00,000' },
+   { label: 'Above to 5,00,000', value: 'Above to 5,00,000' },
+   { label: 'Other', value: 'Other' }, 
 ];
 
 const PROMO_OPTIONS = [
@@ -60,7 +64,6 @@ const ExistingEnterpriseSupportSection = ({
   const {
     mentorship_support = '',
     digital_emarket_support = '',
-    machinery_equipment_support = '',
   } = data;
 
   // local state for Q25
@@ -76,25 +79,44 @@ const ExistingEnterpriseSupportSection = ({
   // local state for Q28
   const [infraType, setInfraType] = useState('');
   const [infraSpec, setInfraSpec] = useState('');
+  const [machinery_equipment_support, setMes] = useState('');
 
   const update = (patch) => {
     onChange(patch);
   };
 
   // ---- Q25 helpers (local) ----
+  // const recalcOtherSupport = (type, spec, range) => {
+  //   let composed = '';
+  //   if (type === 'Loan' && range) {
+  //     composed = `{Loan: ${range}}`;
+  //   } else if (type === 'Cash' && spec) {
+  //     composed = `{Cash: ${spec}}`;
+  //   } else if (type === 'Others' && spec) {
+  //     composed = `{Others: ${spec}}`;
+  //   }
+  //   setOtherSupportPreview(composed);
+  //   // optionally send only the final string up
+  //   update({ other_support: composed });
+  // };
+
   const recalcOtherSupport = (type, spec, range) => {
-    let composed = '';
-    if (type === 'Loan' && range) {
-      composed = `{Loan: ${range}}`;
-    } else if (type === 'Cash' && spec) {
-      composed = `{Cash: ${spec}}`;
-    } else if (type === 'Others' && spec) {
-      composed = `{Others: ${spec}}`;
-    }
-    setOtherSupportPreview(composed);
-    // optionally send only the final string up
-    update({ other_support: composed });
-  };
+  let composed = '';
+  if (type === 'Loan' && range) {
+    composed =
+      range === 'Other' && spec
+        ? `{Loan: ${spec}}`
+        : `{Loan: ${range}}`;
+  } else if (type === 'Grant and Subsidy' && spec) {
+    composed = `{Grant and Subsidy: ${spec}}`;
+  } else if (type === 'Interest Subvention' && spec) {
+    composed = `{Interest Subvention: ${spec}}`;
+  } else if (type === 'Others' && spec) {
+    composed = `{Others: ${spec}}`;
+  }
+  setOtherSupportPreview(composed);
+  update({ other_support: composed });
+};
 
   const handleOtherSupportTypeChange = (val) => {
     const nextType = val;
@@ -163,19 +185,25 @@ const ExistingEnterpriseSupportSection = ({
           ))}
         </Picker>
 
-        {(otherSupportType === 'Cash' || otherSupportType === 'Others') && (
-          <TextInput
-            style={[styles.input, { marginTop: 8 }]}
-            placeholder={
-              otherSupportType === 'Cash'
-                ? 'Please specify the cash support required.'
-                : 'Please specify the other type of support required.'
-            }
-            value={otherSupportSpec}
-            onChangeText={handleOtherSupportSpecChange}
-            multiline
-          />
-        )}
+        {(
+  otherSupportType === 'Grant and Subsidy' ||
+  otherSupportType === 'Others' ||
+  otherSupportType === 'Interest Subvention'
+) && (
+  <TextInput
+    style={[styles.input, { marginTop: 8 }]}
+    placeholder={
+      otherSupportType === 'Grant and Subsidy'
+        ? 'Please specify the Grant and Subsidy support required.'
+        : otherSupportType === 'Interest Subvention'
+        ? 'Please specify the Interest Subvention support required.'
+        : 'Please specify the other type of support required.'
+    }
+    value={otherSupportSpec}
+    onChangeText={handleOtherSupportSpecChange}
+    multiline
+  />
+)}
 
         {otherSupportType === 'Loan' && (
           <View style={{ marginTop: 10 }}>
@@ -194,14 +222,19 @@ const ExistingEnterpriseSupportSection = ({
                 <Picker.Item key={opt.value} label={opt.label} value={opt.value} />
               ))}
             </Picker>
+            {otherSupportType === 'Loan' && otherSupportLoanRange === 'Other' && (
+  <TextInput
+    style={[styles.input, { marginTop: 8 }]}
+    placeholder="Please specify the loan amount required."
+    value={otherSupportSpec}
+    onChangeText={handleOtherSupportSpecChange}
+    multiline
+  />
+)}
           </View>
         )}
 
-        {otherSupportPreview ? (
-          <Text style={styles.previewText}>
-            Will send as: {otherSupportPreview}
-          </Text>
-        ) : null}
+        
       </View>
 
       {/* 26) Mentorship support (still controlled) */}
@@ -295,12 +328,80 @@ const ExistingEnterpriseSupportSection = ({
       )}
 
       {/* 30) Machinery / equipment support (still controlled) */}
-      {renderYesNoPicker(
+      {/* {renderYesNoPicker(
         '30) Do you require Machinery / Equipment support? (क्या आपको मशीनरी/उपकरण सहायता चाहिए?)',
         machinery_equipment_support,
         'machinery_equipment_support',
         'Please select Yes if you need help in getting machinery or equipment for your enterprise.'
-      )}
+      )} */}
+
+      {/* <View style={styles.fieldBlock}>
+  <Text style={styles.label}>
+    30) Do you require Machinery / Equipment support? (क्या आपको मशीनरी/उपकरण सहायता चाहिए?)
+  </Text>
+  <Text style={styles.helpText}>
+    Please select Yes if you need help in getting machinery or equipment for your enterprise.
+  </Text>
+
+  <Picker
+    selectedValue={machinery_equipment_support }
+    style={[styles.input, styles.dropdown]}
+    onValueChange={(val) => update({ machinery_equipment_support: val })}
+  >
+    {YES_NO_OPTIONS.map((opt) => (
+      <Picker.Item key={opt.value} label={opt.label} value={opt.value} />
+    ))}
+  </Picker>
+
+  {machinery_equipment_support === 'Yes' && (
+    <TextInput
+      style={[styles.input, { marginTop: 8 }]}
+      placeholder="Please specify the machinery / equipment required."
+      value={machinery_equipment_support || ''}
+      onChangeText={(v) => update({ machinery_equipment_support: v })}
+      multiline
+    />
+  )}
+</View> */}
+
+{/* 30) Machinery / equipment support */}
+{/* 30) Machinery / Equipment support */}
+<View style={styles.fieldBlock}>
+  <Text style={styles.label}>
+    30) Do you require Machinery / Equipment support? (क्या आपको मशीनरी/उपकरण सहायता चाहिए?)
+  </Text>
+  <Text style={styles.helpText}>
+    Please select Yes if you need help in getting machinery or equipment for your enterprise.
+  </Text>
+
+  {/* Yes/No Picker */}
+  <Picker
+    selectedValue={machinery_equipment_support?.startsWith('Yes') ? 'Yes' : 'No'}
+    style={[styles.input, styles.dropdown]}
+    onValueChange={(val) => {setMes(val);
+    }}
+  >
+    {YES_NO_OPTIONS.map((opt) => (
+      <Picker.Item key={opt.value} label={opt.label} value={opt.value} />
+    ))}
+  </Picker>
+
+  {/* TextInput only if Yes */}
+  {machinery_equipment_support?.startsWith('Yes') && (
+    <TextInput
+      style={[styles.input, { marginTop: 8 }]}
+      placeholder="Please specify the machinery / equipment required."
+      value={machinery_equipment_support.includes(',') 
+              ? machinery_equipment_support.split(',')[1].trim() 
+              : ''}
+      onChangeText={(v) => setMes(`Yes, ${v}`) }
+      multiline
+    />
+  )}
+</View>
+
+
+
 
       <View style={styles.navRow}>
         {onBack && (

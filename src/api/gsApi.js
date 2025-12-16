@@ -1,12 +1,16 @@
 // src/api/gsApi.js
-
+//  import Config from "react-native-config";
+import { X_API_ID, X_API_KEY } from '@env';  
 const BASE_URL = 'http://66.116.207.88:8088';
-
+const clientId = X_API_ID ;
+const clientKey = X_API_KEY ;
 const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
-  'X-API-ID': 'TH_EPS.BDOuser_test.co.in',
-  'X-API-KEY': 'wFR8IpSeNMawCF4RPLXit1POGuQAJTSmRexBBOwO',
+  'X-API-ID': clientId,
+  'X-API-KEY': clientKey,
 };
+
+
 
 let AUTH_TOKEN = null;
 let REFRESH_TOKEN = null;

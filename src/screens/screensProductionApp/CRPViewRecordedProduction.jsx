@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  Image
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import {
@@ -18,13 +19,15 @@ import gsApi from '../../api/gsApi';
 import LoaderModal from '../LoaderModal';
 import BackButton from '../../components/BackButton';
 import SearchBar from '../SearchBar';
-
+import { X_API_ID, X_API_KEY } from '@env';  
 // --- API base + headers (same as gsApi constants) ---
 const API_BASE_URL = 'http://66.116.207.88:8088';
+const clientId = X_API_ID ;
+const clientKey = X_API_KEY ;
 const BASE_HEADERS = {
   'Content-Type': 'application/json',
-  'X-API-ID': 'TH_EPS.BDOuser_test.co.in',
-  'X-API-KEY': 'wFR8IpSeNMawCF4RPLXit1POGuQAJTSmRexBBOwO',
+  'X-API-ID': clientId,
+  'X-API-KEY': clientKey,
 };
 
 function buildAuthHeaders() {
@@ -407,6 +410,20 @@ export default function CRPViewRecordedProduction({ navigation }) {
       detail.enterprise_type
     );
     const enterprise = detail.enterprise || null;
+
+      // applicant_signature: add base URL if path exists
+  let applicantSignature = null;
+
+  if (enterprise?.applicant_signature) {
+    const sig = enterprise.applicant_signature;
+
+    // Add prefix only if path starts with /media
+    applicantSignature = sig.startsWith("/media")
+      ? `${API_BASE_URL}${sig}`
+      : sig;
+  }
+
+    // if applicant_signature exist  then extract string and prefix with https://66.116.207.88:8088
     const enterpriseLoanDetails = detail.enterprise_loan_details || [];
     const enterpriseSupportDetails = detail.enterprise_support_details || [];
     const enterpriseTrainingReqs = detail.enterprise_training_reqs || [];
@@ -464,7 +481,24 @@ export default function CRPViewRecordedProduction({ navigation }) {
               </Text>
             </View>
           )}
-
+{applicantSignature && (
+  <View style={{ padding: 10, alignItems: 'center' }}>
+    <Text style={{ fontWeight: '700', fontSize: 14, marginBottom: 6 }}>
+      Applicant Signature
+    </Text>
+    <Image
+      source={{ uri: applicantSignature }}
+      style={{
+        width: 200,
+        height: 200,
+        resizeMode: 'contain',
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 8,
+      }}
+    />
+  </View>
+)}
           {/* Enterprise Type Categories */}
           {renderArrayOfObjectsSection(
             'Enterprise Type Categories',

@@ -13,7 +13,7 @@ import { launchCamera } from 'react-native-image-picker';
 
 const YES_NO = ['Yes', 'No'];
 
-const TRAINING_DEPT_OPTIONS = ['NRLM', 'RCT', 'NABARD', 'UPSDM', 'Others'];
+const TRAINING_DEPT_OPTIONS = ['NRLM', 'RSETI', 'NABARD', 'UPSDM', 'Others'];
 
 const TRAINING_DURATION_OPTIONS = [
   'Under 7 days',
@@ -35,198 +35,423 @@ const EXPECTED_INCOME_OPTIONS = [
  * Parent -> list of child modules
  */
 const TRAINING_SECTOR_TREE = [
-  {
-    parent: 'Agriculture and Allied Activities',
+  // {
+  //   parent: 'Agriculture and Allied Activities',
+  //   children: [
+  //     'Organic Farming',
+  //     'Dairy Farming',
+  //     'Poultry Farming',
+  //     'Mushroom Cultivation',
+  //     'Beekeeping and Honey Production',
+  //     'Goat Rearing',
+  //     'Vermicomposting',
+  //     'Fish Farming',
+  //     'Floriculture (Flower Cultivation)',
+  //     'Medicinal Plant Cultivation',
+  //     'Organic Fertilizer Production',
+  //      'Ayurvedic Medicine Manufacturing',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Food Processing and Snacks Business',
+  //   children: [
+  //     'Pickle and Papad Making',
+  //     'Bakery and Cake Production',
+  //     'Spice Powder Making',
+  //     'Flour Mill',
+  //     'Dairy Product Manufacturing (Paneer, Ghee)',
+  //     'Ready-to-Eat Food Preparation',
+  //     'Herbal Tea Manufacturing',
+  //     'Jam and Jelly Production',
+  //     'Frozen Food Business',
+  //     'Edible Oil Extraction',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Handicrafts and Traditional Skills',
+  //   children: [
+  //     'Banarasi Saree Weaving',
+  //     'Chikankari Embroidery',
+  //     'Wooden Handicrafts',
+  //     'Terracotta Pottery',
+  //     'Jute Bag Manufacturing',
+  //     'Handmade Jewelry',
+  //     'Toy Manufacturing',
+  //     'Paper Mache Art',
+  //     'Bamboo Craft',
+  //     'Leather Product Manufacturing',
+  //     'Handloom Weaving Cooperative Society',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Service-Based Businesses',
+  //   children: [
+  //     'Catering Service',
+  //     'Tailoring and Garment Making',
+  //     'Event Decoration',
+  //     'Beautician and Salon',
+  //     'Coaching Classes',
+  //     'Mobile Repairing',
+  //     'Home Cleaning Services',
+  //     'Photography Studio',
+  //     'Cyber Café',
+  //     'Wedding Planning',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Waste Management and Eco-Friendly Ventures',
+  //   children: [
+  //     'Paper Bag Manufacturing',
+  //     'Cloth Bag Manufacturing',
+  //     'Plastic Recycling',
+  //     'E-waste Recycling',
+  //     'Compost Manufacturing',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Home and Personal Care Products',
+  //   children: [
+  //     'Candle Manufacturing',
+  //     'Incense Stick Making',
+  //     'Soap and Detergent Manufacturing',
+  //     'Bindi and Nail Polish Manufacturing',
+  //     'Herbal Shampoo and Cosmetic Products',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Low-Scale Production',
+  //   children: [
+  //     'Paper Plate and Cup Manufacturing',
+  //     'LED Bulb Assembly',
+  //     'Stationery Production',
+  //     'Environment-Friendly Disposable Cutlery',
+  //     'Chalk and Whiteboard Marker Manufacturing',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Textile and Apparel Business',
+  //   children: [
+  //     'Wool Weaving and Sweater Production',
+  //     'Bedsheet and Curtain Stitching',
+  //     'T-shirt Printing',
+  //     'School Uniform Manufacturing',
+  //     'Handloom Carpet Weaving',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Animal Husbandry and Agri-Based Enterprises',
+  //   children: [
+  //     'Pig Rearing',
+  //     'Emu Farming',
+  //     'Duck Rearing',
+  //     'Organic Fruit and Vegetable Farming',
+  //     'Poultry Egg Incubation',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'E-commerce and Online Business',
+  //   children: [
+  //     'Online Handicraft Selling',
+  //     'Home-Based Bakery on Food Delivery Platforms',
+  //     'Dropshipping Business',
+  //     'Print-on-Demand T-shirts',
+  //     'YouTube Channel (DIY or Tutorials)',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Renewable Energy and Environment-Friendly Enterprises',
+  //   children: [
+  //     'Solar Panel Installation Services',
+  //     'Bio-Gas Plant Setup',
+  //     'Electric Vehicle Charging Station',
+  //     'Waste Paper Recycling',
+  //     'Bamboo Toothbrush and Cutlery Manufacturing',
+  //     'Solar Lamp Assembly',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Tourism and Local Experience Businesses',
+  //   children: [
+  //     'Homestays for Tourists',
+  //     'Heritage Walk Guide Services',
+  //     'Rural Adventure Camps',
+  //     'Boat Tours on Ganges',
+  //     'Organic Farm Tour Business',
+  //     'Rural Tourism and Homestay',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'FMCG',
+  //   children: [
+  //     'Handwash',
+  //     'Soap',
+  //     'Floor Cleaner',
+  //     'Detergents',
+  //     'Air fresheners',
+  //     'Face wash & creams',
+  //     'Shampoo & conditioner',
+  //     'Sponges',
+  //     'Toothpaste & toothbrushes',
+  //     'Others',
+  //   ],
+  // },
+  //  {
+  //   parent: 'Transport',
+  //   children: [
+  //     'Loader',
+  //     'E-Rikshaw',
+  //     'Taxi',
+  //     'Auto',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Prerna Canteen',
+  //   children: [
+  //   ],
+  // },
+  // {
+  //   parent: 'Transport and Logistics Business',
+  //   children: [
+  //     'E-rickshaw Rental Service',
+  //     'Pack and Move Services',
+  //     'Small Courier Delivery Service',
+  //     'Bike Rental Business',
+  //     'Agricultural Equipment Rental Service',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'EDP|Entrepreneurship Development Programme ',
+  //   children: [
+  //   ]},
+  // {
+  //   parent: 'Miscellaneous and Innovative Businesses',
+  //   children: [
+  //     'Toy Library for Children',
+  //     'DIY Craft Kit Shop and Classes',
+  //     'Community Kitchen',
+  //     'Custom Gift Box Manufacturing',
+  //     'Pet Grooming Services',
+  //     'Digital Marketing for Local Businesses',
+  //     'Document and Resume Writing Services',
+  //     'Resale of Used Goods',
+  //     'Organic Soap Manufacturing Kit Shop',
+  //     'Wedding Invitation Card Designing',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Others (Specify)',
+  //   children: ['Others'],
+  // },
+   {
+    parent: 'Food Processing Sector',
     children: [
-      'Organic Farming',
-      'Dairy Farming',
-      'Poultry Farming',
-      'Mushroom Cultivation',
-      'Beekeeping and Honey Production',
-      'Goat Rearing',
-      'Vermicomposting',
-      'Fish Farming',
-      'Floriculture (Flower Cultivation)',
-      'Medicinal Plant Cultivation',
+      'Spice manufacturing',
+      'Pickles, preserves (murabba), papad',
+      'Savoury snacks, bhujiya, namkeen',
+      'Instant mixes (idli mix, gram flour mix, kheer mix)',
+      'Bakery items (cookies, cake, bread)',
+      'Millet-based products (jowar, bajra cookies, snacks)',
+      'Cold-pressed oils (mustard/sesame)',
+      'Honey processing',
+      'Jam–jelly–squash',
+      'Ready-to-eat products',
+      'Whole grain/pulses/flour sorting–grading–packaging unit​',
       'Others',
     ],
   },
   {
-    parent: 'Food Processing and Snacks Business',
+    parent: 'Handicraft & Artisan Sector',
     children: [
-      'Pickle and Papad Making',
-      'Bakery and Cake Production',
-      'Spice Powder Making',
-      'Flour Mill',
-      'Dairy Product Manufacturing (Paneer, Ghee)',
-      'Ready-to-Eat Food Preparation',
-      'Herbal Tea Manufacturing',
-      'Jam and Jelly Production',
-      'Frozen Food Business',
-      'Edible Oil Extraction',
+      'Zari and zardozi work',
+      'Chikankari embroidery',
+      'Woodwork',
+      'Terracotta / clay products',
+      'Bamboo / cane craft',
+      'Handmade jewellery (terracotta jewellery, oxidised jewellery)',
+      'Handmade candles',
+      'Crochet / woollen products',
+      'Paper craft, greeting cards',
+      'Handbags, jute bags, embroidered bags',
+      'Ration/vegetable/shopping bags (non-woven alternatives)​',
       'Others',
     ],
   },
   {
-    parent: 'Handicrafts and Traditional Skills',
+    parent: 'Textile & Apparel Sector',
     children: [
-      'Banarasi Saree Weaving',
-      'Chikankari Embroidery',
-      'Wooden Handicrafts',
-      'Terracotta Pottery',
-      'Jute Bag Manufacturing',
-      'Handmade Jewelry',
-      'Toy Manufacturing',
-      'Paper Mache Art',
-      'Bamboo Craft',
-      'Leather Product Manufacturing',
+      'Boutique unit (stitching–cutting–embellishment)',
+      'School uniform stitching unit',
+      'Ladies’ garments',
+      'Bedsheet/quilt/pillow cover unit',
+      'ODOP textile-based products (Varanasi saree, Bhadohi carpet finishing etc.)',
+      'Home linen (curtains, table cloth, sofa covers)',
+      'Jute/cotton carry bags',
+      'Mask/apron/hospital gown manufacturing​',
       'Others',
     ],
   },
   {
-    parent: 'Service-Based Businesses',
+    parent: 'Agriculture & Allied Sector',
     children: [
-      'Catering Service',
-      'Tailoring and Garment Making',
-      'Event Decoration',
-      'Beautician and Salon',
-      'Coaching Classes',
-      'Mobile Repairing',
-      'Home Cleaning Services',
-      'Photography Studio',
-      'Cyber Café',
-      'Wedding Planning',
+      'Vegetable cultivation and group supply',
+      'Flower cultivation (marigold, rose)',
+      'Mushroom production',
+      'Nursery (fruit/flower/vegetable saplings)',
+      'Beekeeping (honey production)',
+      'Organic manure/vermi-compost',
+      'Animal feed unit',
+      'Mini mill (flour/pulse grinding)',
+      'Fruit–vegetable dehydration unit',
+      'Fish farming',
       'Others',
     ],
   },
   {
-    parent: 'Waste Management and Eco-Friendly Ventures',
+    parent: 'Dairy & Animal Husbandry Sector',
     children: [
-      'Paper Bag Manufacturing',
-      'Cloth Bag Manufacturing',
-      'Plastic Recycling',
-      'E-waste Recycling',
-      'Compost Manufacturing',
+      'Dairy unit (2–10 cows/buffaloes)',
+      'Milk collection centre',
+      'Paneer/khoya/curd/ghee manufacturing',
+      'Goat rearing',
+      'Poultry unit (egg/broiler)',
+      'Pig rearing (in specific areas)',
+      'Fodder production',
+      'Milk packaging and branding unit​',
       'Others',
     ],
   },
   {
-    parent: 'Government Assisted Enterprises',
+    parent: 'Beauty, Wellness & Personal Services',
     children: [
-      'Solar Lamp Assembly',
-      'Rural Tourism and Homestay',
-      'Organic Fertilizer Production',
-      'Ayurvedic Medicine Manufacturing',
-      'Handloom Weaving Cooperative Society',
+      'Beauty parlour',
+      'Mehndi (henna) training and services',
+      'Spa / therapy unit',
+      'Home-care services (home nursing, baby care training)',
+      'Mobile salon / village-based services',
+      'Fitness group / yoga classes​',
       'Others',
     ],
   },
   {
-    parent: 'Home and Personal Care Products',
+    parent: 'Retail & Micro Trading Sector',
     children: [
-      'Candle Manufacturing',
-      'Incense Stick Making',
-      'Soap and Detergent Manufacturing',
-      'Bindi and Nail Polish Manufacturing',
-      'Herbal Shampoo and Cosmetic Products',
+      'Grocery/provision store',
+      'Stationery / general store',
+      'Group sale of vegetables/fruits',
+      'Fast food cart',
+      'Mobile recharge shop / bill payment kiosk',
+      'Jan Aushadhi/Medical Store',
+      'PET shop and disposable alternatives distribution​',
       'Others',
     ],
   },
   {
-    parent: 'Low-Scale Production',
+    parent: 'Cleaning & Hygiene Products Sector',
     children: [
-      'Paper Plate and Cup Manufacturing',
-      'LED Bulb Assembly',
-      'Stationery Production',
-      'Environment-Friendly Disposable Cutlery',
-      'Chalk and Whiteboard Marker Manufacturing',
+      'Phenyl/detergent manufacturing',
+      'Liquid handwash',
+      'Sanitizer',
+      'Incense sticks and dhoop sticks',
+      'Napkin / sanitary pad unit',
+      'Biodegradable plate and bowl manufacturing​',
+      'Others',
+    ],
+  },
+
+  {
+    parent: 'FMCG',
+    children: [
+      'Handwash',
+      'Soap',
+      'Floor Cleaner',
+      'Detergents',
+      'Air fresheners',
+      'Face wash & creams',
+      'Shampoo & conditioner',
+      'Sponges',
+      'Toothpaste & toothbrushes',
+      'Others',
+    ],
+  },
+   {
+    parent: 'Transport',
+    children: [
+      'Loader',
+      'E-Rikshaw',
+      'Taxi',
+      'Auto',
       'Others',
     ],
   },
   {
-    parent: 'Textile and Apparel Business',
+    parent: 'Packaging & Utility Products Sector',
     children: [
-      'Wool Weaving and Sweater Production',
-      'Bedsheet and Curtain Stitching',
-      'T-shirt Printing',
-      'School Uniform Manufacturing',
-      'Handloom Carpet Weaving',
+      'Paper bag unit',
+      'Jute bag unit',
+      'Box manufacturing',
+      'Recycled paper packaging unit',
+      'Food-grade packaging​',
       'Others',
     ],
   },
   {
-    parent: 'Animal Husbandry and Agri-Based Enterprises',
+    parent: 'Prerna Canteen',
     children: [
-      'Pig Rearing',
-      'Emu Farming',
-      'Duck Rearing',
-      'Organic Fruit and Vegetable Farming',
-      'Poultry Egg Incubation',
+    ],
+  },
+  {
+    parent: 'Digital & Service Sector',
+    children: [
+      'Data entry / digital services',
+      'CSC (Common Service Center) operations',
+      'Online product sales (e-commerce)',
+      'SHG product branding',
+      'Social media management for local shops​',
       'Others',
     ],
   },
   {
-    parent: 'E-commerce and Online Business',
+    parent: 'Solid Waste & Green Sector',
     children: [
-      'Online Handicraft Selling',
-      'Home-Based Bakery on Food Delivery Platforms',
-      'Dropshipping Business',
-      'Print-on-Demand T-shirts',
-      'YouTube Channel (DIY or Tutorials)',
+      'Plastic waste sorting',
+      'Fuel/briquettes from waste',
+      'Composting unit',
+      'Recycled paper products',
+      'E-waste collection micro centre​',
       'Others',
     ],
   },
   {
-    parent: 'Renewable Energy and Environment-Friendly Enterprises',
+    parent: 'Construction & Fabrication Micro Enterprises',
     children: [
-      'Solar Panel Installation Services',
-      'Bio-Gas Plant Setup',
-      'Electric Vehicle Charging Station',
-      'Waste Paper Recycling',
-      'Bamboo Toothbrush and Cutlery Manufacturing',
+      'Brick and tiles cleaning/polishing unit',
+      'Interior decoration (fabric, flowers, décor)',
+      'Painting/plumbing/carpentry group',
+      'POP artwork / wall decoration',
       'Others',
     ],
   },
   {
-    parent: 'Tourism and Local Experience Businesses',
+    parent: 'EDP|Entrepreneurship Development Programme ',
     children: [
-      'Homestays for Tourists',
-      'Heritage Walk Guide Services',
-      'Rural Adventure Camps',
-      'Boat Tours on Ganges',
-      'Organic Farm Tour Business',
-      'Others',
-    ],
-  },
+     ]},
   {
-    parent: 'Transport and Logistics Business',
-    children: [
-      'E-rickshaw Rental Service',
-      'Pack and Move Services',
-      'Small Courier Delivery Service',
-      'Bike Rental Business',
-      'Agricultural Equipment Rental Service',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Miscellaneous and Innovative Businesses',
-    children: [
-      'Toy Library for Children',
-      'DIY Craft Kit Shop and Classes',
-      'Community Kitchen',
-      'Custom Gift Box Manufacturing',
-      'Pet Grooming Services',
-      'Digital Marketing for Local Businesses',
-      'Document and Resume Writing Services',
-      'Resale of Used Goods',
-      'Organic Soap Manufacturing Kit Shop',
-      'Wedding Invitation Card Designing',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Others (Specify)',
+    parent: 'Other​',
     children: ['Others'],
   },
 ];
@@ -637,7 +862,7 @@ export default function ExistingEnterpriseTrainingSkillsSection({
                   {/* 3) Certificates upload */}
 <View style={styles.fieldBlock}>
   <Text style={styles.label}>
-    3) Please upload if you have any certificates for your trainings
+    3) Please upload if you have any certificates for your trainings  (If Have)
   </Text>
   <Text style={styles.helpText}>
     You can upload photos or PDF copies of your training certificates. Each file will be stored separately.
@@ -743,10 +968,59 @@ export default function ExistingEnterpriseTrainingSkillsSection({
 
               {row.expanded && (
                 <View style={styles.cardBody}>
+                   <View style={styles.fieldBlock}>
+                    <Text style={styles.label}>
+                      1) Which is your preferred sector for training?
+                    </Text>
+                    <Text style={styles.helpText}>
+                      Please select all business sectors and skill areas where
+                      you want training in future.
+                    </Text>
+
+                    <TrainingSectorTree
+                      value={row.sector_tree}
+                      onChange={(tree) =>
+                        updateTrainingRequiredRow(index, {
+                          sector_tree: tree,
+                          title: computeTitleFromTree(
+                            tree,
+                            'New Training Requirement'
+                          ),
+                        })
+                      }
+                    />
+
+                    <TextInput
+                      style={[styles.input, { marginTop: 6 }]}
+                      placeholder="If Others, please specify sector / sub-sector details here"
+                      value={row.other_sector_detail || ''}
+                      onChangeText={(v) =>
+                        updateTrainingRequiredRow(index, {
+                          other_sector_detail: v,
+                        })
+                      }
+                    />
+                  </View>
+                  <View style={styles.fieldBlock}>
+                    <Text style={styles.label}>
+                      2) How many days of training are you comfortable in one slot?
+                    </Text>
+                    <Text style={styles.helpText}>
+                      Please select the training duration that suits you best.
+                    </Text>
+                    <ChipRow
+                      value={row.duration || ''}
+                      options={TRAINING_DURATION_OPTIONS}
+                      onChange={(val) =>
+                        updateTrainingRequiredRow(index, { duration: val })
+                      }
+                    />
+                  </View>
+
                   {/* 1) Preferred department */}
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      1) Which is your preferred department for training?
+                      3) Which is your preferred department for training?
                     </Text>
                     <Text style={styles.helpText}>
                       Please select the department or organisation from which
@@ -774,7 +1048,7 @@ export default function ExistingEnterpriseTrainingSkillsSection({
                   </View>
 
                   {/* 2) Preferred sector(s) */}
-                  <View style={styles.fieldBlock}>
+                  {/* <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
                       2) Which is your preferred sector for training?
                     </Text>
@@ -806,10 +1080,10 @@ export default function ExistingEnterpriseTrainingSkillsSection({
                         })
                       }
                     />
-                  </View>
+                  </View> */}
 
                   {/* 3) Duration */}
-                  <View style={styles.fieldBlock}>
+                  {/* <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
                       3) How many days of training are you comfortable with?
                     </Text>
@@ -823,7 +1097,7 @@ export default function ExistingEnterpriseTrainingSkillsSection({
                         updateTrainingRequiredRow(index, { duration: val })
                       }
                     />
-                  </View>
+                  </View> */}
 
                   {/* 4) Preferred location */}
                   <View style={styles.fieldBlock}>
@@ -836,16 +1110,7 @@ export default function ExistingEnterpriseTrainingSkillsSection({
                       as your preferred location.
                     </Text>
 
-                    <Text style={styles.smallLabel}>State</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={row.location_state || ''}
-                      onChangeText={(v) =>
-                        updateTrainingRequiredRow(index, {
-                          location_state: v,
-                        })
-                      }
-                    />
+
                     <Text style={styles.smallLabel}>District</Text>
                     <TextInput
                       style={styles.input}
@@ -865,8 +1130,17 @@ export default function ExistingEnterpriseTrainingSkillsSection({
                           location_block: v,
                         })
                       }
+                    />                
+                    <Text style={styles.smallLabel}>Village</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={row.location_village || ''}
+                      onChangeText={(v) =>
+                        updateTrainingRequiredRow(index, {
+                          location_village: v,
+                        })
+                      }
                     />
-
                     <Text style={[styles.helpText, { marginTop: 4 }]}>
                       These details will be combined as &quot;State,
                       District, Block&quot; and stored in the location field.
@@ -986,7 +1260,7 @@ export default function ExistingEnterpriseTrainingSkillsSection({
       {/* 23) Information about government schemes */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>
-          23) Do you want to know information about Government Schemes?
+          23) Do you know about Govt Schemes relevant to your business?
         </Text>
         <Text style={styles.helpText}>
           Please select Yes if you are interested in learning about different

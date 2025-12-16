@@ -21,7 +21,7 @@ import {
   getCrpDetail,
 } from '../../utils/tempStore';
 import { getUser } from '../../utils/auth';
-
+import { X_API_ID, X_API_KEY } from '@env';
 /**
  * NewEnterpriseForm.jsx
  *
@@ -93,8 +93,8 @@ const requestCameraPermissionIfNeeded = async () => {
 };
 
 // NOTE: these header values duplicate those in your gsApi file.
-const MULTIPART_X_API_ID = 'TH_EPS.BDOuser_test.co.in';
-const MULTIPART_X_API_KEY = 'wFR8IpSeNMawCF4RPLXit1POGuQAJTSmRexBBOwO';
+const MULTIPART_X_API_ID = X_API_ID;
+const MULTIPART_X_API_KEY = X_API_KEY;
 const BASE_URL = 'http://66.116.207.88:8088';
 
 // ---------- Enterprise Category (Parent / Child) ----------
@@ -197,9 +197,9 @@ const ENTERPRISE_TYPE_CATEGORIES = [
       'Stationery / general store',
       'Group sale of vegetables/fruits',
       'Fast food cart',
-      'Mobile recharge / bill payment kiosk',
-      'Jan Aushadhi (generic medicine) centre (as per eligibility)',
-      'PET bottles and disposable alternatives distribution​',
+      'Mobile recharge shop / bill payment kiosk',
+      'Jan Aushadhi/Medical Store',
+      'PET Shop and disposable alternatives distribution​',
       'Others',
     ],
   },
@@ -223,7 +223,40 @@ const ENTERPRISE_TYPE_CATEGORIES = [
       'Box manufacturing',
       'Recycled paper packaging unit',
       'Food-grade packaging​',
+      'FMCG-(Handwash/Soap/Floor Cleaner, etc)',
+      'Transport-(Taxi/Auto/E-Rikshaw,etc)',
+      'Machinery',
       'Others',
+    ],
+  },
+  {
+    parent: 'FMCG',
+    children: [
+      'Handwash',
+      'Soap',
+      'Floor Cleaner',
+      'Detergents',
+      'Air fresheners',
+      'Face wash & creams',
+      'Shampoo & conditioner',
+      'Sponges',
+      'Toothpaste & toothbrushes',
+      'Others',
+    ],
+  },
+   {
+    parent: 'Transport',
+    children: [
+      'Loader',
+      'E-Rikshaw',
+      'Taxi',
+      'Auto',
+      'Others',
+    ],
+  },
+  {
+    parent: 'Prerna Canteen',
+    children: [
     ],
   },
   {
@@ -258,206 +291,448 @@ const ENTERPRISE_TYPE_CATEGORIES = [
       'Others',
     ],
   },
+  {
+   parent: 'EDP|Entrepreneurship Development Programme',
+   children: [
+   ],
+   },
 ];
 
-const ENTERPRISE_TYPE_OTHER_PARENT_KEY = 'Other parent category​';
+const ENTERPRISE_TYPE_OTHER_PARENT_KEY = 'Other​';
 
 // ---------- Training Sectors (Parent / Child) ----------
 
 const TRAINING_SECTORS = [
-  {
-    parent: 'Agriculture and Allied Activities',
+  // {
+  //   parent: 'Agriculture and Allied Activities',
+  //   children: [
+  //     'Organic Farming',
+  //     'Dairy Farming',
+  //     'Poultry Farming',
+  //     'Mushroom Cultivation',
+  //     'Beekeeping and Honey Production',
+  //     'Goat Rearing',
+  //     'Vermicomposting',
+  //     'Fish Farming',
+  //     'Floriculture (Flower Cultivation)',
+  //     'Medicinal Plant Cultivation',
+  //     'Organic Fertilizer Production',
+  //     'Ayurvedic Medicine Manufacturing',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Food Processing and Snacks Business',
+  //   children: [
+  //     'Pickle and Papad Making',
+  //     'Bakery and Cake Production',
+  //     'Spice Powder Making',
+  //     'Flour Mill',
+  //     'Dairy Product Manufacturing (Paneer, Ghee)',
+  //     'Ready-to-Eat Food Preparation',
+  //     'Herbal Tea Manufacturing',
+  //     'Jam and Jelly Production',
+  //     'Frozen Food Business',
+  //     'Edible Oil Extraction',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Handicrafts and Traditional Skills',
+  //   children: [
+  //     'Banarasi Saree Weaving',
+  //     'Chikankari Embroidery',
+  //     'Wooden Handicrafts',
+  //     'Terracotta Pottery',
+  //     'Jute Bag Manufacturing',
+  //     'Handmade Jewelry',
+  //     'Toy Manufacturing',
+  //     'Paper Mache Art',
+  //     'Bamboo Craft',
+  //     'Leather Product Manufacturing',
+  //     'Handloom Weaving Cooperative Society',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Service-Based Businesses',
+  //   children: [
+  //     'Catering Service',
+  //     'Tailoring and Garment Making',
+  //     'Event Decoration',
+  //     'Beautician and Salon',
+  //     'Coaching Classes',
+  //     'Mobile Repairing',
+  //     'Home Cleaning Services',
+  //     'Photography Studio',
+  //     'Cyber Café',
+  //     'Wedding Planning',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Waste Management and Eco-Friendly Ventures',
+  //   children: [
+  //     'Paper Bag Manufacturing',
+  //     'Cloth Bag Manufacturing',
+  //     'Plastic Recycling',
+  //     'E-waste Recycling',
+  //     'Compost Manufacturing',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'FMCG',
+  //   children: [
+  //     'Handwash',
+  //     'Soap',
+  //     'Floor Cleaner',
+  //     'Detergents',
+  //     'Air fresheners',
+  //     'Face wash & creams',
+  //     'Shampoo & conditioner',
+  //     'Sponges',
+  //     'Toothpaste & toothbrushes',
+  //     'Others',
+  //   ],
+  // },
+  //  {
+  //   parent: 'Transport',
+  //   children: [
+  //     'Loader',
+  //     'E-Rikshaw',
+  //     'Taxi',
+  //     'Auto',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Prerna Canteen',
+  //   children: [
+  //   ],
+  // },
+  // {
+  //   parent: 'Government Assisted Enterprises',
+  //   children: [
+  //     'Solar Lamp Assembly',
+  //     'Rural Tourism and Homestay',
+  //     'Organic Fertilizer Production',
+  //     'Ayurvedic Medicine Manufacturing',
+  //     'Handloom Weaving Cooperative Society',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Home and Personal Care Products',
+  //   children: [
+  //     'Candle Manufacturing',
+  //     'Incense Stick Making',
+  //     'Soap and Detergent Manufacturing',
+  //     'Bindi and Nail Polish Manufacturing',
+  //     'Herbal Shampoo and Cosmetic Products',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Low-Scale Production',
+  //   children: [
+  //     'Paper Plate and Cup Manufacturing',
+  //     'LED Bulb Assembly',
+  //     'Stationery Production',
+  //     'Environment-Friendly Disposable Cutlery',
+  //     'Chalk and Whiteboard Marker Manufacturing',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Textile and Apparel Business',
+  //   children: [
+  //     'Wool Weaving and Sweater Production',
+  //     'Bedsheet and Curtain Stitching',
+  //     'T-shirt Printing',
+  //     'School Uniform Manufacturing',
+  //     'Handloom Carpet Weaving',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Animal Husbandry and Agri-Based Enterprises',
+  //   children: [
+  //     'Pig Rearing',
+  //     'Emu Farming',
+  //     'Duck Rearing',
+  //     'Organic Fruit and Vegetable Farming',
+  //     'Poultry Egg Incubation',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'E-commerce and Online Business',
+  //   children: [
+  //     'Online Handicraft Selling',
+  //     'Home-Based Bakery on Food Delivery Platforms',
+  //     'Dropshipping Business',
+  //     'Print-on-Demand T-shirts',
+  //     'YouTube Channel (DIY or Tutorials)',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Renewable Energy and Environment-Friendly Enterprises',
+  //   children: [
+  //     'Solar Panel Installation Services',
+  //     'Bio-Gas Plant Setup',
+  //     'Electric Vehicle Charging Station',
+  //     'Waste Paper Recycling',
+  //     'Bamboo Toothbrush and Cutlery Manufacturing',
+  //     'Solar Lamp Assembly',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Tourism and Local Experience Businesses',
+  //   children: [
+  //     'Homestays for Tourists',
+  //     'Heritage Walk Guide Services',
+  //     'Rural Adventure Camps',
+  //     'Boat Tours on Ganges',
+  //     'Organic Farm Tour Business',
+  //     'Rural Tourism and Homestay',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'EDP|Entrepreneurship Development Programme',
+  //   children: [
+  //   ],
+  // },
+  // {
+  //   parent: 'Transport and Logistics Business',
+  //   children: [
+  //     'E-rickshaw Rental Service',
+  //     'Pack and Move Services',
+  //     'Small Courier Delivery Service',
+  //     'Bike Rental Business',
+  //     'Agricultural Equipment Rental Service',
+  //     'Others',
+  //   ],
+  // },
+  // {
+  //   parent: 'Miscellaneous and Innovative Businesses',
+  //   children: [
+  //     'Toy Library for Children',
+  //     'DIY Craft Kit Shop and Classes',
+  //     'Community Kitchen',
+  //     'Custom Gift Box Manufacturing',
+  //     'Pet Grooming Services',
+  //     'Digital Marketing for Local Businesses',
+  //     'Document and Resume Writing Services',
+  //     'Resale of Used Goods',
+  //     'Organic Soap Manufacturing Kit Shop',
+  //     'Wedding Invitation Card Designing',
+  //     'Others',
+  //   ],
+  // },
+
+    {
+    parent: 'Food Processing Sector',
     children: [
-      'Organic Farming',
-      'Dairy Farming',
-      'Poultry Farming',
-      'Mushroom Cultivation',
-      'Beekeeping and Honey Production',
-      'Goat Rearing',
-      'Vermicomposting',
-      'Fish Farming',
-      'Floriculture (Flower Cultivation)',
-      'Medicinal Plant Cultivation',
+      'Spice manufacturing',
+      'Pickles, preserves (murabba), papad',
+      'Savoury snacks, bhujiya, namkeen',
+      'Instant mixes (idli mix, gram flour mix, kheer mix)',
+      'Bakery items (cookies, cake, bread)',
+      'Millet-based products (jowar, bajra cookies, snacks)',
+      'Cold-pressed oils (mustard/sesame)',
+      'Honey processing',
+      'Jam–jelly–squash',
+      'Ready-to-eat products',
+      'Whole grain/pulses/flour sorting–grading–packaging unit​',
       'Others',
     ],
   },
   {
-    parent: 'Food Processing and Snacks Business',
+    parent: 'Handicraft & Artisan Sector',
     children: [
-      'Pickle and Papad Making',
-      'Bakery and Cake Production',
-      'Spice Powder Making',
-      'Flour Mill',
-      'Dairy Product Manufacturing (Paneer, Ghee)',
-      'Ready-to-Eat Food Preparation',
-      'Herbal Tea Manufacturing',
-      'Jam and Jelly Production',
-      'Frozen Food Business',
-      'Edible Oil Extraction',
+      'Zari and zardozi work',
+      'Chikankari embroidery',
+      'Woodwork',
+      'Terracotta / clay products',
+      'Bamboo / cane craft',
+      'Handmade jewellery (terracotta jewellery, oxidised jewellery)',
+      'Handmade candles',
+      'Crochet / woollen products',
+      'Paper craft, greeting cards',
+      'Handbags, jute bags, embroidered bags',
+      'Ration/vegetable/shopping bags (non-woven alternatives)​',
       'Others',
     ],
   },
   {
-    parent: 'Handicrafts and Traditional Skills',
+    parent: 'Textile & Apparel Sector',
     children: [
-      'Banarasi Saree Weaving',
-      'Chikankari Embroidery',
-      'Wooden Handicrafts',
-      'Terracotta Pottery',
-      'Jute Bag Manufacturing',
-      'Handmade Jewelry',
-      'Toy Manufacturing',
-      'Paper Mache Art',
-      'Bamboo Craft',
-      'Leather Product Manufacturing',
+      'Boutique unit (stitching–cutting–embellishment)',
+      'School uniform stitching unit',
+      'Ladies’ garments',
+      'Bedsheet/quilt/pillow cover unit',
+      'ODOP textile-based products (Varanasi saree, Bhadohi carpet finishing etc.)',
+      'Home linen (curtains, table cloth, sofa covers)',
+      'Jute/cotton carry bags',
+      'Mask/apron/hospital gown manufacturing​',
       'Others',
     ],
   },
   {
-    parent: 'Service-Based Businesses',
+    parent: 'Agriculture & Allied Sector',
     children: [
-      'Catering Service',
-      'Tailoring and Garment Making',
-      'Event Decoration',
-      'Beautician and Salon',
-      'Coaching Classes',
-      'Mobile Repairing',
-      'Home Cleaning Services',
-      'Photography Studio',
-      'Cyber Café',
-      'Wedding Planning',
+      'Vegetable cultivation and group supply',
+      'Flower cultivation (marigold, rose)',
+      'Mushroom production',
+      'Nursery (fruit/flower/vegetable saplings)',
+      'Beekeeping (honey production)',
+      'Organic manure/vermi-compost',
+      'Animal feed unit',
+      'Mini mill (flour/pulse grinding)',
+      'Fruit–vegetable dehydration unit',
+      'Fish farming',
       'Others',
     ],
   },
   {
-    parent: 'Waste Management and Eco-Friendly Ventures',
+    parent: 'Dairy & Animal Husbandry Sector',
     children: [
-      'Paper Bag Manufacturing',
-      'Cloth Bag Manufacturing',
-      'Plastic Recycling',
-      'E-waste Recycling',
-      'Compost Manufacturing',
+      'Dairy unit (2–10 cows/buffaloes)',
+      'Milk collection centre',
+      'Paneer/khoya/curd/ghee manufacturing',
+      'Goat rearing',
+      'Poultry unit (egg/broiler)',
+      'Pig rearing (in specific areas)',
+      'Fodder production',
+      'Milk packaging and branding unit​',
       'Others',
     ],
   },
   {
-    parent: 'Government Assisted Enterprises',
+    parent: 'Beauty, Wellness & Personal Services',
     children: [
-      'Solar Lamp Assembly',
-      'Rural Tourism and Homestay',
-      'Organic Fertilizer Production',
-      'Ayurvedic Medicine Manufacturing',
-      'Handloom Weaving Cooperative Society',
+      'Beauty parlour',
+      'Mehndi (henna) training and services',
+      'Spa / therapy unit',
+      'Home-care services (home nursing, baby care training)',
+      'Mobile salon / village-based services',
+      'Fitness group / yoga classes​',
       'Others',
     ],
   },
   {
-    parent: 'Home and Personal Care Products',
+    parent: 'Retail & Micro Trading Sector',
     children: [
-      'Candle Manufacturing',
-      'Incense Stick Making',
-      'Soap and Detergent Manufacturing',
-      'Bindi and Nail Polish Manufacturing',
-      'Herbal Shampoo and Cosmetic Products',
+      'Grocery/provision store',
+      'Stationery / general store',
+      'Group sale of vegetables/fruits',
+      'Fast food cart',
+      'Mobile recharge shop / bill payment kiosk',
+      'Jan Aushadhi/Medical Store',
+      'PET Shop and disposable alternatives distribution​',
       'Others',
     ],
   },
   {
-    parent: 'Low-Scale Production',
+    parent: 'Cleaning & Hygiene Products Sector',
     children: [
-      'Paper Plate and Cup Manufacturing',
-      'LED Bulb Assembly',
-      'Stationery Production',
-      'Environment-Friendly Disposable Cutlery',
-      'Chalk and Whiteboard Marker Manufacturing',
+      'Phenyl/detergent manufacturing',
+      'Liquid handwash',
+      'Sanitizer',
+      'Incense sticks and dhoop sticks',
+      'Napkin / sanitary pad unit',
+      'Biodegradable plate and bowl manufacturing​',
       'Others',
     ],
   },
   {
-    parent: 'Textile and Apparel Business',
+    parent: 'Packaging & Utility Products Sector',
     children: [
-      'Wool Weaving and Sweater Production',
-      'Bedsheet and Curtain Stitching',
-      'T-shirt Printing',
-      'School Uniform Manufacturing',
-      'Handloom Carpet Weaving',
+      'Paper bag unit',
+      'Jute bag unit',
+      'Box manufacturing',
+      'Recycled paper packaging unit',
+      'Food-grade packaging​',
+      'FMCG-(Handwash/Soap/Floor Cleaner, etc)',
+      'Transport-(Taxi/Auto/E-Rikshaw,etc)',
+      'Machinery',
       'Others',
     ],
   },
   {
-    parent: 'Animal Husbandry and Agri-Based Enterprises',
+    parent: 'FMCG',
     children: [
-      'Pig Rearing',
-      'Emu Farming',
-      'Duck Rearing',
-      'Organic Fruit and Vegetable Farming',
-      'Poultry Egg Incubation',
+      'Handwash',
+      'Soap',
+      'Floor Cleaner',
+      'Detergents',
+      'Air fresheners',
+      'Face wash & creams',
+      'Shampoo & conditioner',
+      'Sponges',
+      'Toothpaste & toothbrushes',
+      'Others',
+    ],
+  },
+   {
+    parent: 'Transport',
+    children: [
+      'Loader',
+      'E-Rikshaw',
+      'Taxi',
+      'Auto',
       'Others',
     ],
   },
   {
-    parent: 'E-commerce and Online Business',
+    parent: 'Prerna Canteen',
     children: [
-      'Online Handicraft Selling',
-      'Home-Based Bakery on Food Delivery Platforms',
-      'Dropshipping Business',
-      'Print-on-Demand T-shirts',
-      'YouTube Channel (DIY or Tutorials)',
+    ],
+  },
+  {
+    parent: 'Digital & Service Sector',
+    children: [
+      'Data entry / digital services',
+      'CSC (Common Service Center) operations',
+      'Online product sales (e-commerce)',
+      'SHG product branding',
+      'Social media management for local shops​',
       'Others',
     ],
   },
   {
-    parent: 'Renewable Energy and Environment-Friendly Enterprises',
+    parent: 'Solid Waste & Green Sector',
     children: [
-      'Solar Panel Installation Services',
-      'Bio-Gas Plant Setup',
-      'Electric Vehicle Charging Station',
-      'Waste Paper Recycling',
-      'Bamboo Toothbrush and Cutlery Manufacturing',
+      'Plastic waste sorting',
+      'Fuel/briquettes from waste',
+      'Composting unit',
+      'Recycled paper products',
+      'E-waste collection micro centre​',
       'Others',
     ],
   },
   {
-    parent: 'Tourism and Local Experience Businesses',
+    parent: 'Construction & Fabrication Micro Enterprises',
     children: [
-      'Homestays for Tourists',
-      'Heritage Walk Guide Services',
-      'Rural Adventure Camps',
-      'Boat Tours on Ganges',
-      'Organic Farm Tour Business',
+      'Brick and tiles cleaning/polishing unit',
+      'Interior decoration (fabric, flowers, décor)',
+      'Painting/plumbing/carpentry group',
+      'POP artwork / wall decoration',
       'Others',
     ],
   },
   {
-    parent: 'Transport and Logistics Business',
-    children: [
-      'E-rickshaw Rental Service',
-      'Pack and Move Services',
-      'Small Courier Delivery Service',
-      'Bike Rental Business',
-      'Agricultural Equipment Rental Service',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Miscellaneous and Innovative Businesses',
-    children: [
-      'Toy Library for Children',
-      'DIY Craft Kit Shop and Classes',
-      'Community Kitchen',
-      'Custom Gift Box Manufacturing',
-      'Pet Grooming Services',
-      'Digital Marketing for Local Businesses',
-      'Document and Resume Writing Services',
-      'Resale of Used Goods',
-      'Organic Soap Manufacturing Kit Shop',
-      'Wedding Invitation Card Designing',
-      'Others',
-    ],
-  },
+  parent: 'EDP|Entrepreneurship Development Programme',
+  children: [
+  ],
+   },
 ];
 
-const TRAINING_OTHER_PARENT_KEY = 'Others (Custom Sector Group)';
+const TRAINING_OTHER_PARENT_KEY = 'Others';
 
 // representation of multi-select value:
 // {
@@ -675,6 +950,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
     // 4) CIF
     has_shg_cif: '',
     cif_fund_amt: '',
+    has_received_part_cif: '',
 
     // 5) Training received?
     is_training_received: '',
@@ -699,6 +975,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
     market_linkage_detail: '',
     is_promo_ad_req_type: '',
     is_promo_ad_req_detail: '',
+    is_promo_ad_req_subtype: '',  
     infrastructure_support_type: '',
     infrastructure_support_detail: '',
     digital_emarket_support: '',
@@ -723,6 +1000,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
   const [trainingReqLocationDistrict, setTrainingReqLocationDistrict] = useState('');
   const [trainingReqLocationBlock, setTrainingReqLocationBlock] = useState('');
   const [trainingReqExpectedIncome, setTrainingReqExpectedIncome] = useState('');
+  const [trainingReqLocationVillage, setTrainingReqLocationVillage] = useState('');
 
   // Files
   const [signatureAsset, setSignatureAsset] = useState(null); // applicant signature
@@ -1502,13 +1780,32 @@ export default function NewEnterpriseForm({ route, navigation }) {
       <Text style={styles.sectionHeading}>Basic Information</Text>
 
       {/* 1) Special category */}
-      <Text style={styles.label}>Please specify your special category (If applicable)</Text>
-      <TextInput
+      {/* <Text style={styles.label}>Please specify your special category (If applicable)</Text> */}
+      {/* <TextInput
         style={styles.input}
         value={form.applicant_special_category}
         onChangeText={(v) => setField('applicant_special_category', v)}
         placeholder="e.g. Divyang, Widow, Single Woman, etc."
-      />
+      /> */}
+         {/* {[
+        'Divyang',
+        'Widow',
+        'Single Woman',
+      ].map((opt) => (
+        <TouchableOpacity
+          key={opt}
+          style={styles.checkboxRow}
+          onPress={() => setField('prefered_location_choice', opt)}
+        >
+          <View
+            style={[
+              styles.checkbox,
+              form.prefered_location_choice === opt && styles.checkboxChecked,
+            ]}
+          />
+          <Text style={styles.checkboxLabel}>{opt}</Text>
+        </TouchableOpacity>
+      ))} */}
 
       {/* 2) Enterprise Type (subform /enterprise-types/) */}
       <ParentChildMultiSelect
@@ -1525,14 +1822,10 @@ export default function NewEnterpriseForm({ route, navigation }) {
         What location are you comfortable with for starting your enterprise?
       </Text>
       {[
-        'In my State',
-        'Desired State',
-        'In my District',
-        'Desired District',
-        'In my Panchayat',
-        'Desired Panchayat',
-        'In my Village',
-        'Desired Village',
+        ' District',
+        'Block',
+        'Panchayat',
+        'Village',
       ].map((opt) => (
         <TouchableOpacity
           key={opt}
@@ -1560,7 +1853,8 @@ export default function NewEnterpriseForm({ route, navigation }) {
 
       {/* 4) CIF Funds */}
       <Text style={[styles.sectionHeading, { marginTop: 20 }]}>CIF Support</Text>
-      <Text style={styles.label}>Has your SHG received CIF Funds?</Text>
+      {/* <Text style={styles.label}>Have you received any portion of CIF Fund? If Yes, specify amount</Text> */}
+      {/* <Text style={styles.label}>Have your SHG Recieved CIF Fund</Text>
       <YesNoToggle
         value={form.has_shg_cif}
         onChange={(v) => setField('has_shg_cif', v)}
@@ -1578,7 +1872,40 @@ export default function NewEnterpriseForm({ route, navigation }) {
             placeholder="Enter amount"
           />
         </>
-      )}
+      )} */}
+      
+      <Text style={styles.label}>Have your SHG received CIF Fund?</Text>
+<YesNoToggle
+  value={form.has_shg_cif}
+  onChange={(v) => setField('has_shg_cif', v)}
+/>
+
+{form.has_shg_cif === 'Yes' && (
+  <>
+    <Text style={[styles.label, { marginTop: 8 }]}>
+      Have you received part of that CIF Fund?
+    </Text>
+    <YesNoToggle
+      value={form.has_received_part_cif}
+      onChange={(v) => setField('has_received_part_cif', v)}
+    />
+
+    {form.has_received_part_cif === 'Yes' && (
+      <>
+        <Text style={[styles.label, { marginTop: 8 }]}>
+          Specify the amount received
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={form.cif_fund_amt}
+          onChangeText={(v) => setField('cif_fund_amt', v)}
+          keyboardType="numeric"
+          placeholder="Enter CIF amount"
+        />
+      </>
+    )}
+  </>
+)}
 
       {/* ========= SECTION: Trainings Received ========= */}
       <Text style={styles.sectionHeading}>Trainings Received</Text>
@@ -1631,8 +1958,15 @@ export default function NewEnterpriseForm({ route, navigation }) {
 
               {row.open && (
                 <View style={{ paddingHorizontal: 10, paddingBottom: 10 }}>
+                   <ParentChildMultiSelect
+                    title="Please select all sectors in which you have received trainings"
+                    items={TRAINING_SECTORS}
+                    value={row.sectors}
+                    onChange={(sel) => updateTrainingRow(row.id, { sectors: sel })}
+                    otherParentKey={TRAINING_OTHER_PARENT_KEY}
+                  />
                   <Text style={styles.label}>Which department did you receive the training from?</Text>
-                  {['NRLM', 'RCT', 'NABARD', 'UPSDM', 'Others'].map((opt) => (
+                  {['NRLM', 'RSETI', 'NABARD', 'UPSDM', 'Others'].map((opt) => (
                     <TouchableOpacity
                       key={opt}
                       style={styles.checkboxRow}
@@ -1658,13 +1992,13 @@ export default function NewEnterpriseForm({ route, navigation }) {
                     />
                   )}
 
-                  <ParentChildMultiSelect
+                  {/* <ParentChildMultiSelect
                     title="Please select all sectors in which you have received trainings"
                     items={TRAINING_SECTORS}
                     value={row.sectors}
                     onChange={(sel) => updateTrainingRow(row.id, { sectors: sel })}
                     otherParentKey={TRAINING_OTHER_PARENT_KEY}
-                  />
+                  /> */}
                 </View>
               )}
             </View>
@@ -1672,7 +2006,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
 
           {/* Certificates upload */}
           <Text style={[styles.label, { marginTop: 12 }]}>
-            Please upload if you have any certificates for your trainings
+            Please upload if you have any certificates for your trainings (If Have any)
           </Text>
           <TouchableOpacity style={styles.smallBtn} onPress={pickTrainingCertificates}>
             <Text style={{ fontWeight: '600' }}>Upload Certificates</Text>
@@ -1696,8 +2030,61 @@ export default function NewEnterpriseForm({ route, navigation }) {
 
       {form.is_training_required === 'Yes' && (
         <>
-          <Text style={styles.label}>Which is your preferred department for training?</Text>
+        <ParentChildMultiSelect
+            title="Which is your preferred sector for training?"
+            description="Select sector(s) and sub sectors for which you want training."
+            items={TRAINING_SECTORS}
+            value={trainingReqSectors}
+            onChange={setTrainingReqSectors}
+            otherParentKey={TRAINING_OTHER_PARENT_KEY}
+          />
+          {/* <Text style={styles.label}>Which is your preferred department for training?</Text>
           {['NRLM', 'RCT', 'NABARD', 'UPSDM', 'Others'].map((opt) => (
+            <TouchableOpacity
+              key={opt}
+              style={styles.checkboxRow}
+              onPress={() => setTrainingReqDept(opt)}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  trainingReqDept === opt && styles.checkboxChecked,
+                ]}
+              />
+              <Text style={styles.checkboxLabel}>{opt}</Text>
+            </TouchableOpacity>
+          ))}
+          {trainingReqDept === 'Others' && (
+            <TextInput
+              style={styles.input}
+              placeholder="Please specify department"
+              value={trainingReqDept === 'Others' ? '' : trainingReqDept}
+              onChangeText={(t) => setTrainingReqDept(t)}
+            />
+          )} */}
+
+          {/* <Text style={styles.label}>How many days of training are you comfortable with?</Text> */}
+          <Text style={styles.label}>How many days of training are you comfortable in one slot</Text>
+          {['Under 7 days', '7 days', '15 days', '30 days', 'Over 30 days'].map(
+            (opt) => (
+              <TouchableOpacity
+                key={opt}
+                style={styles.checkboxRow}
+                onPress={() => setTrainingReqDuration(opt)}
+              >
+                <View
+                  style={[
+                    styles.checkbox,
+                    trainingReqDuration === opt && styles.checkboxChecked,
+                  ]}
+                />
+                <Text style={styles.checkboxLabel}>{opt}</Text>
+              </TouchableOpacity>
+            )
+          )}
+          
+            <Text style={styles.label}>Which is your preferred department for training?</Text>
+          {['NRLM', 'RSETI', 'NABARD', 'UPSDM', 'Others'].map((opt) => (
             <TouchableOpacity
               key={opt}
               style={styles.checkboxRow}
@@ -1721,15 +2108,15 @@ export default function NewEnterpriseForm({ route, navigation }) {
             />
           )}
 
-          <ParentChildMultiSelect
+          {/* <ParentChildMultiSelect
             title="Which is your preferred sector for training?"
             description="Select sector(s) and sub sectors for which you want training."
             items={TRAINING_SECTORS}
             value={trainingReqSectors}
             onChange={setTrainingReqSectors}
             otherParentKey={TRAINING_OTHER_PARENT_KEY}
-          />
-
+          /> */}
+{/* 
           <Text style={styles.label}>How many days of training are you comfortable with?</Text>
           {['Under 7 days', '7 days', '15 days', '30 days', 'Over 30 days'].map(
             (opt) => (
@@ -1747,16 +2134,9 @@ export default function NewEnterpriseForm({ route, navigation }) {
                 <Text style={styles.checkboxLabel}>{opt}</Text>
               </TouchableOpacity>
             )
-          )}
+          )} */}
 
-          <Text style={styles.label}>What is your preferred training location?</Text>
-          <Text style={styles.label}>Desired State</Text>          
-          <TextInput
-            style={styles.input}
-            placeholder="State"
-            value={trainingReqLocationState}
-            onChangeText={setTrainingReqLocationState}
-          />
+          <Text style={styles.label}>What is your preferred training location?</Text>          
           <Text style={styles.label}>Desired District</Text>          
           <TextInput
             style={[styles.input, { marginTop: 6 }]}
@@ -1771,8 +2151,15 @@ export default function NewEnterpriseForm({ route, navigation }) {
             value={trainingReqLocationBlock}
             onChangeText={setTrainingReqLocationBlock}
           />
+             <Text style={styles.label}>Desired Village</Text>   
+          <TextInput
+            style={styles.input}
+            placeholder="Village"
+            value={trainingReqLocationVillage}
+            onChangeText={setTrainingReqLocationVillage}
+          />
 
-          <Text style={styles.label}>What is your expected Salary after training?</Text>
+          {/* <Text style={styles.label}>What is your expected Salary after training?</Text>
           {[
             'Under 10,000',
             '10,000 - 20,000',
@@ -1792,7 +2179,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
               />
               <Text style={styles.checkboxLabel}>{opt}</Text>
             </TouchableOpacity>
-          ))}
+          ))} */}
         </>
       )}
 
@@ -1863,7 +2250,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
       />
 
       <Text style={styles.label}>Do you require Financial Assistance?</Text>
-      {['Cash', 'Loan', 'Others'].map((opt) => (
+      {['Grant and Subsidy', 'Loan', 'Interest Subvention','Others'].map((opt) => (
         <TouchableOpacity
           key={opt}
           style={styles.checkboxRow}
@@ -1879,7 +2266,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
         </TouchableOpacity>
       ))}
 
-      {(form.financial_support_type === 'Cash' ||
+      {/* {(form.financial_support_type === 'Grant and Subsidy' ||
         form.financial_support_type === 'Others') && (
         <TextInput
           style={styles.input}
@@ -1887,15 +2274,26 @@ export default function NewEnterpriseForm({ route, navigation }) {
           value={form.financial_support_other_text}
           onChangeText={(v) => setField('financial_support_other_text', v)}
         />
-      )}
+      )} */}
+      {['Grant and Subsidy', 'Interest Subvention', 'Others'].includes(form.financial_support_type) && (
+  <TextInput
+    style={styles.input}
+    placeholder="Please specify"
+    value={form.financial_support_other_text}
+    onChangeText={(v) => setField('financial_support_other_text', v)}
+  />
+)}
+
 
       {form.financial_support_type === 'Loan' && (
         <>
           <Text style={styles.label}>What loan amount range do you require?</Text>
           {[
+            'Below to 50,000',
             '50,000 - 1,00,000',
             '1,00,000 - 2,00,000',
             '2,00,000 - 5,00,000',
+            'Above to 5,00,000',
           ].map((opt) => (
             <TouchableOpacity
               key={opt}
@@ -1917,7 +2315,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
       <Text style={styles.label}>
         What type of Market Linkage Assistance you require?
       </Text>
-      {['Retail', 'Business', 'Govt', 'Others'].map((opt) => (
+      {['Retail', 'Business', 'Government', 'Others'].map((opt) => (
         <TouchableOpacity
           key={opt}
           style={styles.checkboxRow}
@@ -1941,7 +2339,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
         />
       )}
 
-      <Text style={styles.label}>
+      {/* <Text style={styles.label}>
         What type of Branding Promotion Assistance you require?
       </Text>
       {['Physical', 'Online', 'Others'].map((opt) => (
@@ -1966,7 +2364,79 @@ export default function NewEnterpriseForm({ route, navigation }) {
           value={form.is_promo_ad_req_detail}
           onChangeText={(v) => setField('is_promo_ad_req_detail', v)}
         />
-      )}
+      )} */}
+
+      <Text style={styles.label}>
+  What type of Branding Promotion Assistance you require?
+</Text>
+
+{['Physical', 'Online', 'Others'].map((opt) => (
+  <TouchableOpacity
+    key={opt}
+    style={styles.checkboxRow}
+    onPress={() => {
+      setField('is_promo_ad_req_type', opt);
+      setField('is_promo_ad_req_subtype', '');
+      setField('is_promo_ad_req_detail', '');
+    }}
+  >
+    <View
+      style={[
+        styles.checkbox,
+        form.is_promo_ad_req_type === opt && styles.checkboxChecked,
+      ]}
+    />
+    <Text style={styles.checkboxLabel}>{opt}</Text>
+  </TouchableOpacity>
+))}
+
+{/* When ONLINE is selected → SUB OPTIONS */}
+{form.is_promo_ad_req_type === 'Online' && (
+  <>
+    <Text style={[styles.label, { marginTop: 8 }]}>
+      Select preferred online platform
+    </Text>
+
+    {['Flipkart', 'Amazon', 'Meesho', 'ONDC', 'Others'].map((sub) => (
+      <TouchableOpacity
+        key={sub}
+        style={styles.checkboxRow}
+        onPress={() => setField('is_promo_ad_req_subtype', sub)}
+      >
+        <View
+          style={[
+            styles.checkbox,
+            form.is_promo_ad_req_subtype === sub && styles.checkboxChecked,
+          ]}
+        />
+        <Text style={styles.checkboxLabel}>{sub}</Text>
+      </TouchableOpacity>
+    ))}
+
+    {/* If ONLINE → OTHERS selected → specify input */}
+    {form.is_promo_ad_req_subtype === 'Others' && (
+      <TextInput
+        style={styles.input}
+        placeholder="Please specify platform"
+        value={form.is_promo_ad_req_detail}
+        onChangeText={(v) => setField('is_promo_ad_req_detail', v)}
+      />
+    )}
+  </>
+)}
+
+{/* When PHYSICAL or main OTHERS selected → direct specify field */}
+{form.is_promo_ad_req_type !== '' &&
+  form.is_promo_ad_req_type !== 'Online' && (
+    <TextInput
+      style={styles.input}
+      placeholder="Please specify details"
+      value={form.is_promo_ad_req_detail}
+      onChangeText={(v) => setField('is_promo_ad_req_detail', v)}
+    />
+  )}
+
+
 
       <Text style={styles.label}>
         What type of Infrastructure support you require?
@@ -2010,6 +2480,36 @@ export default function NewEnterpriseForm({ route, navigation }) {
         placeholder="Please describe any other support required"
       />
 
+<Text style={styles.label}>Please specify your special category (If applicable)</Text>
+
+{['Divyang', 'Widow', 'Unmarried', 'Other'].map((opt) => (
+  <View key={opt} style={styles.checkboxRow}>
+    <TouchableOpacity
+      style={styles.checkboxRow}
+      onPress={() => setField('applicant_special_category', opt)}
+    >
+      <View
+        style={[
+          styles.checkbox,
+          form.applicant_special_category === opt && styles.checkboxChecked,
+        ]}
+      />
+      <Text style={styles.checkboxLabel}>{opt}</Text>
+    </TouchableOpacity>
+
+    {/* Show text input if "Other" is selected */}
+    {opt === 'Other' && form.applicant_special_category === 'Other' && (
+      <TextInput
+        style={styles.input}
+        placeholder="Please specify"
+        value={form.applicant_special_category_other || ''}
+        onChangeText={(t) =>
+          setField('applicant_special_category_other', t)
+        }
+      />
+    )}
+  </View>
+))}
       {/* ========= SECTION: Declarations ========= */}
       <Text style={styles.sectionHeading}>Declarations</Text>
 
@@ -2195,6 +2695,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
           </Text>
         )}
       </View>
+      
 
       <TouchableOpacity
         style={styles.submitButton}
@@ -2241,7 +2742,7 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#CCCCCC',
+    borderColor: '#EE6969',
     borderRadius: 8,
     padding: 10,
     fontSize: 14,
@@ -2256,7 +2757,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderWidth: 1,
-    borderColor: '#555555',
+    borderColor: '#EE6969',
     borderRadius: 4,
     marginRight: 8,
   },
@@ -2264,13 +2765,13 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderWidth: 1,
-    borderColor: '#555',
+    borderColor: '#EE6969',
     borderRadius: 3,
     marginRight: 6,
   },
   checkboxChecked: {
-    backgroundColor: '#FFCC00',
-    borderColor: '#FFCC00',
+    backgroundColor: '#EE6969',
+    borderColor: '#EE6969',
   },
   checkboxLabel: {
     fontSize: 14,
@@ -2278,7 +2779,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   submitButton: {
-    backgroundColor: '#FFCC00',
+    backgroundColor: '#EE6969',
     padding: 14,
     borderRadius: 8,
     alignItems: 'center',
@@ -2287,7 +2788,7 @@ const styles = StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#000000',
+    color: 'white',
   },
   smallBtn: {
     backgroundColor: '#EEE',

@@ -101,9 +101,9 @@ const ENTERPRISE_TYPE_TREE = [
       'Stationery / general store',
       'Group sale of vegetables/fruits',
       'Fast food cart',
-      'Mobile recharge / bill payment kiosk',
-      'Jan Aushadhi (generic medicine) centre (as per eligibility)',
-      'PET bottles and disposable alternatives distribution​',
+      'Mobile recharge shop / bill payment kiosk',
+      'Jan Aushadhi/Medical Store',
+      'PET shop and disposable alternatives distribution​',
       'Others',
     ],
   },
@@ -119,6 +119,32 @@ const ENTERPRISE_TYPE_TREE = [
       'Others',
     ],
   },
+
+  {
+    parent: 'FMCG',
+    children: [
+      'Handwash',
+      'Soap',
+      'Floor Cleaner',
+      'Detergents',
+      'Air fresheners',
+      'Face wash & creams',
+      'Shampoo & conditioner',
+      'Sponges',
+      'Toothpaste & toothbrushes',
+      'Others',
+    ],
+  },
+   {
+    parent: 'Transport',
+    children: [
+      'Loader',
+      'E-Rikshaw',
+      'Taxi',
+      'Auto',
+      'Others',
+    ],
+  },
   {
     parent: 'Packaging & Utility Products Sector',
     children: [
@@ -128,6 +154,11 @@ const ENTERPRISE_TYPE_TREE = [
       'Recycled paper packaging unit',
       'Food-grade packaging​',
       'Others',
+    ],
+  },
+  {
+    parent: 'Prerna Canteen',
+    children: [
     ],
   },
   {
@@ -163,7 +194,12 @@ const ENTERPRISE_TYPE_TREE = [
     ],
   },
   {
-    parent: 'Other parent category​',
+  parent: 'EDP|Entrepreneurship Development Programme',
+   children: [
+   ],
+  },
+  {
+    parent: 'Other​',
     children: ['Others'],
   },
 ];
@@ -371,7 +407,7 @@ export default function ExistingEnterpriseBasicInfoSection({ existingForm, setEx
       </View>
 
       {/* Special category */}
-      <View style={styles.fieldBlock}>
+      {/* <View style={styles.fieldBlock}>
         <Text style={styles.label}>
           Please specify your special category (If applicable)
         </Text>
@@ -383,11 +419,11 @@ export default function ExistingEnterpriseBasicInfoSection({ existingForm, setEx
           value={existingForm.owner_special_category || ''}
           onChangeText={(v) => update({ owner_special_category: v })}
         />
-      </View>
+      </View> */}
 
       {/* Year of establishment */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>What year was your Enterprise established in?</Text>
+        <Text style={styles.label}>Which year was your Enterprise established in?</Text>
         <Text style={styles.helpText}>
           Please select the year when you started this enterprise. If unsure, give your best estimate.
         </Text>
@@ -431,7 +467,7 @@ export default function ExistingEnterpriseBasicInfoSection({ existingForm, setEx
 
       {/* UDDYAM AADHAR */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>Please Specify the correct UDDYAM AADHAR NUMBER (If Applicable)</Text>
+        <Text style={styles.label}>Please Specify the correct UDDYAM AADHAR NUMBER (If any)</Text>
         <Text style={styles.helpText}>
           Please enter the Udyam Aadhar Number carefully. This will be used for verification.
         </Text>
@@ -469,6 +505,55 @@ export default function ExistingEnterpriseBasicInfoSection({ existingForm, setEx
           onChangeText={(v) => update({ number_of_shg_emp: v })}
         />
       </View>
+      {/* Special category */}
+      {/* <View style={styles.fieldBlock}>
+        <Text style={styles.label}>
+          Please specify your special category (If applicable)
+        </Text>
+        <Text style={styles.helpText}>
+          Please mention if you belong to any special category (e.g., widow, PwD, etc.).
+        </Text>
+        <TextInput
+          style={styles.input}
+          value={existingForm.owner_special_category || ''}
+          onChangeText={(v) => update({ owner_special_category: v })}
+        />
+      </View> */}
+
+      {/* Special category */}
+<View style={styles.fieldBlock}>
+  <Text style={styles.label}>Please specify your special category (If applicable)</Text>
+  <Text style={styles.helpText}>
+    Select if you belong to any special category. This is optional.
+  </Text>
+
+  {['Divyang', 'Widow', 'Unmarried', 'Other'].map((opt) => (
+    <TouchableOpacity
+      key={opt}
+      style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
+      onPress={() => update({ owner_special_category: opt })}
+    >
+      <View
+        style={[
+          styles.checkbox,
+          existingForm.owner_special_category === opt && styles.checkboxChecked,
+        ]}
+      />
+      <Text style={{ marginLeft: 8 }}>{opt}</Text>
+    </TouchableOpacity>
+  ))}
+
+  {/* if user selects Other → show textbox */}
+  {existingForm.owner_special_category === 'Other' && (
+    <TextInput
+      style={[styles.input, { marginTop: 6 }]}
+      placeholder="Please specify"
+      value={existingForm.owner_special_category_other || ''}
+      onChangeText={(v) => update({ owner_special_category_other: v })}
+    />
+  )}
+</View>
+
     </View>
   );
 }
@@ -491,4 +576,15 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { width: '85%', padding: 16, borderRadius: 8, backgroundColor: '#fff' },
   cancelBtn: { marginTop: 12, alignSelf: 'flex-end' },
+  checkbox: {
+  width: 18,
+  height: 18,
+  borderWidth: 1,
+  borderColor: '#444',
+  borderRadius: 3,
+},
+checkboxChecked: {
+  backgroundColor: '#EE6969',
+},
+
 });

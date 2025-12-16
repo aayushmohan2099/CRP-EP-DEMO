@@ -91,6 +91,10 @@ const INSTITUTION_SCHEME_TREE = [
       'PMFME (Micro Food Processing)',
       'SFURTI (Scheme of Fund for Regeneration of Traditional Industries)',
       'ASPIRE (A Scheme for Promotion of Innovation, Rural Industry and Entrepreneurship)',
+      'AGEY',
+      'SVEP',
+      'PMFME',
+      'PATB',
     ],
   },
   {
@@ -513,7 +517,7 @@ export default function ExistingEnterpriseLoanSubsidySection({
               {row.expanded && (
                 <View style={styles.cardBody}>
                   {/* 1) Subsidy type */}
-                  <View style={styles.fieldBlock}>
+                  {/* <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
                       1) What is the type of Subsidy you took?
                     </Text>
@@ -557,7 +561,7 @@ export default function ExistingEnterpriseLoanSubsidySection({
                         }
                       />
                     )}
-                  </View>
+                  </View> */}
 
                   {/* 2) Institution / scheme tree */}
                   <View className={styles.fieldBlock}>

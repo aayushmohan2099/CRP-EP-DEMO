@@ -1,7 +1,7 @@
 // src/screens/screensProductionApp/FormSections/ExistingEnterpriseInvestmentSection.jsx
 import React, { useState } from 'react'; // <-- Added useState
 import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
-
+import { useEffect } from 'react';
 const YES_NO = ['Yes', 'No'];
 
 /**
@@ -85,6 +85,10 @@ const INVESTMENT_SOURCE_TREE = [
       'PMFME (Micro Food Processing)',
       'SFURTI (Scheme of Fund for Regeneration of Traditional Industries)',
       'ASPIRE (A Scheme for Promotion of Innovation, Rural Industry and Entrepreneurship)',
+      'AGEY',
+      'SVEP',
+      'PMFME',
+      'PATB',
     ],
   },
   {
@@ -213,22 +217,107 @@ const YesNoToggle = ({ value, onChange }) => (
     ))}
   </View>
 );
+// const calculateAndStoreGP = (incomeValue, workingCapitalValue) => {
+//   const monthlyIncome = parseFloat(incomeValue) || 0;
+//   const workingCapital = parseFloat(workingCapitalValue) || 0;
+
+//   const monthlyGP = monthlyIncome - workingCapital;
+//   const yearlyIncome = monthlyIncome * 12;
+//   const yearlyWorkingCapital = workingCapital * 12;
+//   const yearlyGP = yearlyIncome - yearlyWorkingCapital;
+
+//   return {
+//     monthlyIncome,
+//     workingCapital,
+//     monthlyGP,
+//     yearlyGP,
+//   };
+// };
 
 export default function ExistingEnterpriseInvestmentSection({
   existingForm,
   setExistingForm,
 }) {
-  const update = (patch) => setExistingForm(patch);
+  const update = (patch) => setExistingForm(patch); 
   const hasShgCifYes = existingForm.has_shg_cif === 'Yes';
+
+// useEffect(() => {
+//   const monthlyIncome = parseFloat(existingForm.monthly_income_estimate) || 0;
+//   const workingCapital = parseFloat(existingForm.working_capital_monthly) || 0;
+
+//   const monthlyGP = monthlyIncome - workingCapital;
+//   const yearlyIncome = monthlyIncome * 12;
+//   const yearlyWorkingCapital = workingCapital * 12;
+  // const yearlyGP = yearlyIncome - yearlyWorkingCapital;
+
+  // Store as numbers rounded to 2 decimals
+//   setExistingForm(prev => ({
+//     ...prev,
+//     monthly_gp: Math.round(monthlyGP * 100) / 100,
+//     monthly_income_numeric: Math.round(monthlyIncome * 100) / 100,
+//     working_capital_numeric: Math.round(workingCapital * 100) / 100,
+//   }));
+// }, [existingForm.monthly_income_estimate, existingForm.working_capital_monthly]);
+
+  // useEffect(() => {
+  //   const monthlyIncome = parseFloat(existingForm.monthly_income_estimate) || 0;
+  //   const workingCapital = parseFloat(existingForm.working_capital_monthly) || 0;
+
+  //   const monthlyGP = monthlyIncome - workingCapital;
+  //   const yearlyIncome = monthlyIncome * 12;
+  //   const yearlyWorkingCapital = workingCapital * 12;
+  //   const yearlyGP = yearlyIncome - yearlyWorkingCapital;
+
+  //   const monthlyGPPercent = monthlyIncome > 0 ? ((monthlyGP / monthlyIncome) * 100).toFixed(2) : '0';
+  //   const yearlyGPPercent = yearlyIncome > 0 ? ((yearlyGP / yearlyIncome) * 100).toFixed(2) : '0';
+
+  //   // Store numeric values and percentages in existingForm
+  //   update({
+  //     monthly_gp: monthlyGP,
+  //     monthly_gp_percent: monthlyGPPercent,
+  //     yearly_gp: yearlyGP,
+  //     yearly_gp_percent: yearlyGPPercent,
+  //   });
+  // }, [existingForm.monthly_income_estimate, existingForm.working_capital_monthly]);
+
+
+  useEffect(() => {
+    const monthlyIncome = parseFloat(existingForm.monthly_income_estimate) || 0;
+    const workingCapital = parseFloat(existingForm.working_capital_monthly) || 0;
+
+    const grossProfit = monthlyIncome - workingCapital;
+    const annualTurnover = monthlyIncome * 12;
+
+    // Update form values
+    update({
+      gross_profit: grossProfit,
+      annual_turnover: annualTurnover,
+    });
+  }, [existingForm.monthly_income_estimate, existingForm.working_capital_monthly]);
 
   return (
     <View style={styles.sectionContainer}>
       <Text style={styles.sectionTitle}>4) Investment Details Section</Text>
 
+{/* 17) Initial investment */}
+      <View style={styles.fieldBlock}>
+        <Text style={styles.label}>
+          12) What was your Initial Investment for this Enterprise?
+        </Text>
+        <Text style={styles.helpText}>
+          Please enter the approximate total amount of money you used when you first started your enterprise.
+        </Text>
+        <TextInput
+          style={styles.input}
+          keyboardType="numeric"
+          value={existingForm.initial_investment || ''}
+          onChangeText={(v) => update({ initial_investment: v })}
+        />
+      </View>
       {/* 12) Monthly income estimate */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>
-          12) What is your total Estimated Monthly Income (Combined)?
+          13) What is your total Estimated Monthly Income?
         </Text>
         <Text style={styles.helpText}>
           Please enter the combined approximate income your enterprise earns in one month from all sources.
@@ -243,7 +332,7 @@ export default function ExistingEnterpriseInvestmentSection({
       </View>
 
       {/* 13) Annual turnover */}
-      <View style={styles.fieldBlock}>
+      {/* <View style={styles.fieldBlock}>
         <Text style={styles.label}>
           13) What is your Approximate Annual Turnover?
         </Text>
@@ -256,10 +345,10 @@ export default function ExistingEnterpriseInvestmentSection({
           value={existingForm.annual_turnover || ''}
           onChangeText={(v) => update({ annual_turnover: v })}
         />
-      </View>
+      </View> */}
 
       {/* 14) Gross profit */}
-      <View style={styles.fieldBlock}>
+      {/* <View style={styles.fieldBlock}>
         <Text style={styles.label}>14) What is your Gross Profit?</Text>
         <Text style={styles.helpText}>
           Please enter your gross profit (income minus direct expenses) as you understand it.
@@ -271,11 +360,11 @@ export default function ExistingEnterpriseInvestmentSection({
           value={existingForm.gross_profit || ''}
           onChangeText={(v) => update({ gross_profit: v })}
         />
-      </View>
+      </View> */}
 
       {/* 15) Working capital */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>15) What is your Monthly Working Capital?</Text>
+        <Text style={styles.label}>14) What is your Monthly Working Capital?</Text>
         <Text style={styles.helpText}>
           Please enter how much money you normally need every month to run your business
           (for raw material, wages, transport, etc.).
@@ -288,9 +377,134 @@ export default function ExistingEnterpriseInvestmentSection({
         />
       </View>
 
+
+      {/* AUTO CALCULATED */}
+ {existingForm.monthly_income_estimate && existingForm.working_capital_monthly && (
+        <><View style={styles.gpBlock}>
+        </View><View style={{ marginTop: 12 }}>
+            <Text style={styles.label}>Average Yearly Income Estimate:</Text>
+            <Text style={{ fontSize: 16, fontWeight: 'bold' }}>
+              ₹ {(parseFloat(existingForm.monthly_income_estimate || 0) * 12).toLocaleString('en-IN')}
+            </Text>
+             <Text style={[styles.label, { marginTop: 8 }]}>Annual Turnover:</Text>
+            <Text style={styles.value}>
+              ₹ {(existingForm.annual_turnover ?? 0).toLocaleString('en-IN')}
+            </Text>
+            <Text style={[styles.label, { marginTop: 6 }]}>Average Yearly Working Capital:</Text>
+            <Text style={{ fontSize: 16, fontWeight: 'bold' }}>
+              ₹ {(parseFloat(existingForm.working_capital_monthly || 0) * 12).toLocaleString('en-IN')}
+            </Text>
+           <Text style={styles.label}>Gross Profit:</Text>
+          <Text style={styles.value}>
+            ₹ {(existingForm.gross_profit ?? 0).toLocaleString('en-IN')}
+          </Text>
+          </View></>
+      )}
+       {/* {existingForm.monthly_income_estimate && existingForm.working_capital_monthly && (
+        <><View style={styles.gpBlock}>
+          <Text style={styles.label}>Monthly Gross Profit:</Text>
+          <Text style={styles.gpValue}>
+            ₹ {(existingForm.monthly_gp ?? 0).toLocaleString('en-IN')} ({existingForm.monthly_gp_percent ?? '0'}%)
+          </Text>
+
+          <Text style={[styles.label, { marginTop: 8 }]}>Yearly Gross Profit:</Text>
+          <Text style={styles.gpValue}>
+            ₹ {(existingForm.yearly_gp ?? 0).toLocaleString('en-IN')} ({existingForm.yearly_gp_percent ?? '0'}%)
+          </Text>
+        </View><View style={{ marginTop: 12 }}>
+            <Text style={styles.label}>Average Yearly Income Estimate:</Text>
+            <Text style={{ fontSize: 16, fontWeight: 'bold' }}>
+              ₹ {(parseFloat(existingForm.monthly_income_estimate || 0) * 12).toLocaleString('en-IN')}
+            </Text>
+
+            <Text style={[styles.label, { marginTop: 6 }]}>Average Yearly Working Capital:</Text>
+            <Text style={{ fontSize: 16, fontWeight: 'bold' }}>
+              ₹ {(parseFloat(existingForm.working_capital_monthly || 0) * 12).toLocaleString('en-IN')}
+            </Text>
+          </View></>
+      )} */}
+
+      
+      {/* <TextInput
+  style={styles.input}
+  keyboardType="numeric"
+  value={existingForm.monthly_income_estimate || ''}
+  onChangeText={(v) => setExistingForm({ ...existingForm, monthly_income_estimate: v })}
+  onEndEditing={() => {
+    const { monthlyIncome, workingCapital, monthlyGP, yearlyGP } =
+      calculateAndStoreGP(existingForm.monthly_income_estimate, existingForm.working_capital_monthly);
+
+    setExistingForm({
+      ...existingForm,
+      monthly_income_estimate: String(monthlyIncome),
+      working_capital_monthly: String(workingCapital),
+      monthly_gp: String(monthlyGP),
+      yearly_gp: String(yearlyGP),
+    });
+  }}
+/>
+
+<TextInput
+  style={styles.input}
+  keyboardType="numeric"
+  value={existingForm.working_capital_monthly || ''}
+  onChangeText={(v) => setExistingForm({ ...existingForm, working_capital_monthly: v })}
+  onEndEditing={() => {
+    const { monthlyIncome, workingCapital, monthlyGP, yearlyGP } =
+      calculateAndStoreGP(existingForm.monthly_income_estimate, existingForm.working_capital_monthly);
+
+    setExistingForm({
+      ...existingForm,
+      monthly_income_estimate: String(monthlyIncome),
+      working_capital_monthly: String(workingCapital),
+      monthly_gp: String(monthlyGP),
+      yearly_gp: String(yearlyGP),
+    });
+  }}
+/>
+{existingForm.monthly_income_estimate && existingForm.working_capital_monthly && (() => {
+  const monthlyIncome = parseFloat(existingForm.monthly_income_estimate) || 0;
+  const workingCapital = parseFloat(existingForm.working_capital_monthly) || 0;
+  const monthlyGP = monthlyIncome - workingCapital;
+  const monthlyGPPercent = monthlyIncome > 0 ? ((monthlyGP / monthlyIncome) * 100).toFixed(2) : 0;
+
+  const yearlyIncome = monthlyIncome * 12;
+  const yearlyWorkingCapital = workingCapital * 12;
+  const yearlyGP = yearlyIncome - yearlyWorkingCapital;
+  const yearlyGPPercent = yearlyIncome > 0 ? ((yearlyGP / yearlyIncome) * 100).toFixed(2) : 0;
+
+  const formatNumber = (value) =>
+    value ? Number(String(value).replace(/,/g, '')).toLocaleString('en-IN') : '';
+
+  return (
+    <View style={{ marginTop: 10, padding: 12, backgroundColor: '#f2f9f2', borderRadius: 8 }}>
+      <Text style={styles.label}>Monthly Gross Profit:</Text>
+      <Text style={{ fontSize: 16, fontWeight: 'bold', color: 'green' }}>
+        ₹ {formatNumber(monthlyGP)} ({monthlyGPPercent}%)
+      </Text>
+
+      <View style={{ marginTop: 12 }}>
+        <Text style={styles.label}>Yearly Income Estimate:</Text>
+        <Text style={{ fontSize: 16, fontWeight: 'bold' }}>₹ {formatNumber(yearlyIncome)}</Text>
+
+        <Text style={[styles.label, { marginTop: 6 }]}>Yearly Working Capital:</Text>
+        <Text style={{ fontSize: 16, fontWeight: 'bold' }}>₹ {formatNumber(yearlyWorkingCapital)}</Text>
+
+        <Text style={[styles.label, { marginTop: 6 }]}>Yearly Gross Profit:</Text>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', color: 'green' }}>
+          ₹ {formatNumber(yearlyGP)} ({yearlyGPPercent}%)
+        </Text>
+      </View>
+    </View>
+  );
+})()} */}
+
+
+
+
       {/* 16) SHG CIF funds */}
-      <View style={styles.fieldBlock}>
-        <Text style={styles.label}>16) Has your SHG received CIF Funds?</Text>
+      {/* <View style={styles.fieldBlock}>
+        <Text style={styles.label}>15) Have your SHG received CIF Funds?</Text>
         <Text style={styles.helpText}>
           Please select Yes if your Self Help Group (SHG) has received Community Investment Fund (CIF) support.
         </Text>
@@ -301,9 +515,6 @@ export default function ExistingEnterpriseInvestmentSection({
 
         {hasShgCifYes && (
           <View style={{ marginTop: 8 }}>
-            <Text style={styles.labelSub}>
-              If Yes, please specify the amount of financial assistance your SHG received
-            </Text>
             <Text style={styles.helpText}>
               Please enter the CIF amount in rupees as given to your SHG.
             </Text>
@@ -315,10 +526,49 @@ export default function ExistingEnterpriseInvestmentSection({
             />
           </View>
         )}
-      </View>
+      </View> */}
+
+
+    <View style={styles.fieldBlock}>
+  <Text style={styles.label}>15) Have your SHG received CIF Funds?</Text>
+  <Text style={styles.helpText}>
+    Please select Yes if your Self Help Group (SHG) has received Community Investment Fund (CIF) support.
+  </Text>
+
+  <YesNoToggle
+    value={existingForm.has_shg_cif || ''}
+    onChange={(val) => update({ has_shg_cif: val, has_part_cif: '', part_cif_amt: '' })}
+  />
+
+  {/* Step 2: Have you received part of that CIF fund */}
+  {existingForm.has_shg_cif === 'Yes' && (
+    <View style={{ marginTop: 8 }}>
+      <Text style={styles.label}>Have you received part of that CIF fund?</Text>
+      <YesNoToggle
+        value={existingForm.has_part_cif || ''}
+        onChange={(val) => update({ has_part_cif: val, part_cif_amt: '' })}
+      />
+
+      {/* Step 3: If Yes, show amount field */}
+      {existingForm.has_part_cif === 'Yes' && (
+        <View style={{ marginTop: 8 }}>
+          <Text style={styles.label}>Specify amount received</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="numeric"
+            value={existingForm.part_cif_amt || ''}
+            onChangeText={(v) => update({ part_cif_amt: v })}
+            placeholder="Enter CIF amount"
+          />
+        </View>
+      )}
+    </View>
+  )}
+</View>
+
 
       {/* 17) Initial investment */}
-      <View style={styles.fieldBlock}>
+      {/* <View style={styles.fieldBlock}>
         <Text style={styles.label}>
           17) What was your Initial Investment for this Enterprise?
         </Text>
@@ -331,12 +581,12 @@ export default function ExistingEnterpriseInvestmentSection({
           value={existingForm.initial_investment || ''}
           onChangeText={(v) => update({ initial_investment: v })}
         />
-      </View>
+      </View> */}
 
       {/* 18) Source of investment – parent/child tree */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>
-          18) Select all sources of your Initial Investment that apply
+          16) Select all sources of your Investment that apply
         </Text>
         <Text style={styles.helpText}>
           Please select all departments and schemes from where you received support or funds

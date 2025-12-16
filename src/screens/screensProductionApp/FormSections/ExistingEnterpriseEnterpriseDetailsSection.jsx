@@ -203,7 +203,7 @@ export default function ExistingEnterpriseEnterpriseDetailsSection({
       {/* Can send products to Bijnor */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>
-          13) Can you send your products to Bijnor or nearby big markets?
+          13) Can you send your products to Bijnor ?
         </Text>
         <Text style={styles.helpText}>
           Please select if you are able to send your products to Bijnor or
