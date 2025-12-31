@@ -378,6 +378,7 @@
 
 // src/screens/screensProductionApp/FormSections/ExistingEnterpriseProductServicesSection.jsx
 import React, { useState } from 'react';
+import   { useEffect } from 'react';
 import {
   View,
   Text,
@@ -386,9 +387,11 @@ import {
   StyleSheet,
   PermissionsAndroid,
   Platform,
+  AppState
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage'; 
 
 // Option Arrays
 const PRODUCT_TYPE_OPTIONS = [
@@ -471,6 +474,7 @@ export default function ExistingEnterpriseProductServicesSection({ existingForm,
       marketing_strategy_other: '',
       marketing_channels: '',
       marketing_channels_other: '',
+      marketing_channels_other_input: '',  
       marketing_challenges: '',
       marketing_challenges_other: '',
       accept_digital_payment: '',
@@ -485,6 +489,43 @@ export default function ExistingEnterpriseProductServicesSection({ existingForm,
   const updateRow = (index, patch) => updateProducts(products.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   const toggleExpand = (index) => updateRow(index, { expanded: !products[index].expanded });
   const onChangeMainProductName = (index, value) => updateRow(index, { main_product_name: value, title: value || 'New Product Detail' });
+    // 🔴 ADDED: Save draft whenever products change
+  useEffect(() => {
+    const saveDraft = async () => {
+      try {
+        await AsyncStorage.setItem(PRODUCTS_DRAFT_KEY, JSON.stringify(products));
+      } catch (e) {
+        console.log('Draft save failed', e);
+      }
+    };
+    saveDraft();
+  }, [products]);
+
+  // 🔴 ADDED: Load draft on component mount
+  useEffect(() => {
+    const loadDraft = async () => {
+      try {
+        const saved = await AsyncStorage.getItem(PRODUCTS_DRAFT_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && (!existingForm.products || existingForm.products.length === 0)) {
+            updateProducts(parsed); // merge draft only if products empty
+          }
+        }
+      } catch (e) {
+        console.log('Draft load failed', e);
+      }
+    };
+    loadDraft();
+  }, []);
+
+  // 🔴 ADDED: Save draft when app goes to background
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state !== 'active') AsyncStorage.setItem(PRODUCTS_DRAFT_KEY, JSON.stringify(products));
+    });
+    return () => sub.remove();
+  }, [products]);
 
   const requestCameraPermission = async () => {
     if (Platform.OS === 'android') {

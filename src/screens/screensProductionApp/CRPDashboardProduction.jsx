@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   RefreshControl,
+  Modal,
 } from 'react-native';
 import { getUser, clearUser } from '../../utils/auth';
 import gsApi from '../../api/gsApi';
@@ -23,7 +24,7 @@ import LoaderModal from '../LoaderModal';
 import BurgerMenu from '../BurgerMenu';
 import LanguageToggle from '../../components/LanguageToggle';
 import { LanguageContext } from '../../components/LanguageContext';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function CRPDashboardProduction({ navigation }) {
   const { language } = useContext(LanguageContext);
   const [user, setUser] = useState(null);
@@ -32,12 +33,16 @@ export default function CRPDashboardProduction({ navigation }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [crpName, setCrpName] = useState('');
+  const [draftsVisible, setDraftsVisible] = useState(false);
+const [drafts, setDrafts] = useState([]);
+
 
   const translations = {
     en: {
       headerTitle: 'CRP Dashboard',
       recordNew: 'Record New Beneficiary Enterprise Detail',
       viewRecorded: 'View Recorded Beneficiaries',
+      viewDrafts: 'View Drafts', 
       logout: 'Logout',
       loading: 'Loading analytics...',
       noData: 'No beneficiaries recorded yet.',
@@ -47,6 +52,7 @@ export default function CRPDashboardProduction({ navigation }) {
       headerTitle: 'सीआरपी डैशबोर्ड',
       recordNew: 'नया लाभार्थी उद्यम विवरण रिकॉर्ड करें',
       viewRecorded: 'रिकॉर्ड किए गए लाभार्थी देखें',
+       viewDrafts: 'ड्राफ्ट देखें',
       logout: 'लॉग आउट',
       loading: 'एनालिटिक्स लोड हो रहा है...',
       noData: 'अभी तक कोई लाभार्थी रिकॉर्ड नहीं है।',
@@ -248,7 +254,29 @@ export default function CRPDashboardProduction({ navigation }) {
       setLoading(false);
     }
   };
+const loadDrafts = async () => {
+    try {
+      const allKeys = await AsyncStorage.getAllKeys();
+      const draftKeys = allKeys.filter((key) =>
+        key.startsWith('NO_ENTERPRISE_FORM_DRAFT_')
+      );
+      const entries = await AsyncStorage.multiGet(draftKeys);
 
+      const loadedDrafts = entries.map(([key, value]) => {
+        const draft = JSON.parse(value || '{}');
+        return {
+          key,
+          member_code: key.replace('NO_ENTERPRISE_FORM_DRAFT_', ''),
+          applicant_name: draft?.memberName || 'Unnamed',
+          draft,
+        };
+      });
+
+      setDrafts(loadedDrafts);
+    } catch (e) {
+      console.error('Failed to load drafts', e);
+    }
+  };
   const menuItems = [
     {
       label: t.logout,
@@ -276,7 +304,7 @@ export default function CRPDashboardProduction({ navigation }) {
   };
 
   return (
-    <ScrollView
+      <ScrollView
       contentContainerStyle={styles.container}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -301,7 +329,6 @@ export default function CRPDashboardProduction({ navigation }) {
 
       <Text style={styles.title}>{t.headerTitle}</Text>
 
-      {/* ❤️ Heartwarming message before dashboard counter */}
       <Text style={styles.greetingText}>
         Welcome {headerUsername}, thank you for your work!
       </Text>
@@ -339,7 +366,71 @@ export default function CRPDashboardProduction({ navigation }) {
         >
           <Text style={styles.secondaryButtonText}>{t.viewRecorded}</Text>
         </TouchableOpacity>
+
+        {/* ✅ View Drafts Button */}
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={async () => {
+            await loadDrafts();
+            setDraftsVisible(true);
+          }}
+        >
+          <Text style={styles.secondaryButtonText}>{t.viewDrafts}</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* ✅ Drafts Modal */}
+      <Modal
+        visible={draftsVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setDraftsVisible(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          justifyContent: 'center',
+          padding: 16
+        }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 10, maxHeight: '80%', padding: 16 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12 }}>
+              Draft Beneficiaries
+            </Text>
+
+            {drafts.length === 0 ? (
+              <Text>No drafts saved yet.</Text>
+            ) : (
+              <ScrollView>
+                {drafts.map((d) => (
+                  <TouchableOpacity
+                    key={d.key}
+                    style={{
+                      padding: 12,
+                      borderBottomWidth: 1,
+                      borderBottomColor: '#EEE'
+                    }}
+                    onPress={() => {
+                      setDraftsVisible(false);
+                      // ✅ Navigate to CRPRecordFlow and pass draftKey
+                      navigation.navigate('CRPRecordFlow', { draftKey: d.key });
+                    }}
+                  >
+                    <Text style={{ fontWeight: '600' }}>{d.applicant_name}</Text>
+                    <Text style={{ color: '#666' }}>{d.member_code}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
+            <TouchableOpacity
+              style={{ marginTop: 12, alignSelf: 'flex-end' }}
+              onPress={() => setDraftsVisible(false)}
+            >
+              <Text style={{ color: '#EE6969', fontWeight: '600' }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <BurgerMenu
         visible={menuOpen}

@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  AppState, 
 } from 'react-native';
 import gsApi from '../../api/gsApi';
 import {
@@ -17,6 +18,10 @@ import {
   getCrpDetail,
 } from '../../utils/tempStore';
 import { getUser } from '../../utils/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LanguageContext } from '../../components/LanguageContext';
+import LanguageToggle from '../../components/LanguageToggle';
+
 
 // ========= Helpers (copied/adapted from NewEnterpriseForm) =========
 
@@ -560,6 +565,102 @@ export default function NoEnterpriseForm({ route, navigation }) {
 const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
   const [plannedBusiness, setPlannedBusiness] = useState('');
 
+
+  const draftData = {
+    memberName,
+    activityOption,
+    activitySpecify,
+
+    noInterestOption,
+    noInterestSpecify,
+
+    wageInterestYesNo,
+    wageEmpTypes,
+    wagePlacementSectors,
+    wageExpSalary,
+    wageLocationChoice,
+    wageDesiredLocationText,
+
+    trainingRequiredYesNo,
+    selectedTrainingParents,
+    trainingChildrenByParent,
+    trainingDuration,
+    trainingDepartmentOption,
+    trainingDepartmentOtherText,
+    trainingLocationDistrict,
+    trainingLocationBlock,
+    trainingLocationState,
+    trainingExpectedIncome,
+
+    futureWillingYesNo,
+
+    hasShgCifYesNo,
+    hasReceivedPartYesNo,
+    cifAmount,
+  };
+  
+
+ useEffect(() => {
+  const loadDraft = async () => {
+    try {
+      const saved = await AsyncStorage.getItem(draftKey);
+      if (!saved) return;
+
+      const d = JSON.parse(saved);
+
+      setActivityOption(d.activityOption || '');
+      setActivitySpecify(d.activitySpecify || '');
+
+      setNoInterestOption(d.noInterestOption || '');
+      setNoInterestSpecify(d.noInterestSpecify || '');
+
+      setWageInterestYesNo(d.wageInterestYesNo || '');
+      setWageEmpTypes(d.wageEmpTypes || []);
+      setWagePlacementSectors(d.wagePlacementSectors || []);
+      setWageExpSalary(d.wageExpSalary || '');
+      setWageLocationChoice(d.wageLocationChoice || '');
+      setWageDesiredLocationText(d.wageDesiredLocationText || '');
+
+      setTrainingRequiredYesNo(d.trainingRequiredYesNo || '');
+      setSelectedTrainingParents(d.selectedTrainingParents || []);
+      setTrainingChildrenByParent(d.trainingChildrenByParent || {});
+      setTrainingDuration(d.trainingDuration || '');
+      setTrainingDepartmentOption(d.trainingDepartmentOption || '');
+      setTrainingDepartmentOtherText(d.trainingDepartmentOtherText || '');
+      setTrainingLocationDistrict(d.trainingLocationDistrict || '');
+      setTrainingLocationBlock(d.trainingLocationBlock || '');
+      setTrainingLocationState(d.trainingLocationState || '');
+      setTrainingExpectedIncome(d.trainingExpectedIncome || '');
+
+      setFutureWillingYesNo(d.futureWillingYesNo || '');
+
+      setHasShgCifYesNo(d.hasShgCifYesNo || '');
+      setHasReceivedPartYesNo(d.hasReceivedPartYesNo || '');
+      setCifAmount(d.cifAmount || '');
+    } catch (e) {
+      console.log('Draft load failed', e);
+    }
+  };
+
+  loadDraft();
+}, [draftKey]);
+
+// ===== Auto-save draft when any field changes =====
+useEffect(() => {
+  AsyncStorage.setItem(draftKey, JSON.stringify(draftData));
+}, [draftData, draftKey]);
+
+// ===== Save draft when app goes to background =====
+useEffect(() => {
+  const subscription = AppState.addEventListener('change', state => {
+    if (state !== 'active') {
+      AsyncStorage.setItem(draftKey, JSON.stringify(draftData));
+    }
+  });
+
+  return () => subscription.remove();
+}, [draftData, draftKey]);
+
   // ---------------- Effects: load user and auth token ----------------
 
   useEffect(() => {
@@ -759,7 +860,10 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
 
     return recordedBenefId;
   };
-
+const memberCode = beneficiary.member_code || beneficiary.nic_member_code || 'TEMP';
+const memberName = beneficiary.member_name || 'TEMP_NAME';
+draftData.memberName = memberName;
+const draftKey = `NO_ENTERPRISE_FORM_DRAFT_${memberCode}`;
   // ---------------- Wage helpers ----------------
 
   const toggleMultiSelect = (value, listSetter, currentList) => {
@@ -1259,6 +1363,7 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
         console.warn('Failed to create EnterpriseTrainingReq for NoEnterpriseForm', e);
       }
     }
+     await AsyncStorage.removeItem(draftKey);
 
     Alert.alert('Success', 'Details saved successfully.', [
       {

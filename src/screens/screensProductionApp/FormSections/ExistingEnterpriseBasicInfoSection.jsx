@@ -1,8 +1,9 @@
 // src/screens/screensProductionApp/FormSections/ExistingEnterpriseBasicInfoSection.jsx
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet } from 'react-native';
+import { useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet,AppState,  } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 const ENTERPRISE_TYPE_TREE = [
   {
     parent: 'Food Processing Sector',
@@ -339,17 +340,65 @@ const EnterpriseTypeTree = ({ value, onChange }) => {
     </View>
   );
 };
-
+const BASIC_INFO_DRAFT_KEY = 'EXISTING_ENTERPRISE_BASIC_INFO_DRAFT';
 export default function ExistingEnterpriseBasicInfoSection({ existingForm, setExistingForm }) {
   const [yearPickerVisible, setYearPickerVisible] = useState(false);
-
+ const [draftLoaded, setDraftLoaded] = useState(false); // 🔴 ADDED
   const currentYear = new Date().getFullYear();
   const startYear = 1950;
   const yearOptions = [];
   for (let y = currentYear; y >= startYear; y--) yearOptions.push(y.toString());
 
-  const update = (patch) => setExistingForm(patch);
+ 
+     useEffect(() => {
+    const loadDraft = async () => {
+      try {
+        const saved = await AsyncStorage.getItem(BASIC_INFO_DRAFT_KEY);
+        if (saved) {
+          setExistingForm(JSON.parse(saved)); // ✅ FIXED
+        }
+      } catch (e) {
+        console.log('Draft load failed', e);
+      } finally {
+        setDraftLoaded(true); // 🔴 ADDED
+      }
+    };
 
+    loadDraft();
+  }, []); // 🔴 CHANGED (removed dependency on setExistingForm)
+
+  /* =====================================================
+     🔴 FIX 2: Auto-save ONLY AFTER draft is loaded
+  ===================================================== */
+  useEffect(() => {
+    if (!draftLoaded) return; // 🔴 CRITICAL FIX
+
+    AsyncStorage.setItem(
+      BASIC_INFO_DRAFT_KEY,
+      JSON.stringify(existingForm)
+    );
+  }, [existingForm, draftLoaded]); // 🔴 CHANGED
+
+  /* =====================================================
+     🔴 FIX 3: Save draft when app goes background
+  ===================================================== */
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state !== 'active' && draftLoaded) {
+        AsyncStorage.setItem(
+          BASIC_INFO_DRAFT_KEY,
+          JSON.stringify(existingForm)
+        );
+      }
+    });
+
+    return () => sub.remove();
+  }, [existingForm, draftLoaded]); // 🔴 CHANGED
+
+  /* =====================================================
+     🔴 FIX 4: PATCH update (NO functional updater)
+  ===================================================== */
+  const update = (patch) => setExistingForm(patch); // ✅ CORRECT
   return (
     <View style={styles.sectionContainer}>
       <Text style={styles.sectionTitle}>1) Basic Information</Text>
@@ -374,7 +423,7 @@ export default function ExistingEnterpriseBasicInfoSection({ existingForm, setEx
           Please select all relevant sectors and sub-categories. You can choose more than one.
         </Text>
         <EnterpriseTypeTree
-          value={existingForm.enterprise_types_tree}
+          value={existingForm.enterprise_types_tree || []}
           onChange={(tree) => update({ enterprise_types_tree: tree })}
         />
       </View>
@@ -387,7 +436,7 @@ export default function ExistingEnterpriseBasicInfoSection({ existingForm, setEx
         </Text>
         <View style={[styles.input, { paddingHorizontal: 0, paddingVertical: 0 }]}>
           <Picker
-            selectedValue={existingForm.ownership_type || ''}
+               selectedValue={existingForm.ownership_type || ''}
             onValueChange={(v) => update({ ownership_type: v })}
           >
             <Picker.Item label="Select..." value="" />
