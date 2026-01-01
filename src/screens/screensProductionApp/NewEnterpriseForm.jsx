@@ -20,6 +20,8 @@ import {
   getCrpPanchayats,
   getCrpDetail,
 } from '../../utils/tempStore';
+import { LanguageContext } from '../../components/LanguageContext';
+import LanguageToggle from '../../components/LanguageToggle';
 import { getUser } from '../../utils/auth';
 import { X_API_ID, X_API_KEY } from '@env';
 /**
@@ -92,7 +94,7 @@ const requestCameraPermissionIfNeeded = async () => {
   }
 };
 
-// NOTE: these header values duplicate those in your gsApi file.
+// NOTE: api.
 const MULTIPART_X_API_ID = X_API_ID;
 const MULTIPART_X_API_KEY = X_API_KEY;
 const BASE_URL = 'http://66.116.207.88:8088';
@@ -921,6 +923,7 @@ const ParentChildMultiSelect = ({
 // ---------- Main component ----------
 
 export default function NewEnterpriseForm({ route, navigation }) {
+  // const { language } = useContext(LanguageContext);
   const recordedBenef = route?.params?.recordedBenef || null;
   const beneficiary = route?.params?.beneficiary || null;
   const tempShg = route?.params?.tempShg || null;

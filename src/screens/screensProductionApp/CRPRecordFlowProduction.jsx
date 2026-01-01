@@ -1,5 +1,5 @@
 // src/screens/epsakhi/CRPRecordFlowProduction.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -22,10 +22,77 @@ import { getUser } from '../../utils/auth';
 import LoaderModal from '../LoaderModal';
 import BackButton from '../../components/BackButton';
 import SearchBar from '../SearchBar';
+import { LanguageContext } from '../../components/LanguageContext';
+import LanguageToggle from '../../components/LanguageToggle';
+
 
 const UI_PAGE_SIZE = 10;
 
 export default function CRPRecordFlowProduction({ navigation }) {
+  // ✅ LanguageContext hook at TOP level (following CRPDashboard pattern)
+  const { language } = useContext(LanguageContext);
+  
+  const translations = {
+    en: {
+      selectGramPanchayat: 'Select Gram Panchayat',
+      selectVillage: 'Select Village',
+      selectShg: 'Select SHG',
+      selectBeneficiary: 'Select Beneficiary',
+      search: 'Search...',
+      searchBeneficiary: 'Search Beneficiary',
+      recorded: 'Recorded:',
+      page: 'Page',
+      error: 'Error',
+      crpNotMapped: 'CRP not mapped to block. Please reopen the app.',
+      failedVillages: 'Failed to fetch villages for this Panchayat.',
+      failedShgs: 'Failed to fetch SHGs for this village.',
+      failedMembers: 'Failed to fetch SHG members.',
+      alreadyRecorded: 'Already Recorded',
+      alreadyRecordedMessage: 'This beneficiary enterprise has already been recorded.',
+      hasExistingEnterprise: 'Does ',
+      haveExistingEnterprise: ' have an existing Enterprise?',
+      interestedNewEnterprise: 'Is ',
+      interestedOpeningNewEnterprise: ' interested in opening a new Enterprise?',
+      yes: 'Yes',
+      no: 'No',
+      cancel: 'Cancel',
+      memberCode: 'Member Code: ',
+      recordedStatus: 'Recorded',
+      notRecordedStatus: 'Not Recorded',
+      loading: 'Loading...',
+    },
+    hi: {
+      selectGramPanchayat: 'ग्राम पंचायत चुनें',
+      selectVillage: 'गांव चुनें',
+      selectShg: 'SHG चुनें',
+      selectBeneficiary: 'लाभार्थी चुनें',
+      search: 'खोजें...',
+      searchBeneficiary: 'लाभार्थी खोजें',
+      recorded: 'रिकॉर्ड किया गया:',
+      page: 'पृष्ठ',
+      error: 'त्रुटि',
+      crpNotMapped: 'CRP को ब्लॉक से मैप नहीं किया गया। कृपया ऐप दोबारा खोलें।',
+      failedVillages: 'इस पंचायत के लिए गांव लाने में विफल।',
+      failedShgs: 'इस गांव के लिए SHG लाने में विफल।',
+      failedMembers: 'SHG सदस्य लाने में विफल।',
+      alreadyRecorded: 'पहले से रिकॉर्ड',
+      alreadyRecordedMessage: 'यह लाभार्थी उद्यम पहले से रिकॉर्ड हो चुका है।',
+      hasExistingEnterprise: 'क्या ',
+      haveExistingEnterprise: ' के पास पहले से उद्यम है?',
+      interestedNewEnterprise: 'क्या ',
+      interestedOpeningNewEnterprise: ' नया उद्यम खोलने में रुचि रखता है?',
+      yes: 'हाँ',
+      no: 'नहीं',
+      cancel: 'रद्द करें',
+      memberCode: 'सदस्य कोड: ',
+      recordedStatus: 'रिकॉर्ड',
+      notRecordedStatus: 'रिकॉर्ड नहीं',
+      loading: 'लोड हो रहा है...',
+    },
+  };
+
+  const t = translations[language] || translations.en;
+
   const [step, setStep] = useState('gp');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -356,7 +423,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
 
   const handleSelectPanchayat = async (p) => {
     if (!blockId) {
-      Alert.alert('Error', 'CRP not mapped to block. Please reopen the app.');
+      Alert.alert(t.error, t.crpNotMapped);
       return;
     }
 
@@ -375,7 +442,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
       setVillages(villagesRows);
     } catch (err) {
       console.log('Error in handleSelectPanchayat', err);
-      Alert.alert('Error', 'Failed to fetch villages for this Panchayat.');
+      Alert.alert(t.error, t.failedVillages);
     } finally {
       setLoading(false);
     }
@@ -412,7 +479,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
       setShgs(shgsInVillage);
     } catch (err) {
       console.log('Error in handleSelectVillage', err);
-      Alert.alert('Error', 'Failed to fetch SHGs for this village.');
+      Alert.alert(t.error, t.failedShgs);
     } finally {
       setLoading(false);
     }
@@ -442,7 +509,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
       setBeneficiaries(enriched);
     } catch (err) {
       console.log('Error in handleSelectShg', err);
-      Alert.alert('Error', 'Failed to fetch SHG members.');
+      Alert.alert(t.error, t.failedMembers);
     } finally {
       setLoading(false);
     }
@@ -452,18 +519,18 @@ export default function CRPRecordFlowProduction({ navigation }) {
     const hasExisting = row._isRecorded;
 
     if (hasExisting) {
-      Alert.alert('Already Recorded', 'This beneficiary enterprise has already been recorded.');
+      Alert.alert(t.alreadyRecorded, t.alreadyRecordedMessage);
       return;
     }
 
     const name = row.member_name || 'the beneficiary';
 
     Alert.alert(
-      `Does ${name} have an existing Enterprise?`,
+      `${t.hasExistingEnterprise}${name}${t.haveExistingEnterprise}`,
       '',
       [
         {
-          text: 'Yes',
+          text: t.yes,
           onPress: () =>
             navigation.navigate('ExistingEnterpriseForm', {
               beneficiary: row,
@@ -473,14 +540,14 @@ export default function CRPRecordFlowProduction({ navigation }) {
             }),
         },
         {
-          text: 'No',
+          text: t.no,
           onPress: () => {
             Alert.alert(
-              `Is ${name} interested in opening a new Enterprise?`,
+              `${t.interestedNewEnterprise}${name}${t.interestedOpeningNewEnterprise}`,
               '',
               [
                 {
-                  text: 'Yes',
+                  text: t.yes,
                   onPress: () =>
                     navigation.navigate('NewEnterpriseForm', {
                       beneficiary: row,
@@ -490,7 +557,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
                     }),
                 },
                 {
-                  text: 'No',
+                  text: t.no,
                   onPress: () =>
                     navigation.navigate('NoEnterpriseForm', {
                       beneficiary: row,
@@ -507,7 +574,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
           style: 'default',
         },
         {
-          text: 'Cancel',
+          text: t.cancel,
           onPress: () => {},
           style: 'cancel',
         },
@@ -605,12 +672,12 @@ export default function CRPRecordFlowProduction({ navigation }) {
 
   const getTitle = () =>
     step === 'gp'
-      ? 'Select Gram Panchayat'
+      ? t.selectGramPanchayat
       : step === 'village'
-      ? 'Select Village'
+      ? t.selectVillage
       : step === 'shg'
-      ? 'Select SHG'
-      : 'Select Beneficiary';
+      ? t.selectShg
+      : t.selectBeneficiary;
 
   const handleStepBack = () => {
     if (step === 'gp') {
@@ -658,7 +725,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
                 {item.panchayat_name_en || `Panchayat ${item.panchayat_id}`}
               </Text>
               <Text style={styles.metaText}>
-                Recorded:{' '}
+                {t.recorded}{' '}
                 {
                   recorded.filter(
                     (r) => String(r.panchayat_id) === String(item.panchayat_id)
@@ -691,7 +758,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
                   `Village ${item.village_id}`}
               </Text>
               <Text style={styles.metaText}>
-                Recorded: {filterRecordedCountForVillage(item.village_id)}
+                {t.recorded} {filterRecordedCountForVillage(item.village_id)}
               </Text>
             </TouchableOpacity>
           )}
@@ -717,7 +784,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
                 {item.name || item.name_en || item.code}
               </Text>
               <Text style={styles.metaText}>
-                Recorded: {filterRecordedCountForShg(item.code)}
+                {t.recorded} {filterRecordedCountForShg(item.code)}
               </Text>
             </TouchableOpacity>
           )}
@@ -743,7 +810,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
                 {item.member_name}
                 {item._isRecorded ? ' (Recorded)' : ''}
               </Text>
-              <Text style={styles.metaText}>Member Code: {item.member_code}</Text>
+              <Text style={styles.metaText}>{t.memberCode}{item.member_code}</Text>
             </View>
             <Text
               style={[
@@ -753,7 +820,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
                   : { backgroundColor: '#F8D7DA', color: '#721C24' },
               ]}
             >
-              {item._isRecorded ? 'Recorded' : 'Not Recorded'}
+              {item._isRecorded ? t.recordedStatus : t.notRecordedStatus}
             </Text>
           </TouchableOpacity>
         )}
@@ -765,15 +832,23 @@ export default function CRPRecordFlowProduction({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <LoaderModal visible={loading} message="Loading..." />
+      <LoaderModal visible={loading} message={t.loading} />
 
-      <View style={styles.headerRow}>
+      {/* <View style={styles.headerRow}>
         <BackButton onPress={handleStepBack} />
         <Text style={styles.headerTitle}>{getTitle()}</Text>
-      </View>
+      </View> */}
+      
+       <View style={styles.headerRow}>
+  <BackButton onPress={handleStepBack} />
+  <View style={{ flex: 1 }}>
+    <Text style={styles.headerTitle}>{getTitle()}</Text>
+  </View>
+  <LanguageToggle />
+</View>
 
       <SearchBar
-        placeholder={step === 'beneficiaries' ? 'Search Beneficiary' : 'Search...'}
+        placeholder={step === 'beneficiaries' ? t.searchBeneficiary : t.search}
         value={step === 'beneficiaries' ? benefQuery : query}
         onChangeText={step === 'beneficiaries' ? setBenefQuery : setQuery}
       />
@@ -794,7 +869,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
         </TouchableOpacity>
 
         <Text style={styles.pageInfo}>
-          Page {currentPage} / {totalPages}
+          {t.page} {currentPage} / {totalPages}
         </Text>
 
         <TouchableOpacity
@@ -814,12 +889,25 @@ export default function CRPRecordFlowProduction({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 12, marginTop: 40, backgroundColor: '#fff' },
+  // headerRow: {
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   marginBottom: 12,
+  // },
+  // headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '600' },
+
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '600' },
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 12,
+  justifyContent: 'space-between',     
+  paddingRight: 8,                     
+},
+headerTitle: { 
+  textAlign: 'center', 
+  fontSize: 16,                        
+  fontWeight: '600' 
+},
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',

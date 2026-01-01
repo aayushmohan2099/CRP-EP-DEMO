@@ -1,5 +1,6 @@
 // src/screens/epsakhi/NoEnterpriseForm.jsx
 import React, { useEffect, useState } from 'react';
+import { useContext } from 'react';
 import {
   ScrollView,
   View,
@@ -9,6 +10,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  AppState, 
 } from 'react-native';
 import gsApi from '../../api/gsApi';
 import {
@@ -17,6 +19,10 @@ import {
   getCrpDetail,
 } from '../../utils/tempStore';
 import { getUser } from '../../utils/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LanguageContext } from '../../components/LanguageContext';
+import LanguageToggle from '../../components/LanguageToggle';
+
 
 // ========= Helpers (copied/adapted from NewEnterpriseForm) =========
 
@@ -269,208 +275,261 @@ const TRAINING_SECTORS = [
   //   ],
   // },
 
+  {
+    parent: {
+      en: "Food Processing Sector",
+      hi: "खाद्य प्रसंस्करण क्षेत्र",
+    },
+    children: [
+      { en: "Spice manufacturing", hi: "मसाला निर्माण" },
+      { en: "Pickles, preserves (murabba), papad", hi: "अचार, मुरब्बा, पापड़ निर्माण" },
+      { en: "Savoury snacks, bhujiya, namkeen", hi: "नमकीन, भुजिया एवं स्नैक्स निर्माण" },
+      { en: "Instant mixes (idli mix, gram flour mix, kheer mix)", hi: "इंस्टेंट मिक्स (इडली मिक्स, बेसन मिक्स, खीर मिक्स) निर्माण" },
+      { en: "Bakery items (cookies, cake, bread)", hi: "बेकरी उत्पाद (कुकीज़, केक, ब्रेड) निर्माण" },
+      { en: "Millet-based products (jowar, bajra, cookies, snacks)", hi: "श्रीधान्य आधारित उत्पाद (ज्वार, बाजरा, कुकीज़, स्नैक्स) निर्माण" },
+      { en: "Cold-pressed oils (mustard/sesame)", hi: "कोल्ड-प्रेस्ड तेल (सरसों/तिल) निर्माण" },
+      { en: "Honey processing", hi: "शहद प्रसंस्करण" },
+      { en: "Jam–jelly–squash", hi: "जैम, जेली एवं स्क्वैश निर्माण" },
+      { en: "Ready-to-eat products", hi: "तत्काल उपभोग हेतु तैयार खाद्य उत्पाद" },
+      { en: "Whole grains/pulses/flour sorting-grading-packaging unit", hi: "अनाज/दाल/आटा छंटाई, ग्रेडिंग एवं पैकेजिंग इकाई" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  },
 
   {
-    parent: 'Food Processing Sector',
+    parent: {
+      en: "Handicraft & Artisan Sector",
+      hi: "हस्तशिल्प एवं कारीगर क्षेत्र",
+    },
     children: [
-      'Spice manufacturing',
-      'Pickles, preserves (murabba), papad',
-      'Savoury snacks, bhujiya, namkeen',
-      'Instant mixes (idli mix, gram flour mix, kheer mix)',
-      'Bakery items (cookies, cake, bread)',
-      'Millet-based products (jowar, bajra cookies, snacks)',
-      'Cold-pressed oils (mustard/sesame)',
-      'Honey processing',
-      'Jam–jelly–squash',
-      'Ready-to-eat products',
-      'Whole grain/pulses/flour sorting–grading–packaging unit​',
-      'Others',
-    ],
+  { en: "Zari and zardozi work", hi: "ज़री और ज़रदोज़ी कार्य" },
+  { en: "Chikankari embroidery", hi: "चिकनकारी कढ़ाई" },
+  { en: "Woodwork", hi: "लकड़ी का शिल्प / कार्य" },
+  { en: "Terracotta / clay products", hi: "टेराकोटा / मिट्टी के उत्पाद" },
+  { en: "Bamboo / cane craft", hi: "बांस / बेंत शिल्प" },
+  { en: "Handmade jewellery (terracotta jewellery / oxidised jewellery)", hi: "हस्तनिर्मित आभूषण (टेराकोटा आभूषण / ऑक्सीडाइज़्ड आभूषण)" },
+  { en: "Handmade candles", hi: "हस्तनिर्मित मोमबत्तियाँ" },
+  { en: "Crochet / woollen products", hi: "क्रोशिया / ऊनी उत्पाद" },
+  { en: "Paper craft, greeting cards", hi: "पेपर क्राफ्ट एवं ग्रीटिंग कार्ड निर्माण" },
+  { en: "Handbags, jute bags, embroidered bags", hi: "हैंडबैग, जूट बैग एवं कढ़ाईदार बैग" },
+  { en: "Ration/Vegetables/Shopping bags", hi: "राशन / सब्ज़ी / शॉपिंग बैग" },
+  { en: "Others", hi: "अन्य" },
+]
   },
+
   {
-    parent: 'Handicraft & Artisan Sector',
-    children: [
-      'Zari and zardozi work',
-      'Chikankari embroidery',
-      'Woodwork',
-      'Terracotta / clay products',
-      'Bamboo / cane craft',
-      'Handmade jewellery (terracotta jewellery, oxidised jewellery)',
-      'Handmade candles',
-      'Crochet / woollen products',
-      'Paper craft, greeting cards',
-      'Handbags, jute bags, embroidered bags',
-      'Ration/vegetable/shopping bags (non-woven alternatives)​',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Textile & Apparel Sector',
-    children: [
-      'Boutique unit (stitching–cutting–embellishment)',
-      'School uniform stitching unit',
-      'Ladies’ garments',
-      'Bedsheet/quilt/pillow cover unit',
-      'ODOP textile-based products (Varanasi saree, Bhadohi carpet finishing etc.)',
-      'Home linen (curtains, table cloth, sofa covers)',
-      'Jute/cotton carry bags',
-      'Mask/apron/hospital gown manufacturing​',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Agriculture & Allied Sector',
-    children: [
-      'Vegetable cultivation and group supply',
-      'Flower cultivation (marigold, rose)',
-      'Mushroom production',
-      'Nursery (fruit/flower/vegetable saplings)',
-      'Beekeeping (honey production)',
-      'Organic manure/vermi-compost',
-      'Animal feed unit',
-      'Mini mill (flour/pulse grinding)',
-      'Fruit–vegetable dehydration unit',
-      'Fish farming',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Dairy & Animal Husbandry Sector',
-    children: [
-      'Dairy unit (2–10 cows/buffaloes)',
-      'Milk collection centre',
-      'Paneer/khoya/curd/ghee manufacturing',
-      'Goat rearing',
-      'Poultry unit (egg/broiler)',
-      'Pig rearing (in specific areas)',
-      'Fodder production',
-      'Milk packaging and branding unit​',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Beauty, Wellness & Personal Services',
-    children: [
-      'Beauty parlour',
-      'Mehndi (henna) training and services',
-      'Spa / therapy unit',
-      'Home-care services (home nursing, baby care training)',
-      'Mobile salon / village-based services',
-      'Fitness group / yoga classes​',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Retail & Micro Trading Sector',
-    children: [
-      'Grocery/provision store',
-      'Stationery / general store',
-      'Group sale of vegetables/fruits',
-      'Fast food cart',
-      'Mobile recharge shop / bill payment kiosk',
-      'Jan Aushadhi/Medical Store',
-      'PET Shop and disposable alternatives distribution​',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Cleaning & Hygiene Products Sector',
-    children: [
-      'Phenyl/detergent manufacturing',
-      'Liquid handwash',
-      'Sanitizer',
-      'Incense sticks and dhoop sticks',
-      'Napkin / sanitary pad unit',
-      'Biodegradable plate and bowl manufacturing​',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Packaging & Utility Products Sector',
-    children: [
-      'Paper bag unit',
-      'Jute bag unit',
-      'Box manufacturing',
-      'Recycled paper packaging unit',
-      'Food-grade packaging​',
-      'FMCG-(Handwash/Soap/Floor Cleaner, etc)',
-      'Transport-(Taxi/Auto/E-Rikshaw,etc)',
-      'Machinery',
-      'Others',
-    ],
-  },
-  {
-    parent: 'FMCG',
-    children: [
-      'Handwash',
-      'Soap',
-      'Floor Cleaner',
-      'Detergents',
-      'Air fresheners',
-      'Face wash & creams',
-      'Shampoo & conditioner',
-      'Sponges',
-      'Toothpaste & toothbrushes',
-      'Others',
-    ],
-  },
-   {
-    parent: 'Transport',
-    children: [
-      'Loader',
-      'E-Rikshaw',
-      'Taxi',
-      'Auto',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Prerna Canteen',
-    children: [
-    ],
-  },
-  {
-    parent: 'Digital & Service Sector',
-    children: [
-      'Data entry / digital services',
-      'CSC (Common Service Center) operations',
-      'Online product sales (e-commerce)',
-      'SHG product branding',
-      'Social media management for local shops​',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Solid Waste & Green Sector',
-    children: [
-      'Plastic waste sorting',
-      'Fuel/briquettes from waste',
-      'Composting unit',
-      'Recycled paper products',
-      'E-waste collection micro centre​',
-      'Others',
-    ],
-  },
-  {
-    parent: 'Construction & Fabrication Micro Enterprises',
-    children: [
-      'Brick and tiles cleaning/polishing unit',
-      'Interior decoration (fabric, flowers, décor)',
-      'Painting/plumbing/carpentry group',
-      'POP artwork / wall decoration',
-      'Others',
-    ],
-  },
-  {
-   parent: 'EDP|Entrepreneurship Development Programme',
+    parent: {
+      en: "Textile & Apparel Sector",
+      hi: "वस्त्र एवं परिधान क्षेत्र",
+    },
    children: [
-   ],
-   },
+      { en: "Boutique unit (stitching–cutting–embellishment)", hi: "बुटीक यूनिट (सिलाई–कटिंग–सजावट)" },
+      { en: "School uniform stitching unit", hi: "स्कूल यूनिफॉर्म सिलाई यूनिट" },
+      { en: "Ladies’ garments", hi: "महिला परिधान" },
+      { en: "Bedsheet/quilt/pillow cover unit", hi: "बिस्तर/रजाई/तकिया कवर यूनिट" },
+      { en: "ODOP textile-based products (Varanasi saree, Bhadohi carpet finishing etc.)", hi: "ODOP टेक्सटाइल आधारित उत्पाद (वाराणसी साड़ी, भदोही कालीन फिनिशिंग आदि)" },
+      { en: "Home linen (curtains, table cloth, sofa covers)", hi: "होम लिनेन (पर्दे, टेबल क्लॉथ, सोफा कवर)" },
+      { en: "Jute/cotton carry bags", hi: "जूट/कॉटन कैरी बैग" },
+      { en: "Mask/apron/hospital gown manufacturing​", hi: "मास्क/एप्रन/हॉस्पिटल गाउन निर्माण" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  },
+
   {
-    parent: 'Others',
-    children: ['Others'],
+    parent: {
+      en: "Agriculture & Allied Sector",
+      hi: "कृषि एवं संबद्ध क्षेत्र",
+    },
+    children: [
+      { en: "Vegetable cultivation and group supply", hi: "सब्ज़ी उत्पादन एवं समूह आपूर्ति" },
+      { en: "Flower cultivation (marigold, rose)", hi: "फूल उत्पादन (गेंदा, गुलाब)" },
+      { en: "Mushroom production", hi: "मशरूम उत्पादन" },
+      { en: "Nursery (fruit/flower/vegetable saplings)", hi: "नर्सरी (फल/फूल/सब्ज़ी पौधे)" },
+      { en: "Beekeeping (honey production)", hi: "मधुमक्खी पालन (शहद उत्पादन)" },
+      { en: "Organic manure/vermi-compost", hi: "जैविक खाद/वर्मी कम्पोस्ट" },
+      { en: "Animal feed unit", hi: "पशु आहार यूनिट" },
+      { en: "Mini mill (flour/pulse grinding)", hi: "मिनी मिल (आटा/दाल पीसना)" },
+      { en: "Fruit–vegetable dehydration unit", hi: "फलों व सब्ज़ियों का डिहाइड्रेशन यूनिट" },
+      { en: "Fish farming", hi: "मत्स्य पालन" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  },
+
+  {
+    parent: {
+      en: "Dairy & Animal Husbandry Sector",
+      hi: "डेयरी एवं पशुपालन क्षेत्र",
+    },
+     children: [
+      { en: "Dairy unit (2–10 cows/buffaloes)", hi: "डेयरी यूनिट (2–10 गाय/भैंस)" },
+      { en: "Milk collection centre", hi: "दूध संग्रहण केंद्र" },
+      { en: "Paneer/khoya/curd/ghee manufacturing", hi: "पनीर/खोया/दही/घी निर्माण" },
+      { en: "Goat rearing", hi: "बकरी पालन" },
+      { en: "Poultry unit (egg/broiler)", hi: "पोल्ट्री यूनिट (अंडा/ब्रोइलर)" },
+      { en: "Pig rearing (in specific areas)", hi: "सुअर पालन (विशिष्ट क्षेत्रों में)" },
+      { en: "Fodder production", hi: "चारा उत्पादन" },
+      { en: "Milk packaging and branding unit​", hi: "दूध पैकेजिंग एवं ब्रांडिंग यूनिट" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  },
+
+  {
+    parent: {
+      en: "Beauty, Wellness & Personal Services",
+      hi: "सौंदर्य, स्वास्थ्य एवं व्यक्तिगत सेवाएँ",
+    },
+    children: [
+      { en: "Beauty parlour", hi: "ब्यूटी पार्लर" },
+      { en: "Mehndi (henna) training and services", hi: "मेहंदी प्रशिक्षण एवं सेवा" },
+      { en: "Spa / therapy unit", hi: "स्पा / थेरेपी यूनिट" },
+      { en: "Home-care services (home nursing, baby care training)", hi: "होम-केयर सेवाएं (नर्सिंग/बेबी केयर प्रशिक्षण)" },
+      { en: "Mobile salon / village-based services", hi: "मोबाइल सैलून / गांव आधारित सेवाएं" },
+      { en: "Fitness group / yoga classes​", hi: "फिटनेस ग्रुप / योग कक्षाएं" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  },
+
+  {
+    parent: {
+      en: "Retail & Micro Trading Sector",
+      hi: "खुदरा एवं सूक्ष्म व्यापार क्षेत्र",
+    },
+   children: [
+      { en: "Grocery/provision store", hi: "किराना / प्रोविजन स्टोर" },
+      { en: "Stationery / general store", hi: "स्टेशनरी / जनरल स्टोर" },
+      { en: "Group sale of vegetables/fruits", hi: "फल/सब्ज़ी समूह बिक्री" },
+      { en: "Fast food cart", hi: "फास्ट फूड ठेला" },
+      { en: "Mobile recharge shop / bill payment kiosk", hi: "मोबाइल रिचार्ज / बिल भुगतान केंद्र" },
+      { en: "Jan Aushadhi/Medical Store", hi: "जन औषधि / मेडिकल स्टोर" },
+      { en: "PET Shop and disposable alternatives distribution​", hi: "पेट शॉप और डिस्पोज़ेबल विकल्प वितरण" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  },
+
+  {
+    parent: {
+      en: "Cleaning & Hygiene Products Sector",
+      hi: "स्वच्छता एवं हाइजीन उत्पाद क्षेत्र",
+    },
+    children: [
+      { en: "Phenyl/detergent manufacturing", hi: "फिनाइल/डिटर्जेंट निर्माण" },
+      { en: "Liquid handwash", hi: "लिक्विड हैंडवॉश" },
+      { en: "Sanitizer", hi: "सैनिटाइज़र" },
+      { en: "Incense sticks and dhoop sticks", hi: "अगरबत्ती एवं धूपबत्ती निर्माण" },
+      { en: "Napkin / sanitary pad unit", hi: "सेनेटरी नैपकिन यूनिट" },
+      { en: "Biodegradable plate and bowl manufacturing​", hi: "बायोडिग्रेडेबल प्लेट/बाउल निर्माण" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  },
+
+    {
+    parent: {
+      en: "Packaging & Utility Products Sector",
+      hi: "पैकेजिंग एवं यूटिलिटी उत्पाद क्षेत्र",
+    },
+    children: [
+      { en: "Paper bag unit", hi: "पेपर बैग यूनिट" },
+      { en: "Jute bag unit", hi: "जूट बैग यूनिट" },
+      { en: "Box manufacturing", hi: "बॉक्स निर्माण" },
+      { en: "Recycled paper packaging unit", hi: "रीसाइकल पेपर पैकेजिंग यूनिट" },
+      { en: "Food-grade packaging​", hi: "फूड-ग्रेड पैकेजिंग" },
+      { en: "FMCG-(Handwash/Soap/Floor Cleaner, etc)", hi: "एफएमसीजी (हैंडवॉश/साबुन/फ्लोर क्लीनर आदि)" },
+      { en: "Transport-(Taxi/Auto/E-Rickshaw,etc)", hi: "परिवहन (टैक्सी/ऑटो/ई-रिक्शा आदि)" },
+      { en: "Machinery", hi: "मशीनरी" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  },
+
+  {
+    parent: {
+      en: "FMCG",
+      hi: "एफएमसीजी",
+    },
+    children: [
+      { en: "Handwash", hi: "हैंडवॉश" },
+      { en: "Soap", hi: "साबुन" },
+      { en: "Floor Cleaner", hi: "फ्लोर क्लीनर" },
+      { en: "Detergents", hi: "डिटर्जेंट" },
+      { en: "Air fresheners", hi: "एयर फ्रेशनर" },
+      { en: "Face wash & creams", hi: "फेसवॉश एवं क्रीम" },
+      { en: "Shampoo & conditioner", hi: "शैम्पू एवं कंडीशनर" },
+      { en: "Sponges", hi: "स्पंज" },
+      { en: "Toothpaste & toothbrushes", hi: "टूथपेस्ट एवं टूथब्रश" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  },
+
+  {
+    parent: { en: "Transport", hi: "परिवहन" },
+    children: [
+      { en: "Loader", hi: "लोडर" },
+      { en: "E-Rickshaw", hi: "ई-रिक्शा" },
+      { en: "Taxi", hi: "टैक्सी" },
+      { en: "Auto", hi: "ऑटो" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  },
+  {
+    parent: {
+      en: "Prerna Canteen",
+      hi: "प्रेरणा कैंटीन",
+    },
+    children: [],
+  },
+
+  {
+    parent: { en: "Digital & Service Sector", hi: "डिजिटल एवं सेवा क्षेत्र" },
+     children: [
+      { en: "Data entry / digital services", hi: "डाटा एंट्री / डिजिटल सेवाएं" },
+      { en: "CSC (Common Service Center) operations", hi: "CSC (कॉमन सर्विस सेंटर) संचालन" },
+      { en: "Online product sales (e-commerce)", hi: "ऑनलाइन उत्पाद बिक्री (ई-कॉमर्स)" },
+      { en: "SHG product branding", hi: "SHG उत्पाद ब्रांडिंग" },
+      { en: "Social media management for local shops​", hi: "स्थानीय दुकानों के लिए सोशल मीडिया प्रबंधन" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  },
+
+  {
+    parent: { en: "Solid Waste & Green Sector", hi: "ठोस अपशिष्ट एवं हरित क्षेत्र" },
+    children: [
+      { en: "Plastic waste sorting", hi: "प्लास्टिक कचरा छंटाई" },
+      { en: "Fuel/briquettes from waste", hi: "कचरे से ईंधन/ब्रीकेट निर्माण" },
+      { en: "Composting unit", hi: "कम्पोस्टिंग यूनिट" },
+      { en: "Recycled paper products", hi: "रीसाइकल पेपर उत्पाद" },
+      { en: "E-waste collection micro centre​", hi: "ई-वेस्ट कलेक्शन माइक्रो सेंटर" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  },
+
+  {
+    parent: {
+      en: "Construction & Fabrication Micro Enterprises",
+      hi: "निर्माण एवं फेब्रिकेशन सूक्ष्म उद्यम",
+    },
+    children: [
+      { en: "Brick and tiles cleaning/polishing unit", hi: "ईंट और टाइल सफाई/पॉलिशिंग यूनिट" },
+      { en: "Interior decoration (fabric, flowers, décor)", hi: "इंटीरियर डेकोरेशन (कपड़ा, फूल, साज-सज्जा)" },
+      { en: "Painting/plumbing/carpentry group", hi: "पेंटिंग/प्लंबिंग/कारपेंटरी समूह" },
+      { en: "POP artwork / wall decoration", hi: "पीओपी आर्टवर्क / वॉल डेकोरेशन" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  },
+
+  {
+    parent: {
+      en: "Entrepreneurship Development Programme (EDP)",
+      hi: "उद्यमिता विकास कार्यक्रम (EDP)",
+    },
+    children: [],
+  },
+
+  {
+    parent: { en: "Others", hi: "अन्य" },
+    children: [{ en: "Others", hi: "अन्य" }],
   },
 ];
+
+
 
 // ========= Reusable UI pieces =========
 
@@ -505,6 +564,7 @@ const CheckboxRow = ({ label, checked, onPress }) => (
 // ========= Main component =========
 
 export default function NoEnterpriseForm({ route, navigation }) {
+  const { language } = useContext(LanguageContext);
   const recordedBenef = route?.params?.recordedBenef || null; // may be null
   const beneficiary = route?.params?.beneficiary || null; // UPSRLM member row
   const tempShg = route?.params?.tempShg || null;
@@ -559,6 +619,127 @@ export default function NoEnterpriseForm({ route, navigation }) {
   const [cifAmount, setCifAmount] = useState('');
 const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
   const [plannedBusiness, setPlannedBusiness] = useState('');
+
+ const labels = {
+    heading: {
+      en: "No Enterprise",
+      hi: "कोई उद्यम नहीं",
+    },
+    currentActivity: {
+      en: "Current Activity",
+      hi: "वर्तमान गतिविधि",
+    },
+    question1: {
+      en: "Are you involved in any activity currently?",
+      hi: "क्या आप वर्तमान में किसी गतिविधि में शामिल हैं?",
+    },
+    helpText: {
+      en: "Please select the activity type and specify details.",
+      hi: "कृपया गतिविधि का प्रकार चुनें और विवरण लिखें।",
+    },
+
+    options: [
+      { en: "SHG related Activity", hi: "एसएचजी से संबंधित गतिविधि" },
+      { en: "Employed Full time", hi: "पूर्णकालिक रोजगार" },
+      { en: "Employed Part time", hi: "अंशकालिक रोजगार" },
+      { en: "Others", hi: "अन्य" },
+    ],
+  };
+
+  const draftData = {
+    memberName,
+    activityOption,
+    activitySpecify,
+
+    noInterestOption,
+    noInterestSpecify,
+
+    wageInterestYesNo,
+    wageEmpTypes,
+    wagePlacementSectors,
+    wageExpSalary,
+    wageLocationChoice,
+    wageDesiredLocationText,
+
+    trainingRequiredYesNo,
+    selectedTrainingParents,
+    trainingChildrenByParent,
+    trainingDuration,
+    trainingDepartmentOption,
+    trainingDepartmentOtherText,
+    trainingLocationDistrict,
+    trainingLocationBlock,
+    trainingLocationState,
+    trainingExpectedIncome,
+
+    futureWillingYesNo,
+
+    hasShgCifYesNo,
+    hasReceivedPartYesNo,
+    cifAmount,
+  };
+  
+
+ useEffect(() => {
+  const loadDraft = async () => {
+    try {
+      const saved = await AsyncStorage.getItem(draftKey);
+      if (!saved) return;
+
+      const d = JSON.parse(saved);
+
+      setActivityOption(d.activityOption || '');
+      setActivitySpecify(d.activitySpecify || '');
+
+      setNoInterestOption(d.noInterestOption || '');
+      setNoInterestSpecify(d.noInterestSpecify || '');
+
+      setWageInterestYesNo(d.wageInterestYesNo || '');
+      setWageEmpTypes(d.wageEmpTypes || []);
+      setWagePlacementSectors(d.wagePlacementSectors || []);
+      setWageExpSalary(d.wageExpSalary || '');
+      setWageLocationChoice(d.wageLocationChoice || '');
+      setWageDesiredLocationText(d.wageDesiredLocationText || '');
+
+      setTrainingRequiredYesNo(d.trainingRequiredYesNo || '');
+      setSelectedTrainingParents(d.selectedTrainingParents || []);
+      setTrainingChildrenByParent(d.trainingChildrenByParent || {});
+      setTrainingDuration(d.trainingDuration || '');
+      setTrainingDepartmentOption(d.trainingDepartmentOption || '');
+      setTrainingDepartmentOtherText(d.trainingDepartmentOtherText || '');
+      setTrainingLocationDistrict(d.trainingLocationDistrict || '');
+      setTrainingLocationBlock(d.trainingLocationBlock || '');
+      setTrainingLocationState(d.trainingLocationState || '');
+      setTrainingExpectedIncome(d.trainingExpectedIncome || '');
+
+      setFutureWillingYesNo(d.futureWillingYesNo || '');
+
+      setHasShgCifYesNo(d.hasShgCifYesNo || '');
+      setHasReceivedPartYesNo(d.hasReceivedPartYesNo || '');
+      setCifAmount(d.cifAmount || '');
+    } catch (e) {
+      console.log('Draft load failed', e);
+    }
+  };
+
+  loadDraft();
+}, [draftKey]);
+
+// ===== Auto-save draft when any field changes =====
+useEffect(() => {
+  AsyncStorage.setItem(draftKey, JSON.stringify(draftData));
+}, [draftData, draftKey]);
+
+// ===== Save draft when app goes to background =====
+useEffect(() => {
+  const subscription = AppState.addEventListener('change', state => {
+    if (state !== 'active') {
+      AsyncStorage.setItem(draftKey, JSON.stringify(draftData));
+    }
+  });
+
+  return () => subscription.remove();
+}, [draftData, draftKey]);
 
   // ---------------- Effects: load user and auth token ----------------
 
@@ -759,7 +940,10 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
 
     return recordedBenefId;
   };
-
+const memberCode = beneficiary.member_code || beneficiary.nic_member_code || 'TEMP';
+const memberName = beneficiary.member_name || 'TEMP_NAME';
+draftData.memberName = memberName;
+const draftKey = `NO_ENTERPRISE_FORM_DRAFT_${memberCode}`;
   // ---------------- Wage helpers ----------------
 
   const toggleMultiSelect = (value, listSetter, currentList) => {
@@ -908,19 +1092,25 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
   // ---------------- Submit handler ----------------
   const handleSubmit = async () => {
   // ===== Enhanced Validations =====
-
+  const t = (en, hi) => (language === "hi" ? hi : en);
   // Current Activity
   if (!activityOption) {
     Alert.alert(
-      'Validation',
-      'Please answer "Are you involved in any activity currently?"'
+       t("Validation","सत्यापन"),
+          t(
+            'Please answer "Are you involved in any activity currently?"',
+            'कृपया बताएं — क्या आप वर्तमान में किसी गतिविधि में शामिल हैं?'
+          )
     );
     return;
   }
   if (activityOption && (!activitySpecify || activitySpecify.trim() === '')) {
     Alert.alert(
-      'Validation',
-      'Please specify the details of your current activity.'
+      t("Validation", "सत्यापन"),
+      t(
+        "Please specify the details of your current activity.",
+        "कृपया अपनी वर्तमान गतिविधि का विवरण दर्ज करें।"
+      )
     );
     return;
   }
@@ -928,15 +1118,21 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
   // Reason for Not Opening Enterprise
   if (!noInterestOption) {
     Alert.alert(
-      'Validation',
-      'Please answer "Why are you not interested in opening an enterprise?"'
+      t("Validation", "सत्यापन"),
+      t(
+        'Please answer "Why are you not interested in opening an enterprise?"',
+        'कृपया बताएं — आप उद्यम शुरू करने में रुचि क्यों नहीं रखते?'
+      )
     );
     return;
   }
   if (noInterestOption === 'Others' && (!noInterestSpecify || noInterestSpecify.trim() === '')) {
     Alert.alert(
-      'Validation',
-      'Please specify your reason for not opening an enterprise.'
+        t("Validation", "सत्यापन"),
+      t(
+        "Please specify your reason for not opening an enterprise.",
+        "कृपया उद्यम शुरू न करने का कारण दर्ज करें।"
+      )
     );
     return;
   }
@@ -957,30 +1153,42 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
   if (wantsWageForm) {
     if (!wageEmpTypes.length) {
       Alert.alert(
-        'Validation',
-        'Please select at least one option for "What type of Wage Employment are you interested in?"'
+        t("Validation", "सत्यापन"),
+        t(
+          "Please select at least one Wage Employment type.",
+          "कृपया कम से कम एक वेतन रोजगार विकल्प चुनें।"
+        )
       );
       return;
     }
     if (!wagePlacementSectors.length) {
       Alert.alert(
-        'Validation',
-        'Please select at least one option for "What type of Placement Sector have you thought of?"'
+        t("Validation", "सत्यापन"),
+        t(
+          "Please select at least one Placement Sector.",
+          "कृपया कम से कम एक प्लेसमेंट सेक्टर चुनें।"
+        )
       );
       return;
     }
     if (!wageExpSalary) {
       Alert.alert(
-        'Validation',
-        'Please select "What is your expected Salary?"'
+         t("Validation", "सत्यापन"),
+        t(
+          "Please select your expected Salary.",
+          "कृपया अपनी अपेक्षित वेतन चुनें।"
+        )
       );
       return;
     }
     const { location_scope, location } = wageLocationToFields();
     if (!location_scope || !location) {
       Alert.alert(
-        'Validation',
-        'Please answer "What location are you comfortable with?"'
+        t("Validation", "सत्यापन"),
+        t(
+          "Please select preferred work location.",
+          "कृपया अपना पसंदीदा कार्य स्थान चुनें।"
+        )
       );
       return;
     }
@@ -990,8 +1198,11 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
       (!wageDesiredLocationText || wageDesiredLocationText.trim() === '')
     ) {
       Alert.alert(
-        'Validation',
-        'Please specify your desired location for wage employment.'
+        t("Validation", "सत्यापन"),
+        t(
+          "Please specify preferred work location.",
+          "कृपया अपना पसंदीदा कार्य स्थान दर्ज करें।"
+        )
       );
       return;
     }
@@ -1002,8 +1213,11 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
 
   if (!trainingRequiredYesNo) {
     Alert.alert(
-      'Validation',
-      'Please answer "Do you require any training?"'
+       t("Validation", "सत्यापन"),
+      t(
+        "Please answer whether you require training.",
+        "कृपया बताएं — क्या आपको प्रशिक्षण चाहिए?"
+      )
     );
     return;
   }
@@ -1011,23 +1225,32 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
   if (wantsTrainingForm) {
     if (!trainingDepartmentOption) {
       Alert.alert(
-        'Validation',
-        'Please select your preferred department for training.'
+          t("Validation", "सत्यापन"),
+        t(
+          "Please select preferred training department.",
+          "कृपया अपना पसंदीदा प्रशिक्षण विभाग चुनें।"
+        )
       );
       return;
     }
     if (trainingDepartmentOption === 'Others' && (!trainingDepartmentOtherText || trainingDepartmentOtherText.trim() === '')) {
       Alert.alert(
-        'Validation',
-        'Please specify your preferred department.'
+         t("Validation", "सत्यापन"),
+        t(
+          "Please specify preferred department.",
+          "कृपया प्रशिक्षण विभाग दर्ज करें।"
+        )
       );
       return;
     }
     const { sector, training_module_name } = buildTrainingSectorFields();
     if (!sector || !training_module_name) {
       Alert.alert(
-        'Validation',
-        'Please select at least one sector and training module.'
+         t("Validation", "सत्यापन"),
+        t(
+          "Please select at least one training sector and module.",
+          "कृपया कम से कम एक प्रशिक्षण सेक्टर और मॉड्यूल चुनें।"
+        )
       );
       return;
     }
@@ -1036,30 +1259,41 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
       const kidsState = trainingChildrenByParent[parent] || {};
       if (kidsState['Others'] && (!kidsState.__otherText || kidsState.__otherText.trim() === '')) {
         Alert.alert(
-          'Validation',
-          `Please specify the "Others" text for ${parent} sector.`
+          t("Validation", "सत्यापन"),
+      t(
+        `Please specify the "Others" text for ${parentLabel} sector.`,
+        `${parentLabel} सेक्टर के लिए "अन्य" का विवरण लिखें।`
+      )
         );
         return;
       }
     }
     if (!trainingDuration) {
       Alert.alert(
-        'Validation',
-        'Please select how many days of training you are comfortable with.'
+        t("Validation", "सत्यापन"),
+        t(
+          "Please select preferred training duration.",
+          "कृपया प्रशिक्षण अवधि चुनें।"
+        )
       );
       return;
     }
     if (!trainingLocationDistrict || !trainingLocationBlock || !trainingLocationState) {
       Alert.alert(
-        'Validation',
-        'Please fill all the preferred training location details (District, Block, Village).'
+          t("Validation", "सत्यापन"),
+        t(
+          "Please fill training location details.",
+          "कृपया प्रशिक्षण स्थान की जानकारी भरें।")
       );
       return;
     }
     if (!trainingExpectedIncome) {
       Alert.alert(
-        'Validation',
-        'Please select expected salary after training.'
+       t("Validation", "सत्यापन"),
+        t(
+          "Please select expected salary after training.",
+          "कृपया प्रशिक्षण के बाद अपेक्षित वेतन चुनें।"
+        )
       );
       return;
     }
@@ -1068,15 +1302,21 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
   // Future Plans
   if (!futureWillingYesNo) {
     Alert.alert(
-      'Validation',
-      'Please answer "Are you willing to start a business in future?"'
+       t("Validation", "सत्यापन"),
+      t(
+        "Please answer whether you want to start a business.",
+        "कृपया बताएं — क्या आप भविष्य में व्यवसाय शुरू करना चाहते हैं?"
+      )
     );
     return;
   }
   if (futureWillingYesNo === 'Yes' && (!plannedBusiness || plannedBusiness.trim() === '')) {
     Alert.alert(
-      'Validation',
-      'Please describe your planned business.'
+       t("Validation", "सत्यापन"),
+      t(
+        "Please describe your planned business.",
+        "कृपया अपने प्रस्तावित व्यवसाय का विवरण दर्ज करें।"
+      )
     );
     return;
   }
@@ -1084,15 +1324,20 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
   // CIF Details
   if (!hasShgCifYesNo) {
     Alert.alert(
-      'Validation',
-      'Please answer "Has your SHG received CIF Funds?"'
+      t("Validation", "सत्यापन"),
+      t(
+        "Please answer whether CIF fund received.",
+        "कृपया बताएं — क्या आपके SHG को CIF फंड मिला है?"
+      )
     );
     return;
   }
   if (hasShgCifYesNo === 'Yes' && (!cifAmount || cifAmount.trim() === '' || isNaN(cifAmount))) {
     Alert.alert(
-      'Validation',
-      'Please enter a valid numeric CIF amount.'
+      t("Validation", "सत्यापन"),
+      t(
+        "Please enter valid CIF amount.",
+        "कृपया मान्य CIF राशि दर्ज करें।")
     );
     return;
   }
@@ -1259,6 +1504,7 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
         console.warn('Failed to create EnterpriseTrainingReq for NoEnterpriseForm', e);
       }
     }
+     await AsyncStorage.removeItem(draftKey);
 
     Alert.alert('Success', 'Details saved successfully.', [
       {
@@ -1607,34 +1853,43 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
     beneficiary?.name ||
     recordedBenef?.applicant_name ||
     '';
-
+const reasonOptions = [
+  { id: "personal", en: "Personal Reasons", hi: "व्यक्तिगत कारण" },
+  { id: "family", en: "Family Business", hi: "पारिवारिक व्यवसाय" },
+  { id: "wage", en: "Interested in Wage Employment?", hi: "वेतन रोजगार में रुचि है?" },
+  { id: "other", en: "Others", hi: "अन्य" },
+];
   // ========= Render =========
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <Text style={styles.heading}>No Enterprise — {benefName}</Text>
+          <View style={{ marginTop: 20 }}>
+
+  <LanguageToggle />
+</View>
+      <Text style={styles.heading}>{labels.heading[language]} — {benefName}</Text>
 
       {/* Q1: Are you involved in any activity currently? */}
-      <Text style={styles.sectionHeading}>Current Activity</Text>
+      <Text style={styles.sectionHeading}>{labels.currentActivity[language]}</Text>
       <Text style={styles.label}>
-        Are you involved in any activity currently?
+          {labels.question1[language]}
       </Text>
       <Text style={styles.helpText}>
-        Please select the type of activity you are involved in and specify brief details.
+       {labels.helpText[language]}
       </Text>
 
       {[
-        'SHG related Activity',
-        'Employed Full time',
-        'Employed Part time',
-        'Others',
+         { en: 'SHG related Activity', hi: 'एसएचजी से संबंधित गतिविधि' },
+         { en: 'Employed Full time', hi: 'पूर्णकालिक रोजगार' },
+       { en: 'Employed Part time', hi:  'अंशकालिक रोजगार' },
+  { en:  'Others', hi:  'अन्य' }
       ].map((opt) => (
         <CheckboxRow
         required
-          key={opt}
-          label={opt}
-          checked={activityOption === opt}
-          onPress={() => setActivityOption(opt)}
+          key={opt.en}
+          label={opt[language]}
+          checked={activityOption === opt.en}
+          onPress={() => setActivityOption(opt.en)}
         />
       ))}
 
@@ -1642,7 +1897,11 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
         <TextInput
         required
           style={[styles.input, { minHeight: 60, marginTop: 6 }]}
-          placeholder="Please specify the details of your activity"
+           placeholder={
+            language === "en"
+              ? "Please specify details"
+              : "कृपया विवरण लिखें"
+          }
           multiline
           value={activitySpecify}
           onChangeText={setActivitySpecify}
@@ -1651,29 +1910,32 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
    
 
       {/* Q2: Why are you not interested in opening an enterprise? */}
-      <Text style={styles.sectionHeading}>Reason for Not Opening Enterprise</Text>
+      <Text style={styles.sectionHeading}> {language === "hi"
+    ? "उद्यम शुरू न करने का कारण"
+    : "Reason for Not Opening Enterprise"}</Text>
       <Text style={styles.label}>
-        Why are you not interested in opening an enterprise?
+         {language === "hi"
+    ? "आप उद्यम शुरू करने में रुचि क्यों नहीं रखते?"
+    : "Why are you not interested in opening an enterprise?"}
       </Text>
 
-      {[
-        'Personal Reasons',
-        'Family Business',
-        'Interested in Wage Employment?',
-        'Others',
-      ].map((opt) => (
+      {
+      // [
+      //   'Personal Reasons',
+      //   'Family Business',
+      //   'Interested in Wage Employment?',
+      //   'Others',
+      // ]
+      reasonOptions.map((opt) => (
         <CheckboxRow
         required
-          key={opt}
-          label={opt}
-          checked={noInterestOption === opt}
-          onPress={() => {
-            setNoInterestOption(opt);
-            // reset wage options when changing
-            if (opt !== 'Interested in Wage Employment?') {
-              setWageInterestYesNo('');
-            }
-          }}
+           key={opt.id}
+    label={language === "hi" ? opt.hi : opt.en}
+    checked={noInterestOption === opt.id}
+    onPress={() => {
+      setNoInterestOption(opt.id);
+      if (opt.id !== "wage") setWageInterestYesNo("");
+    }}
         />
       ))}
 
@@ -1681,14 +1943,18 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
         <TextInput
           required
           style={[styles.input, { minHeight: 60, marginTop: 6 }]}
-          placeholder="Please specify your reason"
+          placeholder={
+      language === "hi"
+        ? "कृपया कारण लिखें"
+        : "Please specify your reason"
+    }
           multiline
           value={noInterestSpecify}
           onChangeText={setNoInterestSpecify}
         />
       )}
 
-      {noInterestOption === 'Interested in Wage Employment?' && (
+      {noInterestOption === "wage" && (
         <>
           {/* <Text style={[styles.label, { marginTop: 10 }]}>
             Are you interested in Wage Employment?
@@ -1702,57 +1968,74 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
             <>
               {/* Wage sub-form */}
               <Text style={styles.sectionHeading}>
-                Wage Employment Preference
+                 {language === "hi"
+        ? "वेतन रोजगार वरीयता"
+        : "Wage Employment Preference"}
               </Text>
 
               {/* 1) type_of_emp */}
               <Text style={styles.label}>
-                What type of Wage Employment are you interested in?
+                {language === "hi"
+        ? "आप किस प्रकार के वेतन रोजगार में रुचि रखते हैं?"
+        : "What type of Wage Employment are you interested in?"}
               </Text>
               <Text style={styles.helpText}>
-                You can select one or more options.
+                 {language === "hi"
+        ? "आप एक या अधिक विकल्प चुन सकते हैं।"
+        : "You can select one or more options."}
               </Text>
-              {['Full Time', 'Part Time'].map((opt) => (
+              {[
+      { en: "Full Time", hi: "पूर्णकालिक" },
+      { en: "Part Time", hi: "अंशकालिक" }
+    ].map((opt) => (
                 <CheckboxRow
                 required
-                  key={opt}
-                  label={opt}
-                  checked={wageEmpTypes.includes(opt)}
-                  onPress={() =>
-                    toggleMultiSelect(opt, setWageEmpTypes, wageEmpTypes)
-                  }
+                  key={opt.en}
+        label={language === "hi" ? opt.hi : opt.en}
+        checked={wageEmpTypes.includes(opt.en)}
+        onPress={() =>
+          toggleMultiSelect(opt.en, setWageEmpTypes, wageEmpTypes)
+        }
                 />
               ))}
 
               {/* 2) placement_sector */}
               <Text style={[styles.label, { marginTop: 10 }]}>
-                What type of Placement Sector have you thought of?
+                 {language === "hi"
+        ? "आप किस प्रकार के प्लेसमेंट सेक्टर के बारे में सोच रहे हैं?"
+        : "What type of Placement Sector have you thought of?"}
               </Text>
               <Text style={styles.helpText}>
-                You can select one or more options.
+               {language === "hi"
+        ? "आप एक या अधिक विकल्प चुन सकते हैं।"
+        : "You can select one or more options."}
               </Text>
               {[
-                'Manufacturing Based Jobs',
-                'Service Based Jobs',
-                'Agriculture Based Jobs',
+                 { en: "Manufacturing Based Jobs", hi: "उत्पादन आधारित नौकरियां" },
+      { en: "Service Based Jobs", hi: "सेवा आधारित नौकरियां" },
+      { en: "Agriculture Based Jobs", hi: "कृषि आधारित नौकरियां" }
               ].map((opt) => (
                 <CheckboxRow
                 required
-                  key={opt}
-                  label={opt}
-                  checked={wagePlacementSectors.includes(opt)}
-                  onPress={() =>
-                    toggleMultiSelect(opt, setWagePlacementSectors, wagePlacementSectors)
-                  }
+                  key={opt.en}
+        label={language === "hi" ? opt.hi : opt.en}
+        checked={wagePlacementSectors.includes(opt.en)}
+        onPress={() =>
+          toggleMultiSelect(opt.en, setWagePlacementSectors, wagePlacementSectors)
+        }
                 />
               ))}
 
               {/* 3) exp_salary */}
               <Text style={[styles.label, { marginTop: 10 }]}>
-                What is your expected Salary?
+               {language === "hi"
+        ? "आपकी अपेक्षित वेतन क्या है?"
+        : "What is your expected Salary?"}
               </Text>
               <Text style={styles.helpText}>
-                Please select your expected monthly salary range.
+                {language === "hi"
+        ? "कृपया अपना मासिक वेतन चुनें।"
+        : "Please select your expected monthly salary range."}
               </Text>
               {[
                 'Under 10,000',
@@ -1771,10 +2054,14 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
 
               {/* 4) location_scope & location */}
               <Text style={[styles.label, { marginTop: 10 }]}>
-                What location are you comfortable with?
+                 {language === "hi"
+        ? "आप कहां काम करना पसंद करेंगे?"
+        : "What location are you comfortable with?"}
               </Text>
               <Text style={styles.helpText}>
-                Please select where you would be comfortable working.
+                {language === "hi"
+        ? "कृपया स्थान चुनें"
+        : "Please select where you would be comfortable working."}
               </Text>
 
               {[
@@ -1848,38 +2135,56 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
           </Text>
 
           {TRAINING_SECTORS.map(({ parent, children }) => {
-            const parentSelected = selectedTrainingParents.includes(parent);
-            const kidsState = trainingChildrenByParent[parent] || {};
+              const parentLabel =
+    language === "hi" ? parent.hi : parent.en;
+
+  const parentKey = parent.en; // use English key internally
+            const parentSelected = selectedTrainingParents.includes(parentKey);
+            const kidsState = trainingChildrenByParent[parentKey] || {};
             const hasOthersChild = children.includes('Others');
             return (
               <View key={parent} style={{ marginTop: 10 }}>
                 <CheckboxRow
                 required
-                  label={parent}
-                  checked={parentSelected}
-                  onPress={() => toggleTrainingParent(parent)}
+                  label={parentLabel}
+        checked={parentSelected}
+        onPress={() => toggleTrainingParent(parentKey)}
                 />
                 {parentSelected && (
                   <View style={{ marginLeft: 16, marginTop: 4 }}>
                     {children.map((child) => {
-                      if (child === 'Others') {
+                      const childLabel =
+              language === "hi" ? child.hi : child.en;
+
+            const childKey = child.en;
+                      if (childKey === 'Others') {
                         return (
-                          <View key={`${parent}-${child}`} style={{ marginTop: 6 }}>
+                          <View key={`${parentKey}-${childKey}`} style={{ marginTop: 6 }}>
                             <CheckboxRow
                             required
-                              label="Others (Please specify)"
-                              checked={!!kidsState['Others']}
-                              onPress={() => toggleTrainingChild(parent, 'Others')}
+                              label={
+                      language === "hi"
+                        ? "अन्य (कृपया विवरण लिखें)"
+                        : "Others (Please specify)"
+                    }
+                    checked={!!kidsState["Others"]}
+                    onPress={() =>
+                      toggleTrainingChild(parentKey, "Others")
+                    }
                             />
                             {kidsState['Others'] && (
                               <TextInput
                               required
                                 style={[styles.input, { marginTop: 4 }]}
-                                placeholder="Please specify"
-                                value={kidsState.__otherText || ''}
-                                onChangeText={(txt) =>
-                                  setTrainingOtherChildText(parent, txt)
-                                }
+                                placeholder={
+                        language === "hi"
+                          ? "कृपया विवरण लिखें"
+                          : "Please specify"
+                      }
+                      value={kidsState.__otherText || ""}
+                      onChangeText={txt =>
+                        setTrainingOtherChildText(parentKey, txt)
+                      }
                               />
                             )}
                           </View>
@@ -1888,22 +2193,28 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
                       return (
                         <CheckboxRow
                         required
-                          key={`${parent}-${child}`}
-                          label={child}
-                          checked={!!kidsState[child]}
-                          onPress={() => toggleTrainingChild(parent, child)}
+                     key={`${parentKey}-${childKey}`}
+                label={childLabel}
+                checked={!!kidsState[childKey]}
+                onPress={() =>
+                  toggleTrainingChild(parentKey, childKey)
+                }
                         />
                       );
                     })}
-                    {parent === 'Others' && (
+                    {parent.en === 'Others' && (
                       <TextInput
                       required
                         style={[styles.input, { marginTop: 4 }]}
-                        placeholder="Please specify sub-sector"
-                        value={kidsState.__otherText || ''}
-                        onChangeText={(txt) =>
-                          setTrainingOtherChildText(parent, txt)
-                        }
+                       placeholder={
+                language === "hi"
+                  ? "कृपया उप-क्षेत्र लिखें"
+                  : "Please specify sub-sector"
+              }
+              value={kidsState.__otherText || ""}
+              onChangeText={txt =>
+                setTrainingOtherChildText(parentKey, txt)
+              }
                       />
                     )}
                   </View>
@@ -1914,41 +2225,53 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
 
           {/* Duration */}
           <Text style={[styles.label, { marginTop: 12 }]}>
-            How many days of training are you comfortable in one slot?
+              {language === "hi"
+    ? "एक स्लॉट में आप कितने दिनों का प्रशिक्षण लेने में सहज हैं?"
+    : "How many days of training are you comfortable in one slot?"}
           </Text>
           {[
-            'Under 7 days',
-            '7 days',
-            '15 days',
-            '30 days',
-            'Over 30 days',
+            { en: "Under 7 days", hi: "7 दिनों से कम" },
+  { en: "7 days", hi: "7 दिन" },
+  { en: "15 days", hi: "15 दिन" },
+  { en: "30 days", hi: "30 दिन" },
+  { en: "Over 30 days", hi: "30 दिनों से अधिक" },
           ].map((opt) => (
             <CheckboxRow
             required
-              key={opt}
-              label={opt}
-              checked={trainingDuration === opt}
-              onPress={() => setTrainingDuration(opt)}
-            />
+                 key={opt.en}
+    label={language === "hi" ? opt.hi : opt.en}
+    checked={trainingDuration === opt.en}
+    onPress={() => setTrainingDuration(opt.en)}
+  />
           ))}
           {/* Department */}
           <Text style={[styles.label, { marginTop: 10 }]}>
-            Which is your preferred department for training?
+            {language === "hi"
+    ? "प्रशिक्षण के लिए आपका पसंदीदा विभाग कौन-सा है?"
+    : "Which is your preferred department for training?"}
           </Text>
-          {['NRLM', 'RSETI', 'NABARD', 'UPSDM', 'Others'].map((opt) => (
+          {[ { en: "NRLM", hi: "एनआरएलएम" },
+  { en: "RSETI", hi: "आरसेटीआई" },
+  { en: "NABARD", hi: "नाबार्ड" },
+  { en: "UPSDM", hi: "यूपीएसडीएम" },
+  { en: "Others", hi: "अन्य" },].map((opt) => (
             <CheckboxRow
             required
-              key={opt}
-              label={opt}
-              checked={trainingDepartmentOption === opt}
-              onPress={() => setTrainingDepartmentOption(opt)}
-            />
+               key={opt.en}
+    label={language === "hi" ? opt.hi : opt.en}
+    checked={trainingDepartmentOption === opt.en}
+    onPress={() => setTrainingDepartmentOption(opt.en)}
+  />
           ))}
           {trainingDepartmentOption === 'Others' && (
             <TextInput
             required
               style={[styles.input, { marginTop: 6 }]}
-              placeholder="Please specify the department"
+              pplaceholder={
+      language === "hi"
+        ? "कृपया विभाग का विवरण लिखें"
+        : "Please specify the department"
+    }
               value={trainingDepartmentOtherText}
               onChangeText={setTrainingDepartmentOtherText}
             />
@@ -2050,61 +2373,82 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
 
           {/* Training location */}
           <Text style={[styles.label, { marginTop: 12 }]}>
-            What is your preferred training location?
+             {language === "hi"
+    ? "आपका पसंदीदा प्रशिक्षण स्थान क्या है?"
+    : "What is your preferred training location?"}
           </Text>
           <Text style={styles.helpText}>
-            Please fill your preferred State, District and Block.
+            {language === "hi"
+    ? "कृपया अपना पसंदीदा राज्य, जिला और ब्लॉक भरें।"
+    : "Please fill your preferred State, District and Block."}
           </Text>
-          <Text style={[styles.smallLabel, { marginTop: 8 }]}>District</Text>
+          <Text style={[styles.smallLabel, { marginTop: 8 }]}>{language === "hi" ? "जिला" : "District"}
+</Text>
           <TextInput
           required
             style={styles.input}
             value={trainingLocationDistrict}
             onChangeText={setTrainingLocationDistrict}
-            placeholder="Please enter District"
+             placeholder={
+    language === "hi"
+      ? "कृपया जिला दर्ज करें"
+      : "Please enter District"
+  }
           />
-          <Text style={[styles.smallLabel, { marginTop: 8 }]}>Block</Text>
+          <Text style={[styles.smallLabel, { marginTop: 8 }]}>{language === "hi" ? "ब्लॉक" : "Block"}</Text>
           <TextInput
           required
             style={styles.input}
             value={trainingLocationBlock}
             onChangeText={setTrainingLocationBlock}
-            placeholder="Please enter Block"
+            placeholder={
+    language === "hi"
+      ? "कृपया ब्लॉक दर्ज करें"
+      : "Please enter Block"
+  }
           />
-            <Text style={[styles.smallLabel, { marginTop: 4 }]}>Village</Text>
+            <Text style={[styles.smallLabel, { marginTop: 4 }]}>{language === "hi" ? "गाँव" : "Village"}</Text>
           <TextInput
           required
             style={styles.input}
             value={trainingLocationState}
             onChangeText={setTrainingLocationState}
-            placeholder="Please enter Village"
+             placeholder={
+    language === "hi"
+      ? "कृपया गाँव दर्ज करें"
+      : "Please enter Village"
+  }
           />
 
           {/* Expected income after training */}
           <Text style={[styles.label, { marginTop: 12 }]}>
-            What is your expected Salary after training?
+            {language === "hi"
+    ? "प्रशिक्षण के बाद आपकी अपेक्षित आय (वेतन) क्या है?"
+    : "What is your expected Salary after training?"}
           </Text>
           {[
-            'Under 10,000',
-            '10,000 - 20,000',
-            '20,000 - 30,000',
-            'Above 30,000',
+             { en: "Under 10,000", hi: "10,000 से कम" },
+  { en: "10,000 - 20,000", hi: "10,000 - 20,000" },
+  { en: "20,000 - 30,000", hi: "20,000 - 30,000" },
+  { en: "Above 30,000", hi: "30,000 से अधिक" },
           ].map((opt) => (
             <CheckboxRow
             required
-              key={opt}
-              label={opt}
-              checked={trainingExpectedIncome === opt}
-              onPress={() => setTrainingExpectedIncome(opt)}
+              key={opt.en}
+    label={language === "hi" ? opt.hi : opt.en}
+    checked={trainingExpectedIncome === opt.en}
+    onPress={() => setTrainingExpectedIncome(opt.en)}
             />
           ))}
         </>
       )}
 
       {/* Q4: future_willing */}
-      <Text style={styles.sectionHeading}>Future Plans</Text>
+      <Text style={styles.sectionHeading}>{language === "hi" ? "भविष्य की योजना" : "Future Plans"}</Text>
       <Text style={styles.label}>
-        Are you willing to start a business in future?
+        {language === "hi"
+    ? "क्या आप भविष्य में व्यवसाय शुरू करना चाहते हैं?"
+    : "Are you willing to start a business in future?"}
       </Text>
       <YesNoToggle
       required
@@ -2167,34 +2511,54 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
         </>
       )} */}
 
-      <Text style={styles.sectionHeading}>CIF Details</Text>
+      <Text style={styles.sectionHeading}>{language === "hi" ? "CIF विवरण" : "CIF Details"}</Text>
 
-<Text style={styles.label}>Have Your SHG received CIF Fund?</Text>
+<Text style={styles.label}>{language === "hi"
+    ? "क्या आपके SHG को CIF फंड प्राप्त हुआ है?"
+    : "Have your SHG received CIF Fund?"}</Text>
 <YesNoToggle
+required
   value={hasShgCifYesNo}
   onChange={setHasShgCifYesNo}
+   labels={{
+    yes: language === "hi" ? "हाँ" : "Yes",
+    no: language === "hi" ? "नहीं" : "No",
+  }}
 />
 
 {hasShgCifYesNo === 'Yes' && (
   <>
     <Text style={[styles.label, { marginTop: 8 }]}>
-      Have you received part of that CIF Fund?
+       {language === "hi"
+        ? "क्या आपको उस CIF फंड का कुछ हिस्सा मिला है?"
+        : "Have you received part of that CIF Fund?"}
     </Text>
     <YesNoToggle
+    required
       value={hasReceivedPartYesNo}
       onChange={setHasReceivedPartYesNo}
+        labels={{
+        yes: language === "hi" ? "हाँ" : "Yes",
+        no: language === "hi" ? "नहीं" : "No",
+      }}
     />
 
     {hasReceivedPartYesNo === 'Yes' && (
       <>
         <Text style={[styles.label, { marginTop: 8 }]}>
-          Specify the amount received
+         {language === "hi"
+            ? "प्राप्त राशि दर्ज करें"
+            : "Specify the amount received"}
         </Text>
         <TextInput
           required
           style={styles.input}
           keyboardType="numeric"
-          placeholder="Enter CIF amount"
+           placeholder={
+            language === "hi"
+              ? "राशि दर्ज करें"
+              : "Enter CIF amount"
+          }
           value={cifAmount}
           onChangeText={setCifAmount}
         />
@@ -2213,7 +2577,7 @@ const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
         {loading ? (
           <ActivityIndicator color="#000" />
         ) : (
-          <Text style={styles.submitButtonText}>Submit</Text>
+          <Text style={styles.submitButtonText}>{language === "hi" ? "जमा करें" : "Submit"}</Text>
         )}
       </TouchableOpacity>
     </ScrollView>
