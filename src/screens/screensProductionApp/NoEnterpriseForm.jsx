@@ -22,7 +22,9 @@ import { getUser } from '../../utils/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LanguageContext } from '../../components/LanguageContext';
 import LanguageToggle from '../../components/LanguageToggle';
+import { Picker } from '@react-native-picker/picker';
 
+// state
 
 // ========= Helpers (copied/adapted from NewEnterpriseForm) =========
 
@@ -291,6 +293,7 @@ const TRAINING_SECTORS = [
       { en: "Honey processing", hi: "शहद प्रसंस्करण" },
       { en: "Jam–jelly–squash", hi: "जैम, जेली एवं स्क्वैश निर्माण" },
       { en: "Ready-to-eat products", hi: "तत्काल उपभोग हेतु तैयार खाद्य उत्पाद" },
+      { en: "Jaggery Production", hi: "गुड़ उत्पादन" },
       { en: "Whole grains/pulses/flour sorting-grading-packaging unit", hi: "अनाज/दाल/आटा छंटाई, ग्रेडिंग एवं पैकेजिंग इकाई" },
       { en: "Others", hi: "अन्य" },
     ],
@@ -433,7 +436,7 @@ const TRAINING_SECTORS = [
       { en: "Box manufacturing", hi: "बॉक्स निर्माण" },
       { en: "Recycled paper packaging unit", hi: "रीसाइकल पेपर पैकेजिंग यूनिट" },
       { en: "Food-grade packaging​", hi: "फूड-ग्रेड पैकेजिंग" },
-      { en: "FMCG-(Handwash/Soap/Floor Cleaner, etc)", hi: "एफएमसीजी (हैंडवॉश/साबुन/फ्लोर क्लीनर आदि)" },
+      // { en: "FMCG-(Handwash/Soap/Floor Cleaner, etc)", hi: "एफएमसीजी (हैंडवॉश/साबुन/फ्लोर क्लीनर आदि)" },
       { en: "Transport-(Taxi/Auto/E-Rickshaw,etc)", hi: "परिवहन (टैक्सी/ऑटो/ई-रिक्शा आदि)" },
       { en: "Machinery", hi: "मशीनरी" },
       { en: "Others", hi: "अन्य" },
@@ -455,6 +458,7 @@ const TRAINING_SECTORS = [
       { en: "Shampoo & conditioner", hi: "शैम्पू एवं कंडीशनर" },
       { en: "Sponges", hi: "स्पंज" },
       { en: "Toothpaste & toothbrushes", hi: "टूथपेस्ट एवं टूथब्रश" },
+      { en: "Broom", hi: "झाड़ू" },
       { en: "Others", hi: "अन्य" },
     ],
   },
@@ -615,11 +619,16 @@ export default function NoEnterpriseForm({ route, navigation }) {
 
   // Q4/Q5 on main form
   const [futureWillingYesNo, setFutureWillingYesNo] = useState('');
-  const [hasShgCifYesNo, setHasShgCifYesNo] = useState('');
-  const [cifAmount, setCifAmount] = useState('');
-const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState('');
+  const [hasShgCifYesNo, setHasShgCifYesNo] = useState(''); // cif fund
+  const [cifAmount, setCifAmount] = useState(''); //cif fund
+const [hasReceivedPartYesNo, setHasReceivedPartYesNo] = useState(''); // cif fund
   const [plannedBusiness, setPlannedBusiness] = useState('');
+  // const [funds, setFunds] = useState([]);
+  const [fundCards, setFundCards] = useState([]); //CIF fund card
+  const [trainingLocationType, setTrainingLocationType] = useState("");
+const [trainingType, setTrainingType] = useState([]);
 
+// const FUND_TYPES = ["RF", "CIF", "CCL"];
  const labels = {
     heading: {
       en: "No Enterprise",
@@ -758,6 +767,94 @@ useEffect(() => {
       }
     })();
   }, []);
+
+  // CIF Fund Part
+  const addFundCard = () => {
+  setFundCards([
+    ...fundCards,
+    {
+      loanType: '',
+      receivedYesNo: '',
+      amount: '',
+      repaid: '',
+       otherLoanTypeText: '', 
+    }
+  ]);
+};
+const deleteFundCard = (index) => {
+  const copy = [...fundCards];
+  copy.splice(index, 1);
+  setFundCards(copy);
+};
+//  const toggleFund = (type) => {
+//   const exists = fundCards.find(f => f.loanType === type);
+
+//   if (exists) {
+//     setFundCards(fundCards.filter(f => f.loanType !== type));
+//   } else {
+//     setFundCards([
+//       ...fundCards,
+//       {
+//         loanType: type,
+//         receivedYesNo: '',
+//         amount: '',
+//         repaid: '',
+//       }
+//     ]);
+//   }
+// };
+// const updateFund = (index, key, value) => {
+//   const copy = [...funds];
+//   copy[index][key] = value;
+//   setFunds(copy);
+// };
+const getStatus = (amount, repaid) => {
+  const loan = parseFloat(amount) || 0;
+  const paid = parseFloat(repaid) || 0;
+
+  // If nothing is entered and nothing paid
+  if (loan === 0 && paid === 0) return 'Not Paid';
+
+  if (paid < 0) return 'Invalid repayment';
+
+  if (paid > loan) return 'Repayment exceeds loan amount';
+
+  if (loan === 0 && paid > 0) return 'Invalid repayment';
+
+  if (paid === 0) return 'Not Paid';
+
+  if (paid === loan) return 'Fully Paid';
+
+  return 'Partially Paid';
+};
+const getPending = (amount, repaid) => {
+  const loan = parseFloat(amount) || 0;
+  const paid = parseFloat(repaid) || 0;
+
+  return loan - paid;
+};
+
+
+const getStatusColor = (amount, repaid) => {
+  const loan = parseFloat(amount) || 0;
+  const paid = parseFloat(repaid) || 0;
+
+  if (paid < 0 || paid > loan) return 'red';
+
+  if (paid === 0) return 'red';
+
+  if (loan > 0 && paid === loan) return 'green';
+
+  return 'orange';
+};
+
+const getPendingColor = (pending) => {
+  if (pending < 0) return 'red';
+  if (pending === 0) return 'green';
+  return 'red';
+};
+// CIF FUnd PArt
+
 
   // ---------------- SHG + recorded-benef helper logic ----------------
 
@@ -1041,24 +1138,29 @@ const draftKey = `NO_ENTERPRISE_FORM_DRAFT_${memberCode}`;
 
     const chunks = [];
     for (const parent of chosenParents) {
-      const conf = TRAINING_SECTORS.find((s) => s.parent === parent);
+      // const conf = TRAINING_SECTORS.find((s) => s.parent.en === parent);
+      const conf = TRAINING_SECTORS.find(
+  (s) => s.parent.en === parent
+);
       const kidsState = trainingChildrenByParent[parent] || {};
       const childNames = [];
 
       (conf?.children || []).forEach((child) => {
-        if (child === 'Others') {
-          if (kidsState['Others']) {
-            const otherText = (kidsState.__otherText || '').trim();
-            if (otherText) {
-              childNames.push(otherText);
-            } else {
-              childNames.push('Others');
-            }
-          }
-        } else if (kidsState[child]) {
-          childNames.push(child);
-        }
-      });
+
+  const childKey = typeof child === "string" ? child : child.en;
+
+  if (childKey === "Others") {
+
+    if (kidsState["Others"]) {
+      const txt = (kidsState.__otherText || "").trim();
+      childNames.push(txt || "Others");
+    }
+
+  } else if (kidsState[childKey]) {
+    childNames.push(childKey);
+  }
+});
+
 
       if (parent === 'Others') {
         // special final parent; allow just __otherText
@@ -1074,21 +1176,25 @@ const draftKey = `NO_ENTERPRISE_FORM_DRAFT_${memberCode}`;
     }
 
     const training_module_name = chunks.length ? chunks.join(', ') : null;
+    
     return { sector, training_module_name };
   };
 
-  const buildTrainingLocation = () => {
-    const parts = [
-      trainingLocationState || '',
-      trainingLocationDistrict || '',
-      trainingLocationBlock || '',
-    ]
-      .map((x) => x.trim())
-      .filter(Boolean);
-    if (!parts.length) return null;
-    return parts.join(', ');
-  };
+  
 
+  // const buildTrainingLocation = () => {
+  //   const parts = [
+  //     trainingLocationState || '',
+  //     trainingLocationDistrict || '',
+  //     trainingLocationBlock || '',
+  //   ]
+  //     .map((x) => x.trim())
+  //     .filter(Boolean);
+  //   if (!parts.length) return null;
+  //   return parts.join(', ');
+  // };
+
+ 
   // ---------------- Submit handler ----------------
   const handleSubmit = async () => {
   // ===== Enhanced Validations =====
@@ -1278,15 +1384,15 @@ const draftKey = `NO_ENTERPRISE_FORM_DRAFT_${memberCode}`;
       );
       return;
     }
-    if (!trainingLocationDistrict || !trainingLocationBlock || !trainingLocationState) {
-      Alert.alert(
-          t("Validation", "सत्यापन"),
-        t(
-          "Please fill training location details.",
-          "कृपया प्रशिक्षण स्थान की जानकारी भरें।")
-      );
-      return;
-    }
+    // if (!trainingLocationDistrict || !trainingLocationBlock || !trainingLocationState) {
+    //   Alert.alert(
+    //       t("Validation", "सत्यापन"),
+    //     t(
+    //       "Please fill training location details.",
+    //       "कृपया प्रशिक्षण स्थान की जानकारी भरें।")
+    //   );
+    //   return;
+    // }
     if (!trainingExpectedIncome) {
       Alert.alert(
        t("Validation", "सत्यापन"),
@@ -1322,25 +1428,25 @@ const draftKey = `NO_ENTERPRISE_FORM_DRAFT_${memberCode}`;
   }
 
   // CIF Details
-  if (!hasShgCifYesNo) {
-    Alert.alert(
-      t("Validation", "सत्यापन"),
-      t(
-        "Please answer whether CIF fund received.",
-        "कृपया बताएं — क्या आपके SHG को CIF फंड मिला है?"
-      )
-    );
-    return;
-  }
-  if (hasShgCifYesNo === 'Yes' && (!cifAmount || cifAmount.trim() === '' || isNaN(cifAmount))) {
-    Alert.alert(
-      t("Validation", "सत्यापन"),
-      t(
-        "Please enter valid CIF amount.",
-        "कृपया मान्य CIF राशि दर्ज करें।")
-    );
-    return;
-  }
+  // if (!hasShgCifYesNo) {
+  //   Alert.alert(
+  //     t("Validation", "सत्यापन"),
+  //     t(
+  //       "Please answer whether CIF fund received.",
+  //       "कृपया बताएं — क्या आपके SHG को CIF फंड मिला है?"
+  //     )
+  //   );
+  //   return;
+  // }
+  // if (hasShgCifYesNo === 'Yes' && (!cifAmount || cifAmount.trim() === '' || isNaN(cifAmount))) {
+  //   Alert.alert(
+  //     t("Validation", "सत्यापन"),
+  //     t(
+  //       "Please enter valid CIF amount.",
+  //       "कृपया मान्य CIF राशि दर्ज करें।")
+  //   );
+  //   return;
+  // }
 
   // ===== Proceed to submit =====
   try {
@@ -1859,6 +1965,15 @@ const reasonOptions = [
   { id: "wage", en: "Interested in Wage Employment?", hi: "वेतन रोजगार में रुचि है?" },
   { id: "other", en: "Others", hi: "अन्य" },
 ];
+const toggleTrainingType = (val) => {
+  setTrainingType((prev) =>
+    prev.includes(val)
+      ? prev.filter((v) => v !== val)
+      : [...prev, val]
+  );
+};
+
+
   // ========= Render =========
 
   return (
@@ -2115,8 +2230,12 @@ const reasonOptions = [
       )}
 
       {/* Q3: Training requirement */}
-      <Text style={styles.sectionHeading}>Training Requirement</Text>
-      <Text style={styles.label}>Do you require any training?</Text>
+      <Text style={styles.sectionHeading}>{language === "hi"
+    ? "प्रशिक्षण की आवश्यकता"
+    : "Training Requirement"}</Text>
+      <Text style={styles.label}> {language === "hi"
+    ? "क्या आपको कौशल प्रशिक्षण की आवश्यकता है?"
+    : "Do you require skill training?"}</Text>
       <YesNoToggle
       required
         value={trainingRequiredYesNo}
@@ -2127,11 +2246,14 @@ const reasonOptions = [
         <>
          {/* Sectors / modules */}
           <Text style={styles.sectionHeading}>
-            Preferred Sector for Training
+            {language === "hi"
+        ? "प्रशिक्षण के लिए पसंदीदा क्षेत्र"
+        : "Preferred Sector for Training"}
           </Text>
           <Text style={styles.helpText}>
-            First select parent sectors. After selecting a parent sector, choose
-            the related business / activity under it.
+             {language === "hi"
+        ? "पहले मुख्य सेक्टर चुनें। मुख्य सेक्टर चुनने के बाद, उससे संबंधित व्यवसाय / गतिविधि चुनें।"
+        : "First select parent sectors. After selecting a parent sector, choose the related business / activity under it."}
           </Text>
 
           {TRAINING_SECTORS.map(({ parent, children }) => {
@@ -2222,6 +2344,26 @@ const reasonOptions = [
               </View>
             );
           })}
+
+<Text style={[styles.label, { marginTop: 12 }]}>
+  {language === "hi"
+    ? "आप किस प्रकार का प्रशिक्षण पसंद करते हैं?"
+    : "What is your preferred training type?"}
+</Text>
+
+{[
+  { en: "Residential", hi: "आवासीय" },
+  { en: "Non-Residential", hi: "गैर-आवासीय" },
+].map((opt) => (
+  <CheckboxRow
+    key={opt.en}
+    label={language === "hi" ? opt.hi : opt.en}
+    checked={trainingType.includes(opt.en)}
+    onPress={() => toggleTrainingType(opt.en)}
+  />
+))}
+
+
 
           {/* Duration */}
           <Text style={[styles.label, { marginTop: 12 }]}>
@@ -2372,7 +2514,7 @@ const reasonOptions = [
           ))} */}
 
           {/* Training location */}
-          <Text style={[styles.label, { marginTop: 12 }]}>
+          {/* <Text style={[styles.label, { marginTop: 12 }]}>
              {language === "hi"
     ? "आपका पसंदीदा प्रशिक्षण स्थान क्या है?"
     : "What is your preferred training location?"}
@@ -2418,7 +2560,52 @@ const reasonOptions = [
       ? "कृपया गाँव दर्ज करें"
       : "Please enter Village"
   }
-          />
+          /> */}
+
+          <Text style={[styles.label, { marginTop: 12 }]}>
+  {language === "hi"
+    ? "आपका पसंदीदा प्रशिक्षण स्थान क्या है?"
+    : "What is your preferred training location?"}
+</Text>
+
+<Text style={styles.helpText}>
+  {language === "hi"
+    ? "कृपया अपना पसंदीदा राज्य, जिला और ब्लॉक भरें।"
+    : "Please fill your preferred State, District and Block."}
+</Text>
+
+<Text style={[styles.smallLabel, { marginTop: 8 }]}>
+  {language === "hi" ? "स्थान प्रकार चुनें" : "Select Location Type"}
+</Text>
+
+<View style={styles.input}>
+  <Picker
+    selectedValue={trainingLocationType}
+    onValueChange={(value) => setTrainingLocationType(value)}
+  >
+    <Picker.Item
+      label={language === "hi" ? "स्थान चुनें" : "Select Location"}
+      value=""
+    />
+    <Picker.Item
+      label={language === "hi" ? "राज्य" : "State"}
+      value="state"
+    />
+    <Picker.Item
+      label={language === "hi" ? "जिला" : "District"}
+      value="district"
+    />
+    <Picker.Item
+      label={language === "hi" ? "ब्लॉक" : "Block"}
+      value="block"
+    />
+    <Picker.Item
+      label={language === "hi" ? "गाँव" : "Village"}
+      value="village"
+    />
+  </Picker>
+</View>
+
 
           {/* Expected income after training */}
           <Text style={[styles.label, { marginTop: 12 }]}>
@@ -2511,11 +2698,11 @@ const reasonOptions = [
         </>
       )} */}
 
-      <Text style={styles.sectionHeading}>{language === "hi" ? "CIF विवरण" : "CIF Details"}</Text>
+      <Text style={styles.sectionHeading}>{language === "hi" ? "अनिवार्य स्वयं सहायता समूह (SHG) निधि अनुभाग" : "Mandatory SHG Fund Section"}</Text>
 
 <Text style={styles.label}>{language === "hi"
-    ? "क्या आपके SHG को CIF फंड प्राप्त हुआ है?"
-    : "Have your SHG received CIF Fund?"}</Text>
+    ? "क्या आपके SHG को अनिवार्य फंड प्राप्त हुआ है?"
+    : "Have your SHG received mandatory Fund?"}</Text>
 <YesNoToggle
 required
   value={hasShgCifYesNo}
@@ -2526,47 +2713,148 @@ required
   }}
 />
 
-{hasShgCifYesNo === 'Yes' && (
+{hasShgCifYesNo === "Yes" && (
   <>
-    <Text style={[styles.label, { marginTop: 8 }]}>
-       {language === "hi"
-        ? "क्या आपको उस CIF फंड का कुछ हिस्सा मिला है?"
-        : "Have you received part of that CIF Fund?"}
-    </Text>
-    <YesNoToggle
-    required
-      value={hasReceivedPartYesNo}
-      onChange={setHasReceivedPartYesNo}
-        labels={{
-        yes: language === "hi" ? "हाँ" : "Yes",
-        no: language === "hi" ? "नहीं" : "No",
-      }}
-    />
+    {/* ADD BUTTON */}
+    <TouchableOpacity
+      style={styles.addBtn}
+      onPress={addFundCard}
+    >
+      <Text style={{ fontWeight: "600" }}>+ Add Fund</Text>
+    </TouchableOpacity>
 
-    {hasReceivedPartYesNo === 'Yes' && (
-      <>
-        <Text style={[styles.label, { marginTop: 8 }]}>
-         {language === "hi"
-            ? "प्राप्त राशि दर्ज करें"
-            : "Specify the amount received"}
-        </Text>
-        <TextInput
-          required
-          style={styles.input}
-          keyboardType="numeric"
-           placeholder={
-            language === "hi"
-              ? "राशि दर्ज करें"
-              : "Enter CIF amount"
-          }
-          value={cifAmount}
-          onChangeText={setCifAmount}
-        />
-      </>
-    )}
+    {/* FUND CARDS */}
+    {fundCards.map((fund, index) => (
+      <View key={index} style={styles.card}>
+ <TouchableOpacity
+      onPress={() => deleteFundCard(index)}
+      style={styles.deleteBtn}
+    >
+      <Text style={{ color: "white", fontWeight: "600" }}>Delete</Text>
+    </TouchableOpacity>
+        {/* LOAN TYPE DROPDOWN */}
+        <Text style={styles.label}>Please specify if  your SHG has recieved these mandatory funds</Text>
+
+        {["RF", "CIF", "CCL","Other"].map(type => (
+          <TouchableOpacity
+            key={type}
+            style={styles.radioRow}
+            onPress={() => {
+              const copy = [...fundCards];
+              copy[index].loanType = type;
+              setFundCards(copy);
+            }}
+          >
+            <View style={[
+              styles.radio,
+              fund.loanType === type && styles.radioSelected
+            ]} />
+
+            <Text>{type}</Text>
+          </TouchableOpacity>
+        ))}
+        {fund.loanType === "Other" && (
+  <>
+    <Text style={styles.label}>
+      {language === "hi" ? "कृपया बताएं" : "Please specify"}
+    </Text>
+
+    <TextInput
+      style={styles.input}
+      value={fund.otherLoanTypeText}
+      onChangeText={(v) => {
+        const copy = [...fundCards];
+        copy[index].otherLoanTypeText = v;
+        setFundCards(copy);
+      }}
+      placeholder={language === "hi" ? "प्रकार दर्ज करें" : "Enter type"}
+    />
   </>
 )}
 
+        {/* RECEIVED? */}
+        <Text style={styles.label}>
+          {language === "hi"
+            ? "क्या आपको इस फंड का कुछ हिस्सा मिला?"
+            : "Have you received part of this fund?"}
+        </Text>
+
+        <YesNoToggle
+          value={fund.receivedYesNo}
+          onChange={(v) => {
+            const copy = [...fundCards];
+            copy[index].receivedYesNo = v;
+            setFundCards(copy);
+          }}
+          labels={{
+            yes: language === "hi" ? "हाँ" : "Yes",
+            no: language === "hi" ? "नहीं" : "No",
+          }}
+        />
+
+        {/* AMOUNT FIELDS */}
+        {fund.receivedYesNo === "Yes" && (
+          <>
+            <Text style={styles.label}>Amount Received</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={fund.amount}
+              onChangeText={(v) => {
+                const copy = [...fundCards];
+                copy[index].amount = v;
+                setFundCards(copy);
+                 setCifAmount(v);
+              }}
+            />
+
+            <Text style={styles.label}>Amount Repaid</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={fund.repaid}
+              onChangeText={(v) => {
+                const copy = [...fundCards];
+                copy[index].repaid = v;
+                setFundCards(copy);
+              }}
+            />
+
+            {/* STATUS IN GREEN */}
+            <View style={{ marginTop: 8 }}>
+  {fund.amount ? (
+    <>
+      <Text
+        style={{
+          color: getStatusColor(fund.amount, fund.repaid),
+          fontWeight: '600',
+          marginBottom: 4,
+        }}
+      >
+        Status: {getStatus(fund.amount, fund.repaid)}
+      </Text>
+
+      <Text
+        style={{
+          color: getPendingColor(
+            getPending(fund.amount, fund.repaid)
+          ),
+          fontWeight: '600',
+        }}
+      >
+        Pending Amount: {getPending(fund.amount, fund.repaid)}
+      </Text>
+    </>
+  ) : null}
+</View>
+
+          </>
+        )}
+
+      </View>
+    ))}
+  </>
+)}
 
       {/* Submit button */}
       <TouchableOpacity
@@ -2625,7 +2913,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EE6969',
     borderRadius: 8,
-    padding: 10,
+    // padding: 10,
     fontSize: 14,
     color: '#000000',
   },
@@ -2670,5 +2958,50 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: 'white',
+  },
+   addBtn:{
+    padding:10,
+    backgroundColor:"#e3e3e3",
+    borderRadius:8,
+    marginTop:10,
+    alignSelf:"flex-start"
+  },
+  card:{
+    backgroundColor:"#fff",
+    padding:12,
+    borderRadius:10,
+    marginTop:10,
+    borderWidth:1,
+    borderColor:"#ccc"
+  },
+  radio:{
+    width:18,
+    height:18,
+    borderWidth:2,
+    borderRadius:20,
+    marginRight:8
+  },
+  radioSelected:{
+    backgroundColor:"#007b55"
+  },
+  radioRow:{
+    flexDirection:"row",
+    alignItems:"center",
+    marginVertical:4
+  },
+  deleteBtn:{
+  backgroundColor:"#d9534f",
+  paddingVertical:6,
+  paddingHorizontal:12,
+  borderRadius:16,
+  alignSelf:"flex-end",
+  marginBottom:8
+},
+ status: {
+    marginTop: 5,
+    fontWeight: '600',
+  },
+  pending: {
+    fontWeight: '600',
   },
 });

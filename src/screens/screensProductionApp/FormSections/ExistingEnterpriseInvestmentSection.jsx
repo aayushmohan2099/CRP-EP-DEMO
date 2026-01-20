@@ -15,7 +15,7 @@ const INVESTMENT_SOURCE_TREE = [
       'UP MSME Promotion Policy 2022',
       'ODOP (One District One Product)',
       'Vishwakarma Shram Samman Yojana',
-      'Chief Minister Youth Entrepreneur Development Campaign',
+      'CM Yuva Scheme',
       'Micro-food Industries Promotion',
       'Capital Subsidy Scheme',
     ],
@@ -240,7 +240,8 @@ export default function ExistingEnterpriseInvestmentSection({
 }) {
   const update = (patch) => setExistingForm(patch); 
   const hasShgCifYes = existingForm.has_shg_cif === 'Yes';
-
+    // const fund_cards = existingForm?.fund_cards || [];
+const fund_cards = existingForm.fund_cards || [];
 // useEffect(() => {
 //   const monthlyIncome = parseFloat(existingForm.monthly_income_estimate) || 0;
 //   const workingCapital = parseFloat(existingForm.working_capital_monthly) || 0;
@@ -295,6 +296,33 @@ export default function ExistingEnterpriseInvestmentSection({
     });
   }, [existingForm.monthly_income_estimate, existingForm.working_capital_monthly]);
 
+  const setCard = (index, patch) =>
+  update({
+    ...existingForm,
+    fund_cards: fund_cards.map((c,i)=>
+      i===index ? { ...c, ...patch } : c
+    )
+  });
+
+const addFundCard = () =>
+  update({
+    ...existingForm,
+    fund_cards: [
+      ...fund_cards,
+      {
+        loanType:'',
+        has_received:'',
+        amount_received:'',
+        amount_repaid:''
+      }
+    ]
+  });
+
+const deleteFundCard = (index) =>
+  update({
+    ...existingForm,
+    fund_cards: fund_cards.filter((_,i)=>i!==index)
+  });
   return (
     <View style={styles.sectionContainer}>
       <Text style={styles.sectionTitle}>4) Investment Details Section</Text>
@@ -530,41 +558,213 @@ export default function ExistingEnterpriseInvestmentSection({
 
 
     <View style={styles.fieldBlock}>
-  <Text style={styles.label}>15) Have your SHG received CIF Funds?</Text>
+  <Text style={styles.label}>15) Have your SHG received mandatory Funds?</Text>
   <Text style={styles.helpText}>
-    Please select Yes if your Self Help Group (SHG) has received Community Investment Fund (CIF) support.
+    Please select Yes if your Self Help Group (SHG) has received mandatory support.
   </Text>
 
   <YesNoToggle
     value={existingForm.has_shg_cif || ''}
-    onChange={(val) => update({ has_shg_cif: val, has_part_cif: '', part_cif_amt: '' })}
+    onChange={(val) => update({ has_shg_cif: val, has_part_cif: '', part_cif_amt: '', fund_cards: val === 'Yes',
+           fund_cards: val==='Yes' ? (existingForm.fund_cards || []) : []})}
   />
 
-  {/* Step 2: Have you received part of that CIF fund */}
-  {existingForm.has_shg_cif === 'Yes' && (
-    <View style={{ marginTop: 8 }}>
-      <Text style={styles.label}>Have you received part of that CIF fund?</Text>
-      <YesNoToggle
-        value={existingForm.has_part_cif || ''}
-        onChange={(val) => update({ has_part_cif: val, part_cif_amt: '' })}
-      />
-
-      {/* Step 3: If Yes, show amount field */}
-      {existingForm.has_part_cif === 'Yes' && (
-        <View style={{ marginTop: 8 }}>
-          <Text style={styles.label}>Specify amount received</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="numeric"
-            value={existingForm.part_cif_amt || ''}
-            onChangeText={(v) => update({ part_cif_amt: v })}
-            placeholder="Enter CIF amount"
-          />
-        </View>
+  {/* ADD BUTTON */}
+      {hasShgCifYes && (
+        <TouchableOpacity style={styles.addBtn} onPress={addFundCard}>
+          <Text style={styles.addText}>+ Add Fund</Text>
+        </TouchableOpacity>
       )}
+
+
+
+      {/* FUND CARDS */}
+      {hasShgCifYes && fund_cards.map((card,index)=>{
+
+       const received = Number(card.amount_received || 0);
+const repaid = card.amount_repaid === '' || card.amount_repaid == null
+  ? null
+  : Number(card.amount_repaid);
+
+let pending = null;
+if (repaid !== null) pending = received - repaid;
+
+let status = '';
+let color = '#333';
+
+// EMPTY REPAYMENT FIELD
+if (repaid === null) {
+  status = 'Not Paid';
+  color = 'red';
+}
+
+// NO LOAN RECEIVED
+else if (received === 0 && repaid === 0) {
+  status = 'Not Paid';
+  color = 'red';
+}
+
+// INVALID NEGATIVE
+else if (repaid < 0) {
+  status = 'Invalid repayment';
+  color = 'red';
+}
+
+// MORE THAN LOAN
+else if (repaid > received) {
+  status = 'Repaid amount cannot exceed loan amount';
+  color = 'red';
+}
+
+// FULLY PAID
+else if (pending === 0) {
+  status = 'Fully Paid';
+  color = 'green';
+}
+
+// PARTIALLY PAID
+else if (pending > 0) {
+  status = 'Partially Paid';
+  color = 'orange';
+}
+
+// SAFETY FALLBACK
+else {
+  status = 'Not Paid';
+  color = 'red';
+}
+
+        return (
+          <View key={index} style={styles.card}>
+
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              onPress={()=>deleteFundCard(index)}
+            >
+              <Text style={styles.deleteTxt}>Delete</Text>
+            </TouchableOpacity>
+
+
+            <Text style={styles.cardTitle}>Please specify if  your SHG has recieved these mandatory funds</Text>
+
+            {['RF','CIF','CCL', 'Other'].map(type=>(
+              <TouchableOpacity
+                key={type}
+                style={styles.radioRow}
+                onPress={()=>
+                  update({
+                    ...existingForm,
+                    fund_cards: fund_cards.map((c,i)=>
+                      i===index ? {...c, loanType:type} : c
+                    )
+                  })
+                }
+              >
+                <View style={[
+                  styles.radioCircle,
+                  card.loanType===type && styles.radioSelected
+                ]} />
+                <Text>{type}</Text>
+              </TouchableOpacity>
+            ))}
+             {card.loanType === 'Other' && (
+  <TextInput
+    style={styles.input}
+    value={card.otherLoanTypeText || ''}
+    placeholder="Please Specify"
+    onChangeText={(v) =>
+      update({
+        ...existingForm,
+        fund_cards: existingForm.fund_cards.map((c,i) =>
+          i === index
+            ? { ...c, otherLoanTypeText: v }
+            : c
+        )
+      })
+    }
+  />
+)}
+             
+
+            {/* PART RECEIVED */}
+            <Text style={styles.cardTitle}>Have you received part of this fund?</Text>
+
+            <View style={styles.row}>
+              {['Yes','No'].map(v=>(
+                <TouchableOpacity
+                  key={v}
+                  style={[
+                    styles.toggle,
+                    card.has_received===v && styles.toggleActive
+                  ]}
+                  onPress={()=>
+                    update({
+                      ...existingForm,
+                      fund_cards: fund_cards.map((c,i)=>
+                        i===index ? {...c, has_received:v} : c
+                      )
+                    })
+                  }
+                >
+                  <Text style={[
+                    styles.toggleText,
+                    card.has_received===v && styles.toggleTextActive
+                  ]}>
+                    {v}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+
+
+            {/* AMOUNT FIELDS — only when YES */}
+            {card.has_received==='Yes' && (
+              <>
+              <Text style={styles.inputLabel}>Amount Received</Text>
+                <TextInput
+                  placeholder="Amount Received"
+                  keyboardType="numeric"
+                  style={styles.input}
+                  value={card.amount_received}
+                  onChangeText={(text)=>
+                    update({
+                      ...existingForm,
+                      fund_cards: fund_cards.map((c,i)=>
+                        i===index ? {...c, amount_received:text} : c
+                      )
+                    })
+                  }
+                />
+                <Text style={styles.inputLabel}>Amount Repaid</Text>
+                <TextInput
+                  placeholder="Amount Repaid"
+                  keyboardType="numeric"
+                  style={styles.input}
+                  value={card.amount_repaid}
+                  onChangeText={(text)=>
+                    update({
+                      ...existingForm,
+                      fund_cards: fund_cards.map((c,i)=>
+                        i===index ? {...c, amount_repaid:text} : c
+                      )
+                    })
+                  }
+                />
+
+                <Text style={[styles.status,{color}]}>
+                  {status}{'\n'}
+                  Pending Amount: {pending}
+                </Text>
+              </>
+            )}
+
+          </View>
+        );
+      })}
+
     </View>
-  )}
-</View>
+
 
 
       {/* 17) Initial investment */}
@@ -703,5 +903,145 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     color: '#444',
+  },
+  card: {
+  backgroundColor: '#FFF',
+  borderWidth: 1,
+  borderColor: '#EE6969',
+  borderRadius: 10,
+  padding: 12,
+  marginTop: 10,
+},
+
+cardTitle: {
+  fontWeight: 'bold',
+  fontSize: 15,
+  color: '#333',
+},
+
+checkbox: {
+  width: 18,
+  height: 18,
+  borderWidth: 1,
+  borderRadius: 4,
+  borderColor: '#EE6969',
+  marginRight: 8,
+},
+
+checkboxChecked: {
+  backgroundColor: '#EE6969',
+  borderColor: '#EE6969',
+},
+
+  fieldBlock:{ marginBottom:14 },
+
+  label:{
+    fontWeight:'bold',
+    marginBottom:4,
+    color:'#333'
+  },
+
+  helpText:{
+    fontSize:12,
+    color:'#666'
+  },
+
+  row:{
+    flexDirection:'row',
+    marginTop:6
+  },
+
+  toggle:{
+    flex:1,
+    borderWidth:1,
+    borderColor:'#ccc',
+    borderRadius:8,
+    paddingVertical:8,
+    alignItems:'center',
+    marginRight:6
+  },
+
+  toggleActive:{
+    backgroundColor:'#EE6969',
+    borderColor:'#EE6969'
+  },
+
+  toggleText:{ color:'#333' },
+
+  toggleTextActive:{
+    color:'#fff',
+    fontWeight:'700'
+  },
+
+  addBtn:{
+    marginTop:10,
+    borderWidth:1,
+    borderColor:'#EE6969',
+    borderRadius:8,
+    paddingVertical:10,
+    alignItems:'center'
+  },
+
+  addText:{
+    color:'#EE6969',
+    fontWeight:'700'
+  },
+
+  card:{
+    backgroundColor:'#FFF',
+    borderWidth:1,
+    borderColor:'#EE6969',
+    borderRadius:10,
+    padding:12,
+    marginTop:10
+  },
+
+  deleteBtn:{ alignSelf:'flex-end' },
+
+  deleteTxt:{
+    color:'#EE6969',
+    fontWeight:'600'
+  },
+
+  cardTitle:{
+    fontWeight:'bold',
+    marginTop:6,
+    marginBottom:4
+  },
+
+  radioRow:{
+    flexDirection:'row',
+    alignItems:'center',
+    marginVertical:4
+  },
+
+  radioCircle:{
+    width:18,
+    height:18,
+    borderRadius:10,
+    borderWidth:2,
+    borderColor:'#EE6969',
+    marginRight:8
+  },
+
+  radioSelected:{ backgroundColor:'#EE6969' },
+
+  input:{
+    borderWidth:1,
+    borderColor:'#ccc',
+    borderRadius:6,
+    padding:8,
+    marginTop:8
+  },
+
+  status:{
+    fontWeight:'700',
+    marginTop:10
+  },
+    inputLabel: {
+    fontSize: 14,
+    color: '#555555',
+    marginTop: 6,
+    marginBottom: 4,
   },
 });

@@ -28,6 +28,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function CRPDashboardProduction({ navigation }) {
   const { language } = useContext(LanguageContext);
   const [user, setUser] = useState(null);
+  const [userId, setUserId] = useState(null);
   const [analytics, setAnalytics] = useState([]);
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -138,6 +139,7 @@ const [drafts, setDrafts] = useState([]);
       }
 
       await bootstrapCrpData(u);
+
     })();
   }, []);
 
@@ -153,7 +155,7 @@ const [drafts, setDrafts] = useState([]);
         );
         return;
       }
-
+      setUserId(userId);
       // 1) CRP detail (for block_id and name)
       let detail = getCrpDetail();
       if (!detail) {
@@ -260,6 +262,8 @@ const [drafts, setDrafts] = useState([]);
       setLoading(false);
     }
   };
+
+
 const loadDrafts = async () => {
     try {
       const allKeys = await AsyncStorage.getAllKeys();
@@ -342,7 +346,7 @@ const loadDrafts = async () => {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>{t.totalLabel}</Text>
-        <Text style={styles.totalNumber}>{total}</Text>
+        <Text style={styles.totalNumber}>{total}/100</Text>
       </View>
 
       <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
@@ -370,12 +374,14 @@ const loadDrafts = async () => {
 
         <TouchableOpacity
           style={styles.secondaryButton}
-          onPress={() => navigation.navigate('CRPViewRecorded')}
+          onPress={() => navigation.navigate('CRPViewRecorded', {
+            userId,
+          })}
         >
           <Text style={styles.secondaryButtonText}>{t.viewRecorded}</Text>
         </TouchableOpacity>
 
-        {/* ✅ View Drafts Button */}
+        {/* View Drafts Button */}
         <TouchableOpacity
           style={styles.secondaryButton}
           onPress={async () => {
@@ -387,7 +393,7 @@ const loadDrafts = async () => {
         </TouchableOpacity>
       </View>
 
-      {/* ✅ Drafts Modal */}
+      {/* Drafts Modal */}
       <Modal
         visible={draftsVisible}
         transparent={true}
@@ -419,7 +425,7 @@ const loadDrafts = async () => {
                     }}
                     onPress={() => {
                       setDraftsVisible(false);
-                      // ✅ Navigate to CRPRecordFlow and pass draftKey
+                      //Navigate to CRPRecordFlow and pass draftKey
                       navigation.navigate('CRPRecordFlow', { draftKey: d.key });
                     }}
                   >

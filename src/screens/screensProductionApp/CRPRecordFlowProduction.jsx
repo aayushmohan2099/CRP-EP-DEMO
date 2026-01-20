@@ -29,7 +29,7 @@ import LanguageToggle from '../../components/LanguageToggle';
 const UI_PAGE_SIZE = 10;
 
 export default function CRPRecordFlowProduction({ navigation }) {
-  // ✅ LanguageContext hook at TOP level (following CRPDashboard pattern)
+  //  LanguageContext hook at TOP level (following CRPDashboard pattern)
   const { language } = useContext(LanguageContext);
   
   const translations = {
@@ -558,13 +558,21 @@ export default function CRPRecordFlowProduction({ navigation }) {
                 },
                 {
                   text: t.no,
-                  onPress: () =>
-                    navigation.navigate('NoEnterpriseForm', {
-                      beneficiary: row,
-                      recordedBenef: row._recordRow,
-                      tempShg: selectedShg,
-                      crpUserId,
-                    }),
+                  // onPress: () =>
+                  //   navigation.navigate('NoEnterpriseForm', {
+                  //     beneficiary: row,
+                  //     recordedBenef: row._recordRow,
+                  //     tempShg: selectedShg,
+                  //     crpUserId,
+                  //   }),
+                   onPress: () => {
+    Alert.alert(
+      "Success",
+      "Your data has been recorded successfully",
+      [{ text: "OK", style: "default" }],
+      { cancelable: true }
+    );
+  },
                   style: 'default',
                 },
               ],

@@ -1826,14 +1826,14 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
           />
         </View>
 
-        <View
+         <View
           style={
             currentSectionIndex === 1
               ? styles.sectionVisible
               : styles.sectionHidden
           }
         >
-          <ExistingEnterpriseProductServicesSection
+          <ExistingEnterpriseEnterpriseDetailsSection
             existingForm={existingForm}
             setExistingForm={updateForm}
           />
@@ -1846,11 +1846,24 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
               : styles.sectionHidden
           }
         >
-          <ExistingEnterpriseEnterpriseDetailsSection
+          <ExistingEnterpriseProductServicesSection
             existingForm={existingForm}
             setExistingForm={updateForm}
           />
         </View>
+
+        {/* <View
+          style={
+            currentSectionIndex === 2
+              ? styles.sectionVisible
+              : styles.sectionHidden
+          }
+        >
+          <ExistingEnterpriseEnterpriseDetailsSection
+            existingForm={existingForm}
+            setExistingForm={updateForm}
+          />
+        </View> */}
 
         <View
           style={

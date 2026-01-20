@@ -9,11 +9,21 @@ import {
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { launchCamera } from 'react-native-image-picker';
+import { Picker } from '@react-native-picker/picker';
+import { useState } from 'react';
+
+
 
 
 const YES_NO = ['Yes', 'No'];
 
 const TRAINING_DEPT_OPTIONS = ['NRLM', 'RSETI', 'NABARD', 'UPSDM', 'Others'];
+
+const TRAINING_TYPE_OPTIONS = [
+  'Residential',
+  'Non-Residential',
+];
+
 
 const TRAINING_DURATION_OPTIONS = [
   'Under 7 days',
@@ -270,6 +280,7 @@ const TRAINING_SECTOR_TREE = [
       'Honey processing',
       'Jam–jelly–squash',
       'Ready-to-eat products',
+      'Jaggery Production',
       'Whole grain/pulses/flour sorting–grading–packaging unit​',
       'Others',
     ],
@@ -385,6 +396,7 @@ const TRAINING_SECTOR_TREE = [
       'Shampoo & conditioner',
       'Sponges',
       'Toothpaste & toothbrushes',
+      'Broom',
       'Others',
     ],
   },
@@ -542,6 +554,13 @@ const TrainingSectorTree = ({ value, onChange }) => {
     }
     onChange(updated);
   };
+const toggleTrainingType = (val) => {
+  setTrainingType((prev) =>
+    prev.includes(val)
+      ? prev.filter((v) => v !== val)
+      : [...prev, val]
+  );
+};
 
   return (
     <View style={{ marginTop: 8 }}>
@@ -591,13 +610,14 @@ export default function ExistingEnterpriseTrainingSkillsSection({
   setExistingForm,
 }) {
   const update = (patch) => setExistingForm(patch);
-
+// const [trainingLocationType, setTrainingLocationType] = useState("");
   const trainingReceived = Array.isArray(existingForm.training_received_rows)
     ? existingForm.training_received_rows
     : [];
   const trainingRequired = Array.isArray(existingForm.training_required_rows)
     ? existingForm.training_required_rows
     : [];
+const [trainingType, setTrainingType] = useState([]);
 
   const isTrainingReceivedYes = existingForm.is_training_received === 'Yes';
   const isTrainingRequiredYes = existingForm.is_training_required === 'Yes';
@@ -608,6 +628,13 @@ export default function ExistingEnterpriseTrainingSkillsSection({
   const updateTrainingRequired = (next) =>
     update({ training_required_rows: next });
 
+  const toggleTrainingType = (val) => {
+  setTrainingType((prev) =>
+    prev.includes(val)
+      ? prev.filter((v) => v !== val)
+      : [...prev, val]
+  );
+};
   const addTrainingReceivedRow = () => {
     const row = {
       id: Date.now().toString(),
@@ -923,7 +950,7 @@ export default function ExistingEnterpriseTrainingSkillsSection({
       {/* TRAINING REQUIRED */}
       <View style={[styles.fieldBlock, { marginTop: 18 }]}>
         <Text style={styles.label}>
-          21) Do you require any training in future?
+          21) Do you require skill training in future?
         </Text>
         <Text style={styles.helpText}>
           Please select Yes if you are interested in taking new training to
@@ -1001,6 +1028,33 @@ export default function ExistingEnterpriseTrainingSkillsSection({
                       }
                     />
                   </View>
+      <View style={styles.fieldBlock}>
+  <Text style={styles.label}>
+    1) What is your preferred training type?
+  </Text>
+
+  <Text style={styles.helpText}>
+    You may select one or both options.
+  </Text>
+
+  {TRAINING_TYPE_OPTIONS.map((opt) => (
+    <TouchableOpacity
+      key={opt}
+      style={styles.checkboxRow}
+      onPress={() => toggleTrainingType(opt)}
+    >
+      <View
+        style={[
+          styles.checkbox,
+          trainingType.includes(opt) && styles.checkboxChecked,
+        ]}
+      />
+      <Text style={styles.checkboxLabel}>{opt}</Text>
+    </TouchableOpacity>
+  ))}
+</View>
+
+
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
                       2) How many days of training are you comfortable in one slot?
@@ -1100,7 +1154,7 @@ export default function ExistingEnterpriseTrainingSkillsSection({
                   </View> */}
 
                   {/* 4) Preferred location */}
-                  <View style={styles.fieldBlock}>
+                  {/* <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
                       4) What is your preferred training location?
                     </Text>
@@ -1140,12 +1194,44 @@ export default function ExistingEnterpriseTrainingSkillsSection({
                           location_village: v,
                         })
                       }
-                    />
-                    <Text style={[styles.helpText, { marginTop: 4 }]}>
+                    /> */}
+                    {/* <Text style={[styles.helpText, { marginTop: 4 }]}>
                       These details will be combined as &quot;State,
                       District, Block&quot; and stored in the location field.
-                    </Text>
-                  </View>
+                    </Text> */}
+
+                    <View style={styles.fieldBlock}>
+  <Text style={styles.label}>
+    4) What is your preferred training location?
+  </Text>
+
+  <Text style={styles.helpText}>
+    Please fill the State, District and Block where you would
+    like to attend the training. These will be saved together
+    as your preferred location.
+  </Text>
+
+  <Text style={styles.smallLabel}>Select Location Type</Text>
+
+  <View style={styles.input}>
+    <Picker
+      selectedValue={row.location_type || ""}
+      onValueChange={(v) =>
+        updateTrainingRequiredRow(index, {
+          location_type: v,
+        })
+      }
+    >
+      <Picker.Item label="Select Location" value="" />
+      <Picker.Item label="State" value="state" />
+      <Picker.Item label="District" value="district" />
+      <Picker.Item label="Block" value="block" />
+      <Picker.Item label="Village" value="village" />
+    </Picker>
+  </View>
+</View>
+
+                  {/* </View> */}
 
                   {/* 5) Expected income */}
                   <View style={styles.fieldBlock}>
@@ -1310,7 +1396,7 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderRadius: 6,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    // paddingVertical: 8,
     fontSize: 15,
     backgroundColor: '#fff',
   },
@@ -1472,4 +1558,30 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
   },
+  checkboxRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 8,
+},
+
+checkbox: {
+  width: 20,
+  height: 20,
+  borderWidth: 1.5,
+  borderColor: '#666',
+  borderRadius: 4,
+  marginRight: 10,
+  backgroundColor: '#fff',
+},
+
+checkboxChecked: {
+  backgroundColor: '#d9534f', // green fill
+  borderColor: '#d9534f',
+},
+
+checkboxLabel: {
+  fontSize: 14,
+  color: '#333',
+},
+
 });

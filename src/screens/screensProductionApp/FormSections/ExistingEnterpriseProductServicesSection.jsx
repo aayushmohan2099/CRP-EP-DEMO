@@ -658,13 +658,34 @@ export default function ExistingEnterpriseProductServicesSection({ existingForm,
               </View>
 
               {/* Q5 */}
+                      <View style={styles.fieldBlock}>
+  <Text style={styles.label}> Specify source of material</Text>
+  <TextInput
+    style={styles.input}
+    placeholder="Please specify source of material"
+    value={row.material_source}
+    onChangeText={v => updateRow(index, { material_source: v })}
+  />
+</View>
               <View style={styles.fieldBlock}>
                 <Text style={styles.label}>5) Raw Materials Used</Text>
                 {RAW_MATERIAL_OPTIONS.map(opt => renderMultiCheckboxRow(row.raw_material, opt, val => updateRow(index, { raw_material: val })))}
                 {splitMulti(row.raw_material).includes('Others') && <TextInput style={[styles.input, { marginTop: 6 }]} placeholder="Specify other raw materials" value={row.raw_material_other} onChangeText={v => updateRow(index, { raw_material_other: v })} />}
               </View>
 
+
               {/* Q6 */}
+
+ <View style={styles.fieldBlock}>
+  <Text style={styles.label}> Specify source of Machinery/Equipment</Text>
+
+  <TextInput
+    style={styles.input}
+    placeholder="Please specify source of machinery/equipment"
+    value={row.machinery_source}
+    onChangeText={v => updateRow(index, { machinery_source: v })}
+  />
+</View>
               <View style={styles.fieldBlock}>
                 <Text style={styles.label}>6) Machinery/Equipment Used</Text>
                 {MACHINERY_OPTIONS.map(opt => renderMultiCheckboxRow(row.machinery_equipment, opt, val => updateRow(index, { machinery_equipment: val })))}

@@ -238,12 +238,12 @@ const ExistingEnterpriseSupportSection = ({
       </View>
 
       {/* 26) Mentorship support (still controlled) */}
-      {renderYesNoPicker(
+      {/* {renderYesNoPicker(
         '26) Do you require Mentorship support? (क्या आपको मार्गदर्शन/मेंटर्शिप सहायता की आवश्यकता है?)',
         mentorship_support,
         'mentorship_support',
         'Please select Yes if you would like regular guidance or mentorship for running or expanding your enterprise.'
-      )}
+      )} */}
 
       {/* 27) Branding / promotion support (local state for picker + specify) */}
       <View style={styles.fieldBlock}>
@@ -320,12 +320,12 @@ const ExistingEnterpriseSupportSection = ({
       </View>
 
       {/* 29) Digital e-market support (still controlled) */}
-      {renderYesNoPicker(
+      {/* {renderYesNoPicker(
         '29) Do you require Digital E-Market support? (क्या आपको डिजिटल ई-मार्केट सहायता चाहिए?)',
         digital_emarket_support,
         'digital_emarket_support',
         'Please select Yes if you want support in selling your products through digital / online platforms.'
-      )}
+      )} */}
 
       {/* 30) Machinery / equipment support (still controlled) */}
       {/* {renderYesNoPicker(

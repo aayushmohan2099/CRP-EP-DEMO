@@ -18,6 +18,7 @@ import {
 import gsApi from '../../api/gsApi';
 import LoaderModal from '../LoaderModal';
 import BackButton from '../../components/BackButton';
+import { getUser, clearUser } from '../../utils/auth';
 import SearchBar from '../SearchBar';
 import { X_API_ID, X_API_KEY } from '@env';  
 // --- API base + headers (same as gsApi constants) ---
@@ -88,8 +89,19 @@ function labelFromDetailEnterpriseType(detailType) {
   }
   return 'Not Specified';
 }
+// const getLoggedInCrpId = () => {
+//   const loginData = gsApi.getLoginData?.();
 
-export default function CRPViewRecordedProduction({ navigation }) {
+//   return (
+//     loginData?.id ??
+//     loginData?.user_id ??
+//     null
+//   );
+// };
+
+
+
+export default function CRPViewRecordedProduction({ route,navigation }) {
   const [loading, setLoading] = useState(false);
 
   const [panchayats, setPanchayats] = useState([]);
@@ -104,15 +116,148 @@ export default function CRPViewRecordedProduction({ navigation }) {
   const [detailMode, setDetailMode] = useState(false);
   const [detailMemberCode, setDetailMemberCode] = useState(null);
   const [epsakhiDetail, setEpsakhiDetail] = useState(null);
+  const [userId, setUserId] = useState(null);
+const [loggedUser, setLoggedUser] = useState(null);
+  const routeCrpUserId =
+    route?.params?.crpUserId ||
+    route?.params?.user_id ||
+    route?.params?.username ||
+    null;
 
   // Initial data load
-  useEffect(() => {
-    const gps = getCrpPanchayats() || [];
-    setPanchayats(gps);
+  // useEffect(() => {
+  //   const gps = getCrpPanchayats() || [];
+  //   setPanchayats(gps);
 
-    const recorded = getCrpRecordedBeneficiaries() || [];
-    setRecordedList(recorded);
+  //   const recorded = getCrpRecordedBeneficiaries() || [];
+  //   setRecordedList(recorded);
+  // }, []);
+  
+// useEffect(() => {
+//   const gps = getCrpPanchayats() || [];
+//   setPanchayats(gps);
+
+//   const allRecorded = getCrpRecordedBeneficiaries() || [];
+//   const loggedInCrpId = getLoggedInCrpId();
+
+//   if (!loggedInCrpId) {
+//     console.warn('CRP ID not found in login data');
+//     setRecordedList([]);
+//     return;
+//   }
+
+//   const filteredRecorded = allRecorded.filter(
+//     row => String(row.created_by) === String(loggedInCrpId)
+//   );
+
+//   setRecordedList(filteredRecorded);
+// }, []);
+// useEffect(() => {
+//   const loginData = gsApi.getLoginData?.() || null;
+//   setLoggedUser(loginData);
+//   console.log('🔍 Logged user data:', loginData);
+// }, []);
+
+//   const getCreatedByNumeric = () => {
+//   const candidate =
+//     loggedUser?.id ??
+//     loggedUser?.user_id ??
+//     loggedUser?.pk  ??
+//     routeCrpUserId;
+//   if (candidate == null) return null;
+
+//   if (typeof candidate === 'number') return candidate;
+
+//   if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
+//     return parseInt(candidate.trim(), 10);
+//   }
+
+//   return null;
+// };
+  useEffect(() => {
+    (async () => {
+      const u = await getUser(); // your method to get stored user info
+      if (!u) {
+        navigation.replace('Login');
+        return;
+      }
+      setLoggedUser(u);
+    })();
   }, []);
+  const getCreatedByNumeric = () => {
+    const candidate =
+      loggedUser?.id ??
+      loggedUser?.user_id ??
+      loggedUser?.pk ??
+      routeCrpUserId;
+
+    if (candidate == null) return null;
+    if (typeof candidate === 'number') return candidate;
+    if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
+      return parseInt(candidate.trim(), 10);
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    setUserId(getCreatedByNumeric());
+  }, [loggedUser, routeCrpUserId]);
+
+
+// useEffect(() => {
+//   const gps = getCrpPanchayats() || [];
+//   setPanchayats(gps);
+
+//   const allRecorded = getCrpRecordedBeneficiaries() || [];
+//   const loggedInCrpNumeric = getCreatedByNumeric();
+
+//   console.log('🧾 Logged-in CRP numeric ID:', loggedInCrpNumeric);
+
+//   if (loggedInCrpNumeric == null) {
+//     console.warn('CRP ID not found. No records will be shown.');
+//     setRecordedList([]);
+//     return;
+//   }
+
+//   const filteredRecorded = allRecorded.filter((row) => {
+//     const createdByNumeric =
+//       typeof row.created_by === 'number'
+//         ? row.created_by
+//         : typeof row.created_by === 'string' && /^\d+$/.test(row.created_by)
+//         ? parseInt(row.created_by, 10)
+//         : null;
+
+//     return createdByNumeric === loggedInCrpNumeric;
+//   });
+
+//   console.log('📊 Total records created by this CRP:', filteredRecorded.length);
+//   setRecordedList(filteredRecorded);
+// }, [loggedUser]); // add loggedUser as dependency
+useEffect(() => {
+  if (userId == null) {
+    setRecordedList([]);
+    return;
+  }
+
+  const gps = getCrpPanchayats() || [];
+  setPanchayats(gps);
+
+  const allRecorded = getCrpRecordedBeneficiaries() || [];
+
+  const filteredRecorded = allRecorded.filter((row) => {
+    const createdByNumeric =
+      typeof row.created_by === 'number'
+        ? row.created_by
+        : typeof row.created_by === 'string' && /^\d+$/.test(row.created_by)
+        ? parseInt(row.created_by, 10)
+        : null;
+
+    return createdByNumeric === userId;
+  });
+
+  setRecordedList(filteredRecorded);
+}, [userId]);
+  
 
   // Load villages for a selected Panchayat
   const loadVillagesForPanchayat = async (panchayatId) => {
@@ -184,6 +329,7 @@ export default function CRPViewRecordedProduction({ navigation }) {
           row.member_code,
           row.mobile,
           row.phone,
+  
         ]
           .filter((v) => v !== undefined && v !== null)
           .map((v) => String(v).toLowerCase());
@@ -703,9 +849,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     minHeight: 48,
     justifyContent: 'center',
-  },
-  picker: {
-    height: 48,
   },
   sectionHeader: {
     paddingVertical: 8,

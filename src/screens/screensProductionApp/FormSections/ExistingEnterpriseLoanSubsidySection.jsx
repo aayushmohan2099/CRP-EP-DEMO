@@ -306,6 +306,35 @@ export default function ExistingEnterpriseLoanSubsidySection({
     updateSubsidyRow(index, { expanded: !row.expanded });
   };
 
+  const bankOptions = [
+  { label: "State Bank of India (SBI)", value: "SBI" },
+  { label: "Punjab National Bank (PNB)", value: "PNB" },
+  { label: "Bank of Baroda (BoB)", value: "BOB" },
+  { label: "Canara Bank", value: "CANARA" },
+  { label: "Central Bank of India", value: "CBI" },
+  { label: "Indian Bank", value: "INDIAN_BANK" },
+  { label: "Indian Overseas Bank", value: "IOB" },
+  { label: "UCO Bank", value: "UCO" },
+  { label: "Union Bank of India", value: "UNION" },
+
+  { label: "HDFC Bank", value: "HDFC" },
+  { label: "ICICI Bank", value: "ICICI" },
+  { label: "Axis Bank", value: "AXIS" },
+  { label: "Kotak Mahindra Bank", value: "KOTAK" },
+  { label: "IndusInd Bank", value: "INDUSIND" },
+  { label: "YES Bank", value: "YES" },
+
+  { label: "Prathama Bank", value: "PRATHAMA" },
+  { label: "Allahabad UP Gramin Bank", value: "AUPGB" },
+
+  { label: "District Central Cooperative Bank", value: "DCCB" },
+  { label: "Urban Cooperative Bank", value: "UCB" },
+  { label: "Rajdhani Nagar Sahkari Bank", value: "RNSB" },
+
+  { label: "Other (Specify)", value: "OTHER" },
+];
+
+
   return (
     <View style={styles.sectionContainer}>
       <Text style={styles.sectionTitle}>5) Loan and Subsidy Details</Text>
@@ -373,17 +402,63 @@ export default function ExistingEnterpriseLoanSubsidySection({
                         })
                       }
                     />
-
+{/* 
                     <Text style={[styles.helpText, { marginTop: 4 }]}>
                       Your selections will be saved like
                       &nbsp;&quot;[Department: Scheme1, Scheme2]&quot; for the server.
-                    </Text>
+                    </Text> */}
                   </View>
+                   
+                   {/* 4) Bank Details */}
+<View style={styles.fieldBlock}>
+  <Text style={styles.label}>
+    2) From which bank have you taken the loan?
+  </Text>
 
-                  {/* 2) Loan amount */}
+  {bankOptions.map(bank => (
+    <TouchableOpacity
+      key={bank.value}
+      style={styles.checkboxRow}
+      onPress={() => updateLoanRow(index, { bank_name: bank.value })}
+    >
+      <View style={styles.checkbox}>
+        {row.bank_name === bank.value && <View style={styles.checkboxFill} />}
+      </View>
+
+      <Text>{bank.label}</Text>
+    </TouchableOpacity>
+  ))}
+
+  {/* OTHER FIELD */}
+  {row.bank_name === 'OTHER' && (
+    <View style={{ marginTop: 10 }}>
+      <Text style={styles.helpText}>Please specify the bank name</Text>
+      <TextInput
+        style={styles.input}
+        value={row.other_bank_name || ''}
+        onChangeText={(v) => updateLoanRow(index, { other_bank_name: v })}
+      />
+    </View>
+  )}
+
+  {/* BRANCH FIELD */}
+  {!!row.bank_name && (
+    <View style={{ marginTop: 10 }}>
+      <Text style={styles.helpText}>Enter Branch Name</Text>
+      <TextInput
+        style={styles.input}
+        value={row.branch_name || ''}
+        onChangeText={(v) => updateLoanRow(index, { branch_name: v })}
+      />
+    </View>
+  )}
+</View>
+
+                  
+                  {/*  Loan amount */}
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      2) Specify the Amount of Loan
+                      3) Specify the Amount of Loan
                     </Text>
                     <Text style={styles.helpText}>
                       Please enter the loan amount sanctioned for this particular loan (in rupees).
@@ -396,10 +471,74 @@ export default function ExistingEnterpriseLoanSubsidySection({
                     />
                   </View>
 
-                  {/* 3) Date taken */}
+                  {/*  Repayment Details */}
+<View style={styles.fieldBlock}>
+  <Text style={styles.label}>
+    4) How much have you repaid?
+  </Text>
+
+  <TextInput
+    style={styles.input}
+    keyboardType="numeric"
+    value={row.repaid_amount || ''}
+    onChangeText={(v) => updateLoanRow(index, { repaid_amount: v })}
+  />
+
+  {/* Pending Amount */}
+  {(() => {
+    const loan = Number(row.loan_amount) || 0;
+    const repaid = Number(row.repaid_amount) || 0;
+    const pending = loan - repaid;
+
+    return (
+      <View style={{ marginTop: 8 }}>
+        <Text style={styles.helpText}>Pending Amount: {pending}</Text>
+
+        {/* Repayment Status */}
+        {(() => {
+          let status = '';
+          let color = 'black';
+
+          if (repaid === 0) {
+            status = 'Fully Pending';
+            color = 'red';
+          } else if (pending === 0) {
+            status = 'Fully Paid';
+            color = 'green';
+          } else if (pending > 0) {
+            status = 'Partially Paid';
+            color = 'gold';
+          } else if (pending < 0) {
+            status = `Overpaid by ${Math.abs(pending)}`;
+            color = 'red';
+          }
+
+          // Validation: repayment must not exceed loan
+          const showError = repaid > loan;
+
+          return (
+            <>
+              <Text style={{ color, fontWeight: 'bold', marginTop: 6 }}>
+                Repayment Status: {status}
+              </Text>
+
+              {showError && (
+                <Text style={{ color: 'red' }}>
+                  Error: Repayment cannot exceed loan amount
+                </Text>
+              )}
+            </>
+          );
+        })()}
+      </View>
+    );
+  })()}
+</View>
+
+                  {/*  Date taken */}
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      3) Specify the Date on which you took the Loan
+                      5) Specify the Date on which you took the Loan
                     </Text>
                     <Text style={styles.helpText}>
                       Please enter the date when the loan was sanctioned or first disbursed.
@@ -414,7 +553,7 @@ export default function ExistingEnterpriseLoanSubsidySection({
                   </View>
 
                   {/* 4) Repayment status */}
-                  <View style={styles.fieldBlock}>
+                  {/* <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
                       4) Repayment Status
                     </Text>
@@ -457,7 +596,7 @@ export default function ExistingEnterpriseLoanSubsidySection({
                         }
                       />
                     )}
-                  </View>
+                  </View> */}
                 </View>
               )}
             </View>
@@ -487,9 +626,9 @@ export default function ExistingEnterpriseLoanSubsidySection({
       {/* Subsidy rows */}
       {hasSubsidyYes && (
         <View style={{ marginTop: 8 }}>
-          <Text style={[styles.helpText, { marginBottom: 8 }]}>
+          {/* <Text style={[styles.helpText, { marginBottom: 8 }]}>
             You can record each subsidy separately. Please click &quot;+ Add Subsidy&quot; to add another subsidy detail.
-          </Text>
+          </Text> */}
 
           {subsidies.map((row, index) => (
             <View key={row.id || index} style={styles.card}>
@@ -582,10 +721,10 @@ export default function ExistingEnterpriseLoanSubsidySection({
                       }
                     />
 
-                    <Text style={[styles.helpText, { marginTop: 4 }]}>
+                    {/* <Text style={[styles.helpText, { marginTop: 4 }]}>
                       Your selections will be saved as &quot;[Department: Scheme1, Scheme2]&quot;
                       format for sending to the server.
-                    </Text>
+                    </Text> */}
                   </View>
 
                   {/* 3) Subsidy amount / detail */}
@@ -791,4 +930,34 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
+    input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 8,
+    borderRadius: 6,
+  },
+  helpText: {
+    color: '#666',
+  },
+  checkboxRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginVertical: 6,
+},
+checkbox: {
+  width: 20,
+  height: 20,
+  borderRadius: 4,
+  borderWidth: 1,
+  borderColor: '#666',
+  marginRight: 10,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+checkboxFill: {
+  width: 12,
+  height: 12,
+  backgroundColor: '#d9534f',
+  borderRadius: 2,
+},
 });

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet,AppState,  } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import LicenseSelector from './BasicInformationSectionLicenseSelector'
 const ENTERPRISE_TYPE_TREE = [
   {
     parent: 'Food Processing Sector',
@@ -18,6 +19,7 @@ const ENTERPRISE_TYPE_TREE = [
       'Honey processing',
       'Jam–jelly–squash',
       'Ready-to-eat products',
+      'Jaggery Production',
       'Whole grain/pulses/flour sorting–grading–packaging unit​',
       'Others',
     ],
@@ -133,6 +135,7 @@ const ENTERPRISE_TYPE_TREE = [
       'Shampoo & conditioner',
       'Sponges',
       'Toothpaste & toothbrushes',
+      'Broom',
       'Others',
     ],
   },
@@ -343,7 +346,7 @@ const EnterpriseTypeTree = ({ value, onChange }) => {
 const BASIC_INFO_DRAFT_KEY = 'EXISTING_ENTERPRISE_BASIC_INFO_DRAFT';
 export default function ExistingEnterpriseBasicInfoSection({ existingForm, setExistingForm }) {
   const [yearPickerVisible, setYearPickerVisible] = useState(false);
- const [draftLoaded, setDraftLoaded] = useState(false); // 🔴 ADDED
+ const [draftLoaded, setDraftLoaded] = useState(false); // ADDED
   const currentYear = new Date().getFullYear();
   const startYear = 1950;
   const yearOptions = [];
@@ -355,32 +358,32 @@ export default function ExistingEnterpriseBasicInfoSection({ existingForm, setEx
       try {
         const saved = await AsyncStorage.getItem(BASIC_INFO_DRAFT_KEY);
         if (saved) {
-          setExistingForm(JSON.parse(saved)); // ✅ FIXED
+          setExistingForm(JSON.parse(saved)); //  FIXED
         }
       } catch (e) {
         console.log('Draft load failed', e);
       } finally {
-        setDraftLoaded(true); // 🔴 ADDED
+        setDraftLoaded(true); // ADDED
       }
     };
 
     loadDraft();
-  }, []); // 🔴 CHANGED (removed dependency on setExistingForm)
+  }, []); // CHANGED (removed dependency on setExistingForm)
 
   /* =====================================================
-     🔴 FIX 2: Auto-save ONLY AFTER draft is loaded
+     FIX 2: Auto-save ONLY AFTER draft is loaded
   ===================================================== */
   useEffect(() => {
-    if (!draftLoaded) return; // 🔴 CRITICAL FIX
+    if (!draftLoaded) return; // CRITICAL FIX
 
     AsyncStorage.setItem(
       BASIC_INFO_DRAFT_KEY,
       JSON.stringify(existingForm)
     );
-  }, [existingForm, draftLoaded]); // 🔴 CHANGED
+  }, [existingForm, draftLoaded]); // CHANGED
 
   /* =====================================================
-     🔴 FIX 3: Save draft when app goes background
+     FIX 3: Save draft when app goes background
   ===================================================== */
   useEffect(() => {
     const sub = AppState.addEventListener('change', state => {
@@ -393,12 +396,12 @@ export default function ExistingEnterpriseBasicInfoSection({ existingForm, setEx
     });
 
     return () => sub.remove();
-  }, [existingForm, draftLoaded]); // 🔴 CHANGED
+  }, [existingForm, draftLoaded]); //  CHANGED
 
   /* =====================================================
-     🔴 FIX 4: PATCH update (NO functional updater)
+      FIX 4: PATCH update (NO functional updater)
   ===================================================== */
-  const update = (patch) => setExistingForm(patch); // ✅ CORRECT
+  const update = (patch) => setExistingForm(patch); // CORRECT
   return (
     <View style={styles.sectionContainer}>
       <Text style={styles.sectionTitle}>1) Basic Information</Text>
@@ -513,9 +516,10 @@ export default function ExistingEnterpriseBasicInfoSection({ existingForm, setEx
           </View>
         </Modal>
       </View>
-
+      <View><LicenseSelector/></View>
+        
       {/* UDDYAM AADHAR */}
-      <View style={styles.fieldBlock}>
+      {/* <View style={styles.fieldBlock}>
         <Text style={styles.label}>Please Specify the correct UDDYAM AADHAR NUMBER (If any)</Text>
         <Text style={styles.helpText}>
           Please enter the Udyam Aadhar Number carefully. This will be used for verification.
@@ -525,7 +529,7 @@ export default function ExistingEnterpriseBasicInfoSection({ existingForm, setEx
           value={existingForm.uddyam_aadhar || ''}
           onChangeText={(v) => update({ uddyam_aadhar: v })}
         />
-      </View>
+      </View> */}
 
       {/* Total employees */}
       <View style={styles.fieldBlock}>

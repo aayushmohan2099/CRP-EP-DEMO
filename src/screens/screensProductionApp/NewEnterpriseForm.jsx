@@ -20,6 +20,7 @@ import {
   getCrpPanchayats,
   getCrpDetail,
 } from '../../utils/tempStore';
+import { Picker } from '@react-native-picker/picker';
 import { LanguageContext } from '../../components/LanguageContext';
 import LanguageToggle from '../../components/LanguageToggle';
 import { getUser } from '../../utils/auth';
@@ -115,6 +116,7 @@ const ENTERPRISE_TYPE_CATEGORIES = [
       'Honey processing',
       'Jam–jelly–squash',
       'Ready-to-eat products',
+      'Jaggery Production,',
       'Whole grain/pulses/flour sorting–grading–packaging unit​',
       'Others',
     ],
@@ -243,6 +245,7 @@ const ENTERPRISE_TYPE_CATEGORIES = [
       'Shampoo & conditioner',
       'Sponges',
       'Toothpaste & toothbrushes',
+      'Broom',
       'Others',
     ],
   },
@@ -549,6 +552,7 @@ const TRAINING_SECTORS = [
       'Honey processing',
       'Jam–jelly–squash',
       'Ready-to-eat products',
+      'Jaggery Production,',
       'Whole grain/pulses/flour sorting–grading–packaging unit​',
       'Others',
     ],
@@ -677,6 +681,7 @@ const TRAINING_SECTORS = [
       'Shampoo & conditioner',
       'Sponges',
       'Toothpaste & toothbrushes',
+      'Broom',
       'Others',
     ],
   },
@@ -940,6 +945,8 @@ export default function NewEnterpriseForm({ route, navigation }) {
     tempShg?.shg_code ||
     null;
 
+    const [trainingReqType, setTrainingReqType] = useState([]);
+
   // ----------------- Form State -----------------
 
   const [form, setForm] = useState({
@@ -952,6 +959,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
 
     // 4) CIF
     has_shg_cif: '',
+    fund_cards: [],
     cif_fund_amt: '',
     has_received_part_cif: '',
 
@@ -988,6 +996,8 @@ export default function NewEnterpriseForm({ route, navigation }) {
     declaration_confirmed: false,
     declaration_date: '',
   });
+
+  const [trainingReqLocationType, setTrainingReqLocationType] = useState("");
 
   // Enterprise type (parent/child)
   const [enterpriseTypeSelection, setEnterpriseTypeSelection] = useState({});
@@ -1068,6 +1078,74 @@ export default function NewEnterpriseForm({ route, navigation }) {
 
   const setField = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+const addFundCard = () => {
+  setForm(prev => ({
+    ...prev,
+    fund_cards: [
+      ...prev.fund_cards,
+      {
+        loanType: '',
+        has_received: '',
+        amount: ''
+      }
+    ]
+  }));
+};
+ 
+const getStatus = (amount, repaid) => {
+  const loan = parseFloat(amount) || 0;
+  const paid = parseFloat(repaid) || 0;
+
+  // If nothing is entered and nothing paid
+  if (loan === 0 && paid === 0) return 'Not Paid';
+
+  if (paid < 0) return 'Invalid repayment';
+
+  if (paid > loan) return 'Repayment exceeds loan amount';
+
+  if (loan === 0 && paid > 0) return 'Invalid repayment';
+
+  if (paid === 0) return 'Not Paid';
+
+  if (paid === loan) return 'Fully Paid';
+
+  return 'Partially Paid';
+};
+
+const getPending = (amount, repaid) => {
+  const loan = parseFloat(amount) || 0;
+  const paid = parseFloat(repaid) || 0;
+
+  return loan - paid;
+};
+
+const getStatusColor = (amount, repaid) => {
+  const loan = parseFloat(amount) || 0;
+  const paid = parseFloat(repaid) || 0;
+
+  if (paid < 0 || paid > loan) return 'red';
+
+  if (paid === 0) return 'red';
+
+  if (loan > 0 && paid === loan) return 'green';
+
+  return 'orange';
+};;
+
+const getPendingColor = (pending) => {
+  if (pending < 0) return 'red';
+  if (pending === 0) return 'green';
+  return 'red';
+};
+
+const toggleTrainingReqType = (val) => {
+  setTrainingReqType((prev) =>
+    prev.includes(val)
+      ? prev.filter((v) => v !== val)
+      : [...prev, val]
+  );
+};
 
   const getCreatedByNumeric = () => {
     const candidate =
@@ -1648,7 +1726,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
 
       // Step 1: ensure Recorded Beneficiary
       const recordedBenefId = await ensureRecordedBeneficiary();
-
+  const createdBy = getCreatedByNumeric(); 
       // Step 2: build NewEnterprise payload
       const prefered_location = buildPreferedLocationValue();
       const has_shg_cif = form.has_shg_cif === 'Yes';
@@ -1682,6 +1760,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
 
       const payloadObj = {
         recorded_benef_id: recordedBenefId,
+          created_by: createdBy,
         applicant_special_category: form.applicant_special_category || null,
         prefered_location: prefered_location || null,
         has_shg_cif,
@@ -1855,7 +1934,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
       )}
 
       {/* 4) CIF Funds */}
-      <Text style={[styles.sectionHeading, { marginTop: 20 }]}>CIF Support</Text>
+      <Text style={[styles.sectionHeading, { marginTop: 20 }]}>Mandatory SHG Fund Section</Text>
       {/* <Text style={styles.label}>Have you received any portion of CIF Fund? If Yes, specify amount</Text> */}
       {/* <Text style={styles.label}>Have your SHG Recieved CIF Fund</Text>
       <YesNoToggle
@@ -1877,7 +1956,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
         </>
       )} */}
       
-      <Text style={styles.label}>Have your SHG received CIF Fund?</Text>
+      <Text style={styles.label}>Have your SHG received mandatory Fund?</Text>
 <YesNoToggle
   value={form.has_shg_cif}
   onChange={(v) => setField('has_shg_cif', v)}
@@ -1885,28 +1964,151 @@ export default function NewEnterpriseForm({ route, navigation }) {
 
 {form.has_shg_cif === 'Yes' && (
   <>
-    <Text style={[styles.label, { marginTop: 8 }]}>
-      Have you received part of that CIF Fund?
-    </Text>
-    <YesNoToggle
-      value={form.has_received_part_cif}
-      onChange={(v) => setField('has_received_part_cif', v)}
-    />
+   
 
-    {form.has_received_part_cif === 'Yes' && (
-      <>
-        <Text style={[styles.label, { marginTop: 8 }]}>
-          Specify the amount received
-        </Text>
-        <TextInput
-          style={styles.input}
-          value={form.cif_fund_amt}
-          onChangeText={(v) => setField('cif_fund_amt', v)}
-          keyboardType="numeric"
-          placeholder="Enter CIF amount"
+    {/* ADD FUND BUTTON */}
+   <TouchableOpacity onPress={addFundCard}   style={styles.addBtn}>
+  <Text  style={{ fontWeight: "600" }}>Add Fund</Text>
+</TouchableOpacity>
+
+    {/* FUND CARDS */}
+    {form.fund_cards.map((fund, index) => (
+      <View
+        key={index}
+        style={{
+          backgroundColor: '#FFF',
+          borderRadius: 10,
+          padding: 12,
+          marginTop: 10,
+          borderWidth: 1,
+          borderColor: '#EE6969'
+        }}
+      >
+
+        {/* DELETE BUTTON */}
+        <TouchableOpacity
+          onPress={() => {
+            const copy = [...form.fund_cards];
+            copy.splice(index, 1);
+            setField('fund_cards', copy);
+          }}
+          style={{
+            backgroundColor:"#d9534f",
+            paddingVertical:6,
+            paddingHorizontal:12,
+            borderRadius:16,
+            alignSelf:"flex-end",
+            marginBottom:8
+          }}
+        >
+          <Text style={{ color:"white", fontWeight:"600" }}>Delete</Text>
+        </TouchableOpacity>
+
+        {/* LOAN TYPE */}
+        <Text style={styles.label}> 
+      Please specify if your SHG has received these mandatory funds
+    </Text>
+
+        {["CIF","RF","CCL", "Other"].map(t => (
+          <TouchableOpacity
+            key={t}
+            style={styles.checkboxRow}
+            onPress={() => {
+              const copy = [...form.fund_cards];
+              copy[index].loanType = t;
+              setField('fund_cards', copy);
+            }}
+          >
+            <View style={[
+              styles.checkbox,
+              fund.loanType === t && styles.checkboxChecked
+            ]}/>
+            <Text style={styles.checkboxLabel}>{t}</Text>
+          </TouchableOpacity>
+        ))}
+        {fund.loanType === "Other" && (
+          <>
+            <TextInput
+              style={styles.input}
+              value={fund.otherLoanTypeText}
+              onChangeText={(v) => {
+                const copy = [...fundCards];
+                copy[index].otherLoanTypeText = v;
+                setFundCards(copy);
+              }}
+              placeholder="Please Specify"
+            />
+          </>
+        )}
+
+        {/* RECEIVED */}
+        <Text style={styles.label}>Have you received part of this fund?</Text>
+
+        <YesNoToggle
+          value={fund.receivedYesNo}
+          onChange={(v) => {
+            const copy = [...form.fund_cards];
+            copy[index].receivedYesNo = v;
+            setField('fund_cards', copy);
+          }}
         />
-      </>
-    )}
+
+        {fund.receivedYesNo === 'Yes' && (
+          <>
+            {/* AMOUNT RECEIVED */}
+            <Text style={styles.label}>Specify received amount</Text>
+
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={fund.amount}
+              onChangeText={(v) => {
+                const copy = [...form.fund_cards];
+                copy[index].amount = v;
+                setField('fund_cards', copy);
+              }}
+            />
+
+            {/* REPAID */}
+            <Text style={styles.label}>Amount Repaid</Text>
+
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={fund.repaid}
+              onChangeText={(v) => {
+                const copy = [...form.fund_cards];
+                copy[index].repaid = v;
+                setField('fund_cards', copy);
+              }}
+            />
+
+            {/* STATUS */}
+         <Text
+  style={{
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: getStatusColor(fund.amount, fund.repaid),
+  }}
+>
+  Status: {getStatus(fund.amount, fund.repaid)}
+</Text>
+
+
+{/* PENDING */}
+<Text
+  style={{
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: getPendingColor(getPending(fund.amount, fund.repaid)),
+  }}
+>
+  Pending Amount: {getPending(fund.amount, fund.repaid)}
+</Text>
+          </>
+        )}
+      </View>
+    ))}
   </>
 )}
 
@@ -2025,7 +2227,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
       {/* ========= SECTION: Trainings Required ========= */}
       <Text style={styles.sectionHeading}>Training Requirement</Text>
 
-      <Text style={styles.label}>Do you require any training?</Text>
+      <Text style={styles.label}>Do you require skill training?</Text>
       <YesNoToggle
         value={form.is_training_required}
         onChange={(v) => setField('is_training_required', v)}
@@ -2065,6 +2267,25 @@ export default function NewEnterpriseForm({ route, navigation }) {
               onChangeText={(t) => setTrainingReqDept(t)}
             />
           )} */}
+
+<Text style={styles.label}>What is your preferred training type?</Text>
+
+{['Residential', 'Non-Residential'].map((opt) => (
+  <TouchableOpacity
+    key={opt}
+    style={styles.checkboxRow}
+    onPress={() => toggleTrainingReqType(opt)}
+  >
+    <View
+      style={[
+        styles.checkbox,
+        trainingReqType.includes(opt) && styles.checkboxChecked,
+      ]}
+    />
+    <Text style={styles.checkboxLabel}>{opt}</Text>
+  </TouchableOpacity>
+))}
+
 
           {/* <Text style={styles.label}>How many days of training are you comfortable with?</Text> */}
           <Text style={styles.label}>How many days of training are you comfortable in one slot</Text>
@@ -2139,7 +2360,7 @@ export default function NewEnterpriseForm({ route, navigation }) {
             )
           )} */}
 
-          <Text style={styles.label}>What is your preferred training location?</Text>          
+          {/* <Text style={styles.label}>What is your preferred training location?</Text>          
           <Text style={styles.label}>Desired District</Text>          
           <TextInput
             style={[styles.input, { marginTop: 6 }]}
@@ -2160,7 +2381,24 @@ export default function NewEnterpriseForm({ route, navigation }) {
             placeholder="Village"
             value={trainingReqLocationVillage}
             onChangeText={setTrainingReqLocationVillage}
-          />
+          /> */}
+          <Text style={styles.label}>What is your preferred training location?</Text>          
+
+<Text style={styles.label}>Select Location Type</Text>
+
+<View style={[styles.input, { marginTop: 6 }]}>
+  <Picker
+    selectedValue={trainingReqLocationType}
+    onValueChange={(value) => setTrainingReqLocationType(value)}
+  >
+    <Picker.Item label="Select Location" value="" />
+    <Picker.Item label="State" value="state" />
+    <Picker.Item label="District" value="district" />
+    <Picker.Item label="Block" value="block" />
+    <Picker.Item label="Village" value="village" />
+  </Picker>
+</View>
+
 
           {/* <Text style={styles.label}>What is your expected Salary after training?</Text>
           {[
@@ -2246,11 +2484,11 @@ export default function NewEnterpriseForm({ route, navigation }) {
       {/* ========= SECTION: Support Required ========= */}
       <Text style={styles.sectionHeading}>Support Required</Text>
 
-      <Text style={styles.label}>Do you require Mentorship support?</Text>
+      {/* <Text style={styles.label}>Do you require Mentorship support?</Text>
       <YesNoToggle
         value={form.mentorship_support}
         onChange={(v) => setField('mentorship_support', v)}
-      />
+      /> */}
 
       <Text style={styles.label}>Do you require Financial Assistance?</Text>
       {['Grant and Subsidy', 'Loan', 'Interest Subvention','Others'].map((opt) => (
@@ -2468,11 +2706,11 @@ export default function NewEnterpriseForm({ route, navigation }) {
         />
       )}
 
-      <Text style={styles.label}>Do you require Digital E-Market support?</Text>
+      {/* <Text style={styles.label}>Do you require Digital E-Market support?</Text>
       <YesNoToggle
         value={form.digital_emarket_support}
         onChange={(v) => setField('digital_emarket_support', v)}
-      />
+      /> */}
 
       <Text style={styles.label}>Do you require any other support?</Text>
       <TextInput
@@ -2747,7 +2985,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EE6969',
     borderRadius: 8,
-    padding: 10,
+    // padding: 10,
     fontSize: 14,
     color: '#000000',
   },
@@ -2817,5 +3055,12 @@ const styles = StyleSheet.create({
     minWidth: 300,
     paddingBottom: 15,
     paddingTop: 10,
+  },
+  addBtn:{
+    padding:10,
+    backgroundColor:"#e3e3e3",
+    borderRadius:8,
+    marginTop:10,
+    alignSelf:"flex-start"
   },
 });
