@@ -123,7 +123,7 @@ export default function CRPRecordFlowProduction({ navigation }) {
 
   // RECORDED BENEFICIARIES STATE (kept in sync with server)
   const [recorded, setRecorded] = useState(getCrpRecordedBeneficiaries() || []);
-
+// const [PLDrecList, setPLDrecList] = useState([]);
   // ---------- Helpers ----------
 
   const paginate = (items, page) => {
@@ -419,6 +419,53 @@ export default function CRPRecordFlowProduction({ navigation }) {
     return all;
   };
 
+// const fetchMembersForShg = async (shgCode) => {
+//   const all = [];
+//   const PLDall = []; // ✅ PLD-only accumulator
+//   let page = 1;
+//   const MAX_PAGES = 50; // hard safety cap
+
+//   while (page <= MAX_PAGES) {
+//     try {
+//       const res = await gsApi.getUpsrlmShgMembers(shgCode, {
+//         page,
+//         page_size: 10,
+//       });
+
+//       const rows = Array.isArray(res?.data)
+//         ? res.data
+//         : Array.isArray(res?.results)
+//         ? res.results
+//         : Array.isArray(res)
+//         ? res
+//         : [];
+
+//       if (!rows.length) break;
+
+//       // ✅ keep ALL rows
+//       all.push(...rows);
+
+//       // ✅ filter PLD rows
+//       const PLDrows = rows.filter(
+//         (row) => row?.pld_status === true
+//       );
+//       PLDall.push(...PLDrows);
+
+//       page += 1;
+//     } catch (err) {
+//       if (err?.status === 404) break;
+//       throw err;
+//     }
+//   }
+
+//   return {
+//     allRows: all,
+//     PLDrows: PLDall,
+//   };
+// };
+
+
+
   // ---------- Handlers for steps ----------
 
   const handleSelectPanchayat = async (p) => {
@@ -503,8 +550,9 @@ export default function CRPRecordFlowProduction({ navigation }) {
 
         // Recorded only if enterprise_id is present
         const isRecorded = !!(rec && rec.enterprise_id);
+         const isPLD = m?.pld_status === true; // ✅ SAFE ADDITION
 
-        return { ...m, _isRecorded: isRecorded, _recordRow: rec || null };
+        return { ...m, _isRecorded: isRecorded, _recordRow: rec || null, _isPLD: isPLD };
       });
       setBeneficiaries(enriched);
     } catch (err) {
@@ -514,6 +562,36 @@ export default function CRPRecordFlowProduction({ navigation }) {
       setLoading(false);
     }
   };
+
+
+// const handleSelectShg = async (shg) => {
+//   try {
+//     setLoading(true);
+
+//     const { allRows, PLDrows } = await fetchMembersForShg(shg.code);
+
+//     console.log('ALL SHG members:', allRows);
+//     console.log('PLD SHG members:', PLDrows);
+
+//     const enriched = allRows.map((r) => ({
+//       ...r,
+//       _isRecorded: recorded.some(
+//         (rec) =>
+//           String(rec.member_code) === String(r.member_code)
+//       ),
+//     }));
+
+//     setBeneficiaries(enriched);
+//     setStep('beneficiaries');
+//     setPaging((p) => ({ ...p, currentPage: 1 }));
+
+//   } catch (e) {
+//     console.log('Error in handleSelectShg', e);
+//   } finally {
+//     setLoading(false);
+//   }
+// };
+
 
   const handleBeneficiaryPress = async (row) => {
     const hasExisting = row._isRecorded;
@@ -631,6 +709,64 @@ export default function CRPRecordFlowProduction({ navigation }) {
       setRefreshing(false);
     }
   };
+
+//   const handleRefresh = async () => {
+//   setRefreshing(true);
+//   try {
+//     if (step === 'gp') {
+//       const gps = getCrpPanchayats() || [];
+//       setPanchayats(gps);
+
+//       const panchayatIds = gps.map(p => p.panchayat_id).filter(Boolean);
+
+//       if (panchayatIds.length) {
+//         try {
+//           const res = await gsApi.getRecordedBeneficiaries({
+//             panchayat_multi: panchayatIds.join(','),
+//             page_size: 5000,
+//           });
+
+//           const recList = Array.isArray(res?.results)
+//             ? res.results
+//             : Array.isArray(res)
+//             ? res
+//             : [];
+
+//           // ✅ Existing list (all rows)
+//           setRecorded(recList);
+//           setCrpRecordedBeneficiaries?.(recList);
+
+//           // ✅ NEW: PLD-only list
+//           const PLDrecList = recList.filter(
+//             item => item?.pld_status === true
+//           );
+//           setPLDrecList(PLDrecList);
+
+//         } catch (e) {
+//           console.log(
+//             'Error refreshing recorded beneficiaries on refresh',
+//             e
+//           );
+//         }
+//       }
+//       setPageGp(1);
+//     } 
+//     else if (step === 'village' && selectedPanchayat) {
+//       await handleSelectPanchayat(selectedPanchayat);
+//     } 
+//     else if (step === 'shg' && selectedVillage) {
+//       await handleSelectVillage(selectedVillage);
+//     } 
+//     else if (step === 'beneficiaries' && selectedShg) {
+//       await handleSelectShg(selectedShg);
+//     }
+//   } catch (e) {
+//     console.log('Error in handleRefresh', e);
+//   } finally {
+//     setRefreshing(false);
+//   }
+// };
+
 
   // ---------- Filters + paging ----------
 
@@ -800,7 +936,58 @@ export default function CRPRecordFlowProduction({ navigation }) {
       );
     }
 
-    const data = paginate(filteredBeneficiaries, currentPage);
+//     const data = paginate(filteredBeneficiaries, currentPage);
+//     return (
+//       <FlatList
+//         data={data}
+//         keyExtractor={(item, idx) => item.member_code ?? String(idx)}
+//         refreshControl={
+//           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+//         }
+//         renderItem={({ item }) => {
+//   const isPLD = item?.pld_status === true;
+
+//   return (
+//     <TouchableOpacity
+//       style={[
+//         styles.listItem,
+//         isPLD && styles.pldListItem, // ✅ green highlight
+//       ]}
+//       onPress={() => handleBeneficiaryPress(item)}
+//     >
+//       {/* ✅ TOP-RIGHT STICKY PLD LABEL */}
+//       {isPLD && (
+//         <View style={styles.pldBadge}>
+//           <Text style={styles.pldBadgeText}>PLD</Text>
+//         </View>
+//       )}
+
+//       <View style={{ flex: 1 }}>
+//         <Text style={styles.listText}>
+//           {item.member_name}
+//           {item._isRecorded ? ' (Recorded)' : ''}
+//         </Text>
+//         <Text style={styles.metaText}>
+//           {t.memberCode}{item.member_code}
+//         </Text>
+//       </View>
+
+//       <Text
+//         style={[
+//           styles.statusBadge,
+//           item._isRecorded
+//             ? { backgroundColor: '#D4EDDA', color: '#155724' }
+//             : { backgroundColor: '#F8D7DA', color: '#721C24' },
+//         ]}
+//       >
+//         {item._isRecorded ? t.recordedStatus : t.notRecordedStatus}
+//       </Text>
+//     </TouchableOpacity>
+//   );
+// }}
+
+
+const data = paginate(filteredBeneficiaries, currentPage);
     return (
       <FlatList
         data={data}
@@ -808,30 +995,75 @@ export default function CRPRecordFlowProduction({ navigation }) {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.listItem}
-            onPress={() => handleBeneficiaryPress(item)}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.listText}>
-                {item.member_name}
-                {item._isRecorded ? ' (Recorded)' : ''}
-              </Text>
-              <Text style={styles.metaText}>{t.memberCode}{item.member_code}</Text>
-            </View>
-            <Text
-              style={[
-                styles.statusBadge,
-                item._isRecorded
-                  ? { backgroundColor: '#D4EDDA', color: '#155724' }
-                  : { backgroundColor: '#F8D7DA', color: '#721C24' },
-              ]}
-            >
-              {item._isRecorded ? t.recordedStatus : t.notRecordedStatus}
-            </Text>
-          </TouchableOpacity>
-        )}
+
+renderItem={({ item }) => {
+  const isPLD = item._isPLD === true;
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.listItem,
+        isPLD && styles.pldListItem,
+      ]}
+      onPress={() => handleBeneficiaryPress(item)}
+    >
+      {isPLD && (
+        <View style={styles.pldBadge}>
+          <Text style={styles.pldBadgeText}>PLD</Text>
+        </View>
+      )}
+
+      <View style={{ flex: 1 }}>
+        <Text style={styles.listText}>
+          {item.member_name}
+          {item._isRecorded ? ' (Recorded)' : ''}
+        </Text>
+        <Text style={styles.metaText}>
+          {t.memberCode}{item.member_code}
+        </Text>
+      </View>
+
+      <Text
+        style={[
+          styles.statusBadge,
+          item._isRecorded
+            ? { backgroundColor: '#D4EDDA', color: '#155724' }
+            : { backgroundColor: '#F8D7DA', color: '#721C24' },
+        ]}
+      >
+        {item._isRecorded ? t.recordedStatus : t.notRecordedStatus}
+      </Text>
+    </TouchableOpacity>
+  );
+}}
+
+
+
+        // renderItem={({ item }) => (
+        //   <TouchableOpacity
+        //     style={styles.listItem}
+        //     onPress={() => handleBeneficiaryPress(item)}
+        //   >
+        //     <View style={{ flex: 1 }}>
+        //       <Text style={styles.listText}>
+        //         {item.member_name}
+        //         {item._isRecorded ? ' (Recorded)' : ''}
+        //       </Text>
+        //       <Text style={styles.metaText}>{t.memberCode}{item.member_code}</Text>
+        //     </View>
+        //     <Text
+        //       style={[
+        //         styles.statusBadge,
+        //         item._isRecorded
+        //           ? { backgroundColor: '#D4EDDA', color: '#155724' }
+        //           : { backgroundColor: '#F8D7DA', color: '#721C24' },
+        //       ]}
+        //     >
+        //       {item._isRecorded ? t.recordedStatus : t.notRecordedStatus}
+        //     </Text>
+        //   </TouchableOpacity>
+        // )}
+
       />
     );
   };
@@ -922,6 +1154,7 @@ headerTitle: {
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#EEE',
+    position: 'relative',
   },
   listText: { fontSize: 14, flex: 1, color: '#222' },
   metaText: { fontSize: 12, color: '#666' },
@@ -956,4 +1189,45 @@ headerTitle: {
     fontSize: 14,
     fontWeight: '500',
   },
+//   pldListItem: {
+//   backgroundColor: '#E8F5E9',   // light green
+// },
+
+// pldBadge: {
+//   position: 'absolute',
+//   top: 1,
+//   right: 6,
+//   backgroundColor: '#2E7D32',
+//   paddingHorizontal: 8,
+//   paddingVertical: 2,
+//   borderRadius: 10,
+//   zIndex: 10,
+// },
+
+// pldBadgeText: {
+//   color: '#fff',
+//   fontSize: 10,
+//   fontWeight: '700',
+// },
+
+pldListItem: {
+  backgroundColor: '#E8F5E9',
+},
+
+pldBadge: {
+  position: 'absolute',
+  top: 1,
+  right: 6,
+  backgroundColor: '#2E7D32',
+  paddingHorizontal: 8,
+  paddingVertical: 2,
+  borderRadius: 10,
+  zIndex: 10,
+},
+
+pldBadgeText: {
+  color: '#fff',
+  fontSize: 10,
+  fontWeight: '700',
+},
 });

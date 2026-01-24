@@ -387,11 +387,11 @@ import {
   StyleSheet,
   PermissionsAndroid,
   Platform,
-  AppState
+  // AppState
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage'; 
+
 
 // Option Arrays
 const PRODUCT_TYPE_OPTIONS = [
@@ -489,43 +489,7 @@ export default function ExistingEnterpriseProductServicesSection({ existingForm,
   const updateRow = (index, patch) => updateProducts(products.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   const toggleExpand = (index) => updateRow(index, { expanded: !products[index].expanded });
   const onChangeMainProductName = (index, value) => updateRow(index, { main_product_name: value, title: value || 'New Product Detail' });
-    // 🔴 ADDED: Save draft whenever products change
-  useEffect(() => {
-    const saveDraft = async () => {
-      try {
-        await AsyncStorage.setItem(PRODUCTS_DRAFT_KEY, JSON.stringify(products));
-      } catch (e) {
-        console.log('Draft save failed', e);
-      }
-    };
-    saveDraft();
-  }, [products]);
-
-  // 🔴 ADDED: Load draft on component mount
-  useEffect(() => {
-    const loadDraft = async () => {
-      try {
-        const saved = await AsyncStorage.getItem(PRODUCTS_DRAFT_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && (!existingForm.products || existingForm.products.length === 0)) {
-            updateProducts(parsed); // merge draft only if products empty
-          }
-        }
-      } catch (e) {
-        console.log('Draft load failed', e);
-      }
-    };
-    loadDraft();
-  }, []);
-
-  // 🔴 ADDED: Save draft when app goes to background
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', state => {
-      if (state !== 'active') AsyncStorage.setItem(PRODUCTS_DRAFT_KEY, JSON.stringify(products));
-    });
-    return () => sub.remove();
-  }, [products]);
+   
 
   const requestCameraPermission = async () => {
     if (Platform.OS === 'android') {
@@ -609,7 +573,7 @@ export default function ExistingEnterpriseProductServicesSection({ existingForm,
 
   return (
     <View style={styles.sectionContainer}>
-      <Text style={styles.sectionTitle}>Product and Services</Text>
+      <Text style={styles.sectionTitle}>3) Product and Services</Text>
       <Text style={styles.helpText}>Add each product separately using the "+" button below.</Text>
 
       {products.map((row, index) => (
@@ -629,13 +593,13 @@ export default function ExistingEnterpriseProductServicesSection({ existingForm,
             <View style={styles.cardBody}>
               {/* Q1 */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>1) Product Name</Text>
+                <Text style={styles.label}>Product Name</Text>
                 <TextInput style={styles.input} placeholder="Enter product name" value={row.main_product_name} onChangeText={v => onChangeMainProductName(index, v)} />
               </View>
 
               {/* Q2 */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>2) Type of Product</Text>
+                <Text style={styles.label}>Type of Product</Text>
                 <View style={styles.pickerWrapper}>
                   <Picker selectedValue={row.activity_or_product_type} onValueChange={v => updateRow(index, { activity_or_product_type: v })}>
                     <Picker.Item label="Select..." value="" />
@@ -647,19 +611,19 @@ export default function ExistingEnterpriseProductServicesSection({ existingForm,
 
               {/* Q3 */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>3) Describe Product Features (If any)</Text>
+                <Text style={styles.label}>Describe Product Features (If any)</Text>
                 <TextInput style={styles.input} placeholder="Describe your product" value={row.product_features} onChangeText={v => updateRow(index, { product_features: v })} />
               </View>
 
               {/* Q4 */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>4) Production Capacity (Per Month)</Text>
+                <Text style={styles.label}>Production Capacity (Per Month)</Text>
                 <TextInput style={styles.input} placeholder="Enter production capacity" value={row.production_capacity} onChangeText={v => updateRow(index, { production_capacity: v })} />
               </View>
 
               {/* Q5 */}
                       <View style={styles.fieldBlock}>
-  <Text style={styles.label}> Specify source of material</Text>
+  <Text style={styles.label}>Specify source of material</Text>
   <TextInput
     style={styles.input}
     placeholder="Please specify source of material"
@@ -668,7 +632,7 @@ export default function ExistingEnterpriseProductServicesSection({ existingForm,
   />
 </View>
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>5) Raw Materials Used</Text>
+                <Text style={styles.label}>Raw Materials Used</Text>
                 {RAW_MATERIAL_OPTIONS.map(opt => renderMultiCheckboxRow(row.raw_material, opt, val => updateRow(index, { raw_material: val })))}
                 {splitMulti(row.raw_material).includes('Others') && <TextInput style={[styles.input, { marginTop: 6 }]} placeholder="Specify other raw materials" value={row.raw_material_other} onChangeText={v => updateRow(index, { raw_material_other: v })} />}
               </View>
@@ -677,7 +641,7 @@ export default function ExistingEnterpriseProductServicesSection({ existingForm,
               {/* Q6 */}
 
  <View style={styles.fieldBlock}>
-  <Text style={styles.label}> Specify source of Machinery/Equipment</Text>
+  <Text style={styles.label}>Specify source of Machinery/Equipment</Text>
 
   <TextInput
     style={styles.input}
@@ -687,59 +651,62 @@ export default function ExistingEnterpriseProductServicesSection({ existingForm,
   />
 </View>
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>6) Machinery/Equipment Used</Text>
+                <Text style={styles.label}>Machinery/Equipment Used</Text>
                 {MACHINERY_OPTIONS.map(opt => renderMultiCheckboxRow(row.machinery_equipment, opt, val => updateRow(index, { machinery_equipment: val })))}
                 {splitMulti(row.machinery_equipment).includes('Others') && <TextInput style={[styles.input, { marginTop: 6 }]} placeholder="Specify other machinery" value={row.machinery_equipment_other} onChangeText={v => updateRow(index, { machinery_equipment_other: v })} />}
               </View>
 
               {/* Q7 */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>7) Target Customers</Text>
+                <Text style={styles.label}>Target Customers</Text>
                 {TARGET_CUSTOMERS_OPTIONS.map(opt => renderMultiCheckboxRow(row.target_customers, opt, val => updateRow(index, { target_customers: val })))}
                 {splitMulti(row.target_customers).includes('Others') && <TextInput style={[styles.input, { marginTop: 6 }]} placeholder="Specify other customers" value={row.target_customers_other} onChangeText={v => updateRow(index, { target_customers_other: v })} />}
               </View>
 
               {/* Q8 */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>8) Sales Area</Text>
+                <Text style={styles.label}>Sales Area</Text>
                 {SALES_AREA_OPTIONS.map(opt => renderMultiCheckboxRow(row.sales_area, opt, val => updateRow(index, { sales_area: val })))}
               </View>
 
               {/* Q9 */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>9) Packaging/Branding</Text>
+                <Text style={styles.label}>Packaging/Branding</Text>
                 {renderYesNo(row.packaging_branding_status, val => updateRow(index, { packaging_branding_status: val }))}
               </View>
 
               {/* Q10 */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>10) Marketing Strategy</Text>
+                <Text style={styles.label}>Marketing Strategy</Text>
                 {MARKETING_STRATEGY_OPTIONS.map(opt => renderMultiCheckboxRow(row.marketing_strategy, opt, val => updateRow(index, { marketing_strategy: val })))}
                 {splitMulti(row.marketing_strategy).includes('Others') && <TextInput style={[styles.input, { marginTop: 6 }]} placeholder="Specify other strategy" value={row.marketing_strategy_other} onChangeText={v => updateRow(index, { marketing_strategy_other: v })} />}
               </View>
 
               {/* Q11 - Updated Marketing Channels with nested sub-options (Merged Q13) */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>11) Marketing Channels & Linkages</Text>
+                <Text style={styles.label}>Marketing Channels & Linkages</Text>
                 {renderMarketingChannelsWithSubOptions(index)}
               </View>
 
               {/* Q12 */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>12) Marketing Challenges</Text>
+                <Text style={styles.label}>Marketing Challenges</Text>
                 {MARKETING_CHALLENGE_OPTIONS.map(opt => renderMultiCheckboxRow(row.marketing_challenges, opt, val => updateRow(index, { marketing_challenges: val })))}
                 {splitMulti(row.marketing_challenges).includes('Others') && <TextInput style={[styles.input, { marginTop: 6 }]} placeholder="Specify other challenges" value={row.marketing_challenges_other} onChangeText={v => updateRow(index, { marketing_challenges_other: v })} />}
               </View>
 
               {/* Q14 */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>13) Accept Digital Payment</Text>
+                <Text style={styles.label}>Accept Digital Payment</Text>
                 {renderYesNo(row.accept_digital_payment, val => updateRow(index, { accept_digital_payment: val }))}
               </View>
-
+<View style={styles.fieldBlock}>
+                <Text style={styles.label}>Product Price</Text>
+                <TextInput style={styles.input} keyboardType="numeric" placeholder="Enter sales amount" value={row.product_price} onChangeText={v => updateRow(index, { product_price: v })} />
+              </View>
               {/* Q15 */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>14) Average Monthly Sales (INR)</Text>
+                <Text style={styles.label}>Average Monthly Sales (INR)</Text>
                 <TextInput style={styles.input} keyboardType="numeric" placeholder="Enter sales amount" value={row.avg_monthly_sales} onChangeText={v => updateRow(index, { avg_monthly_sales: v })} />
               </View>
 
@@ -757,7 +724,7 @@ export default function ExistingEnterpriseProductServicesSection({ existingForm,
                       />
                     </View> */}
 <View style={styles.fieldBlock}>
-  <Text style={styles.label}>15) What is your annual sale?</Text>
+  <Text style={styles.label}>What is your annual sale?</Text>
   <Text style={styles.helpText}>
     Please enter your monthly annual sale.
     You may put an approximate value.
@@ -787,7 +754,7 @@ export default function ExistingEnterpriseProductServicesSection({ existingForm,
 
               {/* Q16 */}
               <View style={styles.fieldBlock}>
-                <Text style={styles.label}>16) Upload Product Photos</Text>
+                <Text style={styles.label}>Upload Product Photos</Text>
                 {['open_box', 'close_box', 'others'].map(typeKey => (
                   <View key={typeKey} style={styles.mediaBlock}>
                     <Text style={styles.mediaLabel}>

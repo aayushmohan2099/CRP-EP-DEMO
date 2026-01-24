@@ -59,15 +59,15 @@ const INVESTMENT_SOURCE_TREE = [
       'Loan refinancing',
     ],
   },
-  {
-    parent: 'Central Government Schemes (Also including NABARD)',
-    children: [
-      'Micro Enterprise Development Programme (MEDP)',
-      'Livelihood Enterprise Development Programme (LEDP)',
-      'Grant for capability building',
-      'Loan refinancing',
-    ],
-  },
+  // {
+  //   parent: 'Central Government Schemes (Also including NABARD)',
+  //   children: [
+  //     'Micro Enterprise Development Programme (MEDP)',
+  //     'Livelihood Enterprise Development Programme (LEDP)',
+  //     'Grant for capability building',
+  //     'Loan refinancing',
+  //   ],
+  // },
   {
     parent: 'Other Schemes',
     children: [
@@ -79,10 +79,10 @@ const INVESTMENT_SOURCE_TREE = [
       'Prime Minister Employment Generation Programme (PMEGP)',
       'PM SVANidhi',
       'SHG-Bank Linkage',
-      'PM-FME (PM Formalization of Micro Food Processing Enterprises)',
+      // 'PM-FME (PM Formalization of Micro Food Processing Enterprises)',
       'Dairy Entrepreneur Development Scheme',
       'Prime Minister Matsya Sampada Yojana',
-      'PMFME (Micro Food Processing)',
+      // 'PMFME (Micro Food Processing)',
       'SFURTI (Scheme of Fund for Regeneration of Traditional Industries)',
       'ASPIRE (A Scheme for Promotion of Innovation, Rural Industry and Entrepreneurship)',
       'AGEY',
@@ -325,12 +325,12 @@ const deleteFundCard = (index) =>
   });
   return (
     <View style={styles.sectionContainer}>
-      <Text style={styles.sectionTitle}>4) Investment Details Section</Text>
+      <Text style={styles.sectionTitle}>4)Investment Details Section</Text>
 
 {/* 17) Initial investment */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>
-          12) What was your Initial Investment for this Enterprise?
+          What was your Initial Investment for this Enterprise?
         </Text>
         <Text style={styles.helpText}>
           Please enter the approximate total amount of money you used when you first started your enterprise.
@@ -345,7 +345,7 @@ const deleteFundCard = (index) =>
       {/* 12) Monthly income estimate */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>
-          13) What is your total Estimated Monthly Income?
+          What is your total Estimated Monthly Income?
         </Text>
         <Text style={styles.helpText}>
           Please enter the combined approximate income your enterprise earns in one month from all sources.
@@ -392,7 +392,7 @@ const deleteFundCard = (index) =>
 
       {/* 15) Working capital */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>14) What is your Monthly Working Capital?</Text>
+        <Text style={styles.label}>What is your Monthly Working Capital?</Text>
         <Text style={styles.helpText}>
           Please enter how much money you normally need every month to run your business
           (for raw material, wages, transport, etc.).
@@ -558,7 +558,7 @@ const deleteFundCard = (index) =>
 
 
     <View style={styles.fieldBlock}>
-  <Text style={styles.label}>15) Have your SHG received mandatory Funds?</Text>
+  <Text style={styles.label}>Have your SHG received mandatory Funds?</Text>
   <Text style={styles.helpText}>
     Please select Yes if your Self Help Group (SHG) has received mandatory support.
   </Text>
@@ -786,7 +786,7 @@ else {
       {/* 18) Source of investment – parent/child tree */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>
-          16) Select all sources of your Investment that apply
+          Select all sources of your Investment that apply
         </Text>
         <Text style={styles.helpText}>
           Please select all departments and schemes from where you received support or funds

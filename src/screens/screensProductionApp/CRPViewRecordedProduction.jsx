@@ -118,6 +118,8 @@ export default function CRPViewRecordedProduction({ route,navigation }) {
   const [epsakhiDetail, setEpsakhiDetail] = useState(null);
   const [userId, setUserId] = useState(null);
 const [loggedUser, setLoggedUser] = useState(null);
+const [PLDrecList, setPLDrecList] = useState([]);
+
   const routeCrpUserId =
     route?.params?.crpUserId ||
     route?.params?.user_id ||
@@ -233,9 +235,36 @@ const [loggedUser, setLoggedUser] = useState(null);
 //   console.log('📊 Total records created by this CRP:', filteredRecorded.length);
 //   setRecordedList(filteredRecorded);
 // }, [loggedUser]); // add loggedUser as dependency
+// useEffect(() => {
+//   if (userId == null) {
+//     setRecordedList([]);
+//     return;
+//   }
+
+//   const gps = getCrpPanchayats() || [];
+//   setPanchayats(gps);
+
+//   const allRecorded = getCrpRecordedBeneficiaries() || [];
+
+//   const filteredRecorded = allRecorded.filter((row) => {
+//     const createdByNumeric =
+//       typeof row.created_by === 'number'
+//         ? row.created_by
+//         : typeof row.created_by === 'string' && /^\d+$/.test(row.created_by)
+//         ? parseInt(row.created_by, 10)
+//         : null;
+
+//     return createdByNumeric === userId;
+//   });
+
+//   setRecordedList(filteredRecorded);
+// }, [userId]);
+  
+
 useEffect(() => {
   if (userId == null) {
     setRecordedList([]);
+    setPLDrecList([]);
     return;
   }
 
@@ -244,7 +273,8 @@ useEffect(() => {
 
   const allRecorded = getCrpRecordedBeneficiaries() || [];
 
-  const filteredRecorded = allRecorded.filter((row) => {
+  // ✅ Filter by logged-in user
+  const recList = allRecorded.filter((row) => {
     const createdByNumeric =
       typeof row.created_by === 'number'
         ? row.created_by
@@ -255,9 +285,19 @@ useEffect(() => {
     return createdByNumeric === userId;
   });
 
-  setRecordedList(filteredRecorded);
+  // ✅ ALL rows (no PLD filter)
+  setRecordedList(recList);
+
+  // ✅ PLD-only rows
+  const PLDrecList = recList.filter(
+    (row) => row?.pld_status === true
+  );
+  setPLDrecList(PLDrecList);
+
 }, [userId]);
-  
+
+
+
 
   // Load villages for a selected Panchayat
   const loadVillagesForPanchayat = async (panchayatId) => {
@@ -519,33 +559,78 @@ useEffect(() => {
     );
   };
 
-  const renderBeneficiaryItem = ({ item }) => {
-    const name =
-      item.applicant_name ||
-      item.member_name ||
-      item.lokos_member_name ||
-      'Unnamed';
-    const memberCode = item.lokos_member_code || item.member_code || 'NA';
-    const mobile = item.mobile || item.phone || 'NA';
-    const typeLabel = labelFromEnterpriseTypeCode(item.enterprise_type);
+  // const renderBeneficiaryItem = ({ item }) => {
+  //   const name =
+  //     item.applicant_name ||
+  //     item.member_name ||
+  //     item.lokos_member_name ||
+  //     'Unnamed';
+  //   const memberCode = item.lokos_member_code || item.member_code || 'NA';
+  //   const mobile = item.mobile || item.phone || 'NA';
+  //   const typeLabel = labelFromEnterpriseTypeCode(item.enterprise_type);
 
-    return (
-      <View style={styles.listItem}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.listText}>{name}</Text>
-          <Text style={styles.metaText}>Member code: {memberCode}</Text>
-          <Text style={styles.metaText}>Mobile: {mobile}</Text>
-          <Text style={styles.typeText}>Enterprise: {typeLabel}</Text>
+  //   return (
+  //     <View style={styles.listItem}>
+  //       <View style={{ flex: 1 }}>
+  //         <Text style={styles.listText}>{name}</Text>
+  //         <Text style={styles.metaText}>Member code: {memberCode}</Text>
+  //         <Text style={styles.metaText}>Mobile: {mobile}</Text>
+  //         <Text style={styles.typeText}>Enterprise: {typeLabel}</Text>
+  //       </View>
+  //       <TouchableOpacity
+  //         style={styles.viewBtn}
+  //         onPress={() => openDetailPage(item)}
+  //       >
+  //         <Text style={styles.viewBtnText}>View</Text>
+  //       </TouchableOpacity>
+  //     </View>
+  //   );
+  // };
+
+
+  const renderBeneficiaryItem = ({ item }) => {
+  const name =
+    item.applicant_name ||
+    item.member_name ||
+    item.lokos_member_name ||
+    'Unnamed';
+
+  const memberCode = item.lokos_member_code || item.member_code || 'NA';
+  const mobile = item.mobile || item.phone || 'NA';
+  const typeLabel = labelFromEnterpriseTypeCode(item.enterprise_type);
+
+  const isPLD =
+    item?.pld_status === true ||
+    item?.pld_status === 1 ||
+    item?.pld_status === '1' ||
+    item?.pld_status === 'true';
+
+  return (
+    <View style={[styles.listItem, isPLD && styles.pldItem]}>
+      
+      {isPLD && (
+        <View style={styles.pldBadge}>
+          <Text style={styles.pldBadgeText}>PLD</Text>
         </View>
-        <TouchableOpacity
-          style={styles.viewBtn}
-          onPress={() => openDetailPage(item)}
-        >
-          <Text style={styles.viewBtnText}>View</Text>
-        </TouchableOpacity>
+      )}
+
+      <View style={{ flex: 1 }}>
+        <Text style={styles.listText}>{name}</Text>
+        <Text style={styles.metaText}>Member code: {memberCode}</Text>
+        <Text style={styles.metaText}>Mobile: {mobile}</Text>
+        <Text style={styles.typeText}>Enterprise: {typeLabel}</Text>
       </View>
-    );
-  };
+
+      <TouchableOpacity
+        style={styles.viewBtn}
+        onPress={() => openDetailPage(item)}
+      >
+        <Text style={styles.viewBtnText}>View</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
 
   // ============ RENDER DETAIL PAGE ============
 
@@ -870,6 +955,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#EEE',
+    position: 'relative', //  REQUIRED for sticky badge
   },
   listText: { flex: 1, fontSize: 14, color: '#222' },
   metaText: { fontSize: 12, color: '#777' },
@@ -937,4 +1023,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     backgroundColor: '#FAFAFA',
   },
+pldItem: {
+  backgroundColor: '#E8F5E9', // light green
+},
+pldBadge: {
+  position: 'absolute',
+  top: 6,
+  right: 6,
+  backgroundColor: '#2E7D32',
+  paddingHorizontal: 8,
+  paddingVertical: 2,
+  borderRadius: 12,
+  zIndex: 10,
+},
+pldBadgeText: {
+  color: '#FFFFFF',
+  fontSize: 10,
+  fontWeight: '700',
+},
 });

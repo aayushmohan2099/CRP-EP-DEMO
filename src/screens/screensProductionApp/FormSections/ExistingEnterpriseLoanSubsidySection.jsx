@@ -342,7 +342,7 @@ export default function ExistingEnterpriseLoanSubsidySection({
       {/* 19) Has taken loan? */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>
-          19) Have you taken any Loans after your Initial Investment?
+          Have you taken any Loans after your Initial Investment?
         </Text>
         <Text style={styles.helpText}>
           Please select Yes if you have taken any loan (from bank, government scheme,
@@ -386,7 +386,7 @@ export default function ExistingEnterpriseLoanSubsidySection({
                   {/* 1) Institution tree */}
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      1) Specify the Institution from where you took the Loan
+                      Specify the Institution from where you took the Loan
                     </Text>
                     <Text style={styles.helpText}>
                       Please select all relevant departments and schemes from where you received this loan.
@@ -412,7 +412,7 @@ export default function ExistingEnterpriseLoanSubsidySection({
                    {/* 4) Bank Details */}
 <View style={styles.fieldBlock}>
   <Text style={styles.label}>
-    2) From which bank have you taken the loan?
+    From which bank have you taken the loan?
   </Text>
 
   {bankOptions.map(bank => (
@@ -458,7 +458,7 @@ export default function ExistingEnterpriseLoanSubsidySection({
                   {/*  Loan amount */}
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      3) Specify the Amount of Loan
+                      Specify the Amount of Loan
                     </Text>
                     <Text style={styles.helpText}>
                       Please enter the loan amount sanctioned for this particular loan (in rupees).
@@ -474,7 +474,7 @@ export default function ExistingEnterpriseLoanSubsidySection({
                   {/*  Repayment Details */}
 <View style={styles.fieldBlock}>
   <Text style={styles.label}>
-    4) How much have you repaid?
+    How much have you repaid?
   </Text>
 
   <TextInput
@@ -538,7 +538,7 @@ export default function ExistingEnterpriseLoanSubsidySection({
                   {/*  Date taken */}
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      5) Specify the Date on which you took the Loan
+                      Specify the Date on which you took the Loan
                     </Text>
                     <Text style={styles.helpText}>
                       Please enter the date when the loan was sanctioned or first disbursed.
@@ -611,7 +611,7 @@ export default function ExistingEnterpriseLoanSubsidySection({
       {/* 20) Has received subsidy? */}
       <View style={[styles.fieldBlock, { marginTop: 18 }]}>
         <Text style={styles.label}>
-          20) Have you received any Government Subsidies?
+          Have you received any Government Subsidies?
         </Text>
         <Text style={styles.helpText}>
           Please select Yes if you have received any subsidy support for this enterprise
@@ -705,7 +705,7 @@ export default function ExistingEnterpriseLoanSubsidySection({
                   {/* 2) Institution / scheme tree */}
                   <View className={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      2) Specify the Institution from where you received the Subsidy
+                      Specify the Institution from where you received the Subsidy
                     </Text>
                     <Text style={styles.helpText}>
                       Please select all relevant departments and schemes that provided this subsidy.
@@ -730,7 +730,7 @@ export default function ExistingEnterpriseLoanSubsidySection({
                   {/* 3) Subsidy amount / detail */}
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      3) What was the amount or detail of the subsidy you received?
+                      What was the amount or detail of the subsidy you received?
                     </Text>
                     <Text style={styles.helpText}>
                       Please mention the amount in rupees (if known) and any important details

@@ -747,7 +747,7 @@ const [trainingType, setTrainingType] = useState([]);
       {/* TRAINING RECEIVED */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>
-          20) Have you received any training?
+          Have you received any skill training?
         </Text>
         <Text style={styles.helpText}>
           Please select Yes if you have already attended any training related to
@@ -795,7 +795,7 @@ const [trainingType, setTrainingType] = useState([]);
                   {/* 1) Department */}
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      1) Which department did you receive the training from?
+                      Which department did you receive the training from?
                     </Text>
                     <Text style={styles.helpText}>
                       Please select the department or organisation that
@@ -825,7 +825,7 @@ const [trainingType, setTrainingType] = useState([]);
                   {/* 2) Sectors and modules (tree) */}
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      2) Please select all sectors in which you have received trainings
+                      Please select all sectors in which you have received trainings
                     </Text>
                     <Text style={styles.helpText}>
                       First tick the main business sector, then choose all
@@ -889,7 +889,7 @@ const [trainingType, setTrainingType] = useState([]);
                   {/* 3) Certificates upload */}
 <View style={styles.fieldBlock}>
   <Text style={styles.label}>
-    3) Please upload if you have any certificates for your trainings  (If Have)
+    Please upload if you have any certificates for your trainings  (If Have)
   </Text>
   <Text style={styles.helpText}>
     You can upload photos or PDF copies of your training certificates. Each file will be stored separately.
@@ -950,7 +950,7 @@ const [trainingType, setTrainingType] = useState([]);
       {/* TRAINING REQUIRED */}
       <View style={[styles.fieldBlock, { marginTop: 18 }]}>
         <Text style={styles.label}>
-          21) Do you require skill training in future?
+          Do you require skill training in future?
         </Text>
         <Text style={styles.helpText}>
           Please select Yes if you are interested in taking new training to
@@ -997,7 +997,7 @@ const [trainingType, setTrainingType] = useState([]);
                 <View style={styles.cardBody}>
                    <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      1) Which is your preferred sector for training?
+                    Which is your preferred sector for training?
                     </Text>
                     <Text style={styles.helpText}>
                       Please select all business sectors and skill areas where
@@ -1030,7 +1030,7 @@ const [trainingType, setTrainingType] = useState([]);
                   </View>
       <View style={styles.fieldBlock}>
   <Text style={styles.label}>
-    1) What is your preferred training type?
+    What is your preferred training type?
   </Text>
 
   <Text style={styles.helpText}>
@@ -1057,7 +1057,7 @@ const [trainingType, setTrainingType] = useState([]);
 
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      2) How many days of training are you comfortable in one slot?
+                      How many days of training are you comfortable in one slot?
                     </Text>
                     <Text style={styles.helpText}>
                       Please select the training duration that suits you best.
@@ -1074,7 +1074,7 @@ const [trainingType, setTrainingType] = useState([]);
                   {/* 1) Preferred department */}
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      3) Which is your preferred department for training?
+                    Which is your preferred department for training?
                     </Text>
                     <Text style={styles.helpText}>
                       Please select the department or organisation from which
@@ -1202,7 +1202,7 @@ const [trainingType, setTrainingType] = useState([]);
 
                     <View style={styles.fieldBlock}>
   <Text style={styles.label}>
-    4) What is your preferred training location?
+    What is your preferred training location?
   </Text>
 
   <Text style={styles.helpText}>
@@ -1236,7 +1236,7 @@ const [trainingType, setTrainingType] = useState([]);
                   {/* 5) Expected income */}
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label}>
-                      5) What is your expected income after training?
+                      What is your expected income after training?
                     </Text>
                     <Text style={styles.helpText}>
                       Please select the monthly income range you are expecting
@@ -1272,7 +1272,7 @@ const [trainingType, setTrainingType] = useState([]);
           {/* 1) Nearest skill centre */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>
-              1) Do you know of any Skill Centres near you?
+              Do you know of any Skill Centres related to your enterprise?
             </Text>
             <Text style={styles.helpText}>
               Please select Yes if you are aware of any nearby skill or
@@ -1299,7 +1299,7 @@ const [trainingType, setTrainingType] = useState([]);
           {/* 2) Nearest industry */}
           <View style={styles.fieldBlock}>
             <Text style={styles.label}>
-              2) Do you know of any Industries / Industrial Sectors near you?
+              Do you know of any Industries / Industrial Sectors related to your enterprise?
             </Text>
             <Text style={styles.helpText}>
               Please select Yes if you know any nearby industrial areas,
@@ -1329,7 +1329,7 @@ const [trainingType, setTrainingType] = useState([]);
       {/* 22) Future expansion plan */}
       <View style={[styles.fieldBlock, { marginTop: 18 }]}>
         <Text style={styles.label}>
-          22) What is your Future Expansion Plan (If any)?
+          What is your Future Expansion Plan (If any)?
         </Text>
         <Text style={styles.helpText}>
           Please briefly describe how you would like to grow your enterprise in
@@ -1346,7 +1346,7 @@ const [trainingType, setTrainingType] = useState([]);
       {/* 23) Information about government schemes */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>
-          23) Do you know about Govt Schemes relevant to your business?
+          Do you know about Govt Schemes relevant to your business?
         </Text>
         <Text style={styles.helpText}>
           Please select Yes if you are interested in learning about different

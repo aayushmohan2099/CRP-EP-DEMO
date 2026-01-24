@@ -100,7 +100,6 @@ const licenseOptions = [
     category: "Local / Miscellaneous Permissions",
     options: [
       { label: "Local Authority Permission", value: "local_authority_permission" },
-      { label: "No License Required", value: "no_license_required" },
       { label: "Other (Please specify)", value: "other" }
     ]
   }
@@ -109,13 +108,20 @@ const licenseOptions = [
 /* ---------------- COMPONENT ---------------- */
 const LicenseSelector = () => {
   const [cards, setCards] = useState([
-    {
-      id: Date.now(),
-      selected: {},
-      files: {},
-      openSections: {},
-      otherText: {} // { category: "text" }
-    }
+      {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    selected: {},
+    files: {},
+    openSections: {},
+    otherText: {}
+  }
+    // {
+    //   id: Date.now(),
+    //   selected: {},
+    //   files: {},
+    //   openSections: {},
+    //   otherText: {} // { category: "text" }
+    // }
   ]);
 
   const toggleSection = (cardId, category) => {
@@ -186,13 +192,13 @@ const LicenseSelector = () => {
   const addCard = () => {
     setCards((p) => [
       ...p,
-      {
-        id: Date.now(),
-        selected: {},
-        files: {},
-        openSections: {},
-        otherText: {}
-      }
+        {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    selected: {},
+    files: {},
+    openSections: {},
+    otherText: {}
+  }
     ]);
   };
 
@@ -246,7 +252,7 @@ const LicenseSelector = () => {
         renderItem={({ item, index }) => (
           <View style={styles.card}>
             <View style={styles.header}>
-              <Text style={styles.title}>License {index + 1}</Text>
+              {/* <Text style={styles.title}>License {index + 1}</Text> */}
               {cards.length > 1 && (
                 <TouchableOpacity onPress={() => deleteCard(item.id)}>
                   <Text style={styles.delete}>Delete</Text>
@@ -284,8 +290,8 @@ export default LicenseSelector;
 
 /* ---------------- STYLES ---------------- */
 const styles = StyleSheet.create({
-  container: { padding: 16 },
-  question: { fontSize: 18, fontWeight: "600", marginBottom: 10 },
+  container: { paddingBottom: 16 },
+  question: { fontSize: 15,  fontWeight: 'bold', marginBottom: 4, color: '#333' },
   card: { backgroundColor: "#fff", padding: 12, borderRadius: 10, marginBottom: 16 },
   header: { flexDirection: "row", justifyContent: "space-between" },
   title: { fontWeight: "600" },
@@ -295,7 +301,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 8
   },
-  sectionTitle: { fontWeight: "600" },
+  // sectionTitle: {},
   optionRow: { marginLeft: 8, marginBottom: 6 },
   checkboxRow: { flexDirection: "row", alignItems: "center" },
   checkbox: {

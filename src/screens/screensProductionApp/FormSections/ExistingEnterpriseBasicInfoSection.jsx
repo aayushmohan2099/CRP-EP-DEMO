@@ -1,9 +1,12 @@
 // src/screens/screensProductionApp/FormSections/ExistingEnterpriseBasicInfoSection.jsx
 import React, { useState } from 'react';
 import { useEffect } from 'react';
+import { useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet,AppState,  } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import LanguageToggle from '../../../components/LanguageToggle';
+import { LanguageContext } from '../../../components/LanguageContext';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
 import LicenseSelector from './BasicInformationSectionLicenseSelector'
 const ENTERPRISE_TYPE_TREE = [
   {
@@ -343,60 +346,61 @@ const EnterpriseTypeTree = ({ value, onChange }) => {
     </View>
   );
 };
-const BASIC_INFO_DRAFT_KEY = 'EXISTING_ENTERPRISE_BASIC_INFO_DRAFT';
+// const BASIC_INFO_DRAFT_KEY = 'EXISTING_ENTERPRISE_BASIC_INFO_DRAFT';
 export default function ExistingEnterpriseBasicInfoSection({ existingForm, setExistingForm }) {
+const { language } = useContext(LanguageContext);
   const [yearPickerVisible, setYearPickerVisible] = useState(false);
- const [draftLoaded, setDraftLoaded] = useState(false); // ADDED
+//  const [draftLoaded, setDraftLoaded] = useState(false); // ADDED
   const currentYear = new Date().getFullYear();
   const startYear = 1950;
   const yearOptions = [];
   for (let y = currentYear; y >= startYear; y--) yearOptions.push(y.toString());
 
  
-     useEffect(() => {
-    const loadDraft = async () => {
-      try {
-        const saved = await AsyncStorage.getItem(BASIC_INFO_DRAFT_KEY);
-        if (saved) {
-          setExistingForm(JSON.parse(saved)); //  FIXED
-        }
-      } catch (e) {
-        console.log('Draft load failed', e);
-      } finally {
-        setDraftLoaded(true); // ADDED
-      }
-    };
+  //    useEffect(() => {
+  //   const loadDraft = async () => {
+  //     try {
+  //       const saved = await AsyncStorage.getItem(BASIC_INFO_DRAFT_KEY);
+  //       if (saved) {
+  //         setExistingForm(JSON.parse(saved)); //  FIXED
+  //       }
+  //     } catch (e) {
+  //       console.log('Draft load failed', e);
+  //     } finally {
+  //       setDraftLoaded(true); // ADDED
+  //     }
+  //   };
 
-    loadDraft();
-  }, []); // CHANGED (removed dependency on setExistingForm)
+  //   loadDraft();
+  // }, []); // CHANGED (removed dependency on setExistingForm)
 
   /* =====================================================
      FIX 2: Auto-save ONLY AFTER draft is loaded
   ===================================================== */
-  useEffect(() => {
-    if (!draftLoaded) return; // CRITICAL FIX
+  // useEffect(() => {
+  //   if (!draftLoaded) return; // CRITICAL FIX
 
-    AsyncStorage.setItem(
-      BASIC_INFO_DRAFT_KEY,
-      JSON.stringify(existingForm)
-    );
-  }, [existingForm, draftLoaded]); // CHANGED
+  //   AsyncStorage.setItem(
+  //     BASIC_INFO_DRAFT_KEY,
+  //     JSON.stringify(existingForm)
+  //   );
+  // }, [existingForm, draftLoaded]); // CHANGED
 
   /* =====================================================
      FIX 3: Save draft when app goes background
   ===================================================== */
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', state => {
-      if (state !== 'active' && draftLoaded) {
-        AsyncStorage.setItem(
-          BASIC_INFO_DRAFT_KEY,
-          JSON.stringify(existingForm)
-        );
-      }
-    });
+  // useEffect(() => {
+  //   const sub = AppState.addEventListener('change', state => {
+  //     if (state !== 'active' && draftLoaded) {
+  //       AsyncStorage.setItem(
+  //         BASIC_INFO_DRAFT_KEY,
+  //         JSON.stringify(existingForm)
+  //       );
+  //     }
+  //   });
 
-    return () => sub.remove();
-  }, [existingForm, draftLoaded]); //  CHANGED
+  //   return () => sub.remove();
+  // }, [existingForm, draftLoaded]); //  CHANGED
 
   /* =====================================================
       FIX 4: PATCH update (NO functional updater)
@@ -404,11 +408,25 @@ export default function ExistingEnterpriseBasicInfoSection({ existingForm, setEx
   const update = (patch) => setExistingForm(patch); // CORRECT
   return (
     <View style={styles.sectionContainer}>
-      <Text style={styles.sectionTitle}>1) Basic Information</Text>
+    <View
+  style={{
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  }}
+>
+  <Text style={styles.sectionTitle}>
+    {language === 'hi' ? '1) बुनियादी जानकारी' : '1) Basic Information'}
+  </Text>
 
+  <LanguageToggle />
+</View>
       {/* Enterprise Name */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>What is the name of your Enterprise?</Text>
+        <Text style={styles.label}> {language === 'hi'
+      ? 'आपके उद्यम का नाम क्या है?'
+      : 'What is the name of your Enterprise?'}</Text>
         <Text style={styles.helpText}>
           Please type the full name of your enterprise as you use it in daily work.
         </Text>
@@ -573,6 +591,120 @@ export default function ExistingEnterpriseBasicInfoSection({ existingForm, setEx
         />
       </View> */}
 
+
+      {/* cadre selection */}
+<View style={styles.fieldBlock}>
+  <Text style={styles.label}>Are you involved in any cadre activity?</Text>
+  <Text style={styles.helpText}>Select your cadre activity</Text>
+
+  {[
+    'Lakhpati CRP',
+'Krishi Ajeevika Sakhi',
+'Krishi Udyog Sakhi', 
+'Mahila Kisan',
+'CRP- EP',
+'BC sakhi',
+'Vidyut Sakhi',
+'Bank Sakhi',
+'Fnhw Swasth sakhi',
+'THR/Dry ration worker',
+'Samuh Sakhi',
+'MGNREGA MATE',
+    'Other',
+  ].map((opt) => {
+    const selected =
+      Array.isArray(existingForm.owner_cadre_activity) &&
+      existingForm.owner_cadre_activity.includes(opt);
+
+    return (
+      <TouchableOpacity
+        key={opt}
+        style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
+        onPress={() => {
+          let updated = [...(existingForm.owner_cadre_activity || [])];
+
+          if (selected) {
+            // remove
+            updated = updated.filter((i) => i !== opt);
+          } else {
+            // add
+            updated.push(opt);
+          }
+
+          update({ owner_cadre_activity: updated });
+        }}
+      >
+        <View
+          style={[
+            styles.checkbox,
+            selected && styles.checkboxChecked,
+          ]}
+        />
+        <Text style={{ marginLeft: 8 }}>{opt}</Text>
+      </TouchableOpacity>
+    );
+  })}
+
+  {/* If "Other" selected → show textbox */}
+  {existingForm.owner_cadre_activity?.includes('Other') && (
+    <TextInput
+      style={[styles.input, { marginTop: 6 }]}
+      placeholder="Please specify"
+      value={existingForm.owner_cadre_activity_other || ''}
+      onChangeText={(v) =>
+        update({ owner_cadre_activity_other: v })
+      }
+    />
+  )}
+</View>
+
+ {/* Designation in your SHG */}
+<View style={styles.fieldBlock}>
+  <Text style={styles.label}>What is your designation in your SHG?</Text>
+  <Text style={styles.helpText}>Select your designation</Text>
+
+  {[
+    'President',
+    'Secretary',
+    'Treasurer',
+    'Book-Keeper',
+    'Member',
+  ].map((opt) => {
+    const selected =
+      Array.isArray(existingForm.owner_designation) &&
+      existingForm.owner_designation.includes(opt);
+
+    return (
+      <TouchableOpacity
+        key={opt}
+        style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
+        onPress={() => {
+          let updated = [...(existingForm.owner_designation || [])];
+
+          if (selected) {
+            // remove
+            updated = updated.filter((i) => i !== opt);
+          } else {
+            // add
+            updated.push(opt);
+          }
+
+          update({ owner_designation: updated });
+        }}
+      >
+        <View
+          style={[
+            styles.checkbox,
+            selected && styles.checkboxChecked,
+          ]}
+        />
+        <Text style={{ marginLeft: 8 }}>{opt}</Text>
+      </TouchableOpacity>
+    );
+  })}
+</View>
+
+
       {/* Special category */}
 <View style={styles.fieldBlock}>
   <Text style={styles.label}>Please specify your special category (If applicable)</Text>
@@ -606,7 +738,6 @@ export default function ExistingEnterpriseBasicInfoSection({ existingForm, setEx
     />
   )}
 </View>
-
     </View>
   );
 }
@@ -626,7 +757,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     backgroundColor: '#fff',
   },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgyba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { width: '85%', padding: 16, borderRadius: 8, backgroundColor: '#fff' },
   cancelBtn: { marginTop: 12, alignSelf: 'flex-end' },
   checkbox: {

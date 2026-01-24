@@ -146,7 +146,7 @@ export default function ExistingEnterpriseDeclarationSection({
 
       {/* 1) Declaration confirmed */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>1) Declaration</Text>
+        <Text style={styles.label}>Declaration</Text>
         <Text style={styles.helpText}>
           I hereby declare that all information provided above is correct
           and checked by me.
@@ -160,7 +160,7 @@ export default function ExistingEnterpriseDeclarationSection({
 
       {/* 2) Declaration Date */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>2) Declaration Date</Text>
+        <Text style={styles.label}>Declaration Date</Text>
         <Text style={styles.helpText}>
           Please select the date on which this form is being completed.
           The selected date will be clearly stored as YYYY-MM-DD.
@@ -260,7 +260,7 @@ export default function ExistingEnterpriseDeclarationSection({
 
       {/* 3) Applicant Signature upload */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>3) Applicant Signature</Text>
+        <Text style={styles.label}>Applicant Signature</Text>
         <Text style={styles.helpText}>
           Please upload a clear photo or scanned copy of your signature.
           This will be stored securely with your application.

@@ -57,11 +57,11 @@ export default function ExistingEnterpriseEnterpriseDetailsSection({
 
   return (
     <View style={styles.sectionContainer}>
-      <Text style={styles.sectionTitle}>3) Enterprise Details Section</Text>
+      <Text style={styles.sectionTitle}>2) Enterprise Details Section</Text>
 
       {/* 9) Workplace Type */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>9) What is your Workplace Type?</Text>
+        <Text style={styles.label}>What is your Workplace Type?</Text>
         <Text style={styles.helpText}>
           Please select the option that best describes where you run your
           enterprise from. If it does not match, please choose Others and
@@ -90,7 +90,7 @@ export default function ExistingEnterpriseEnterpriseDetailsSection({
 
       {/* 10) Electricity Availability */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>10) Electricity Availability</Text>
+        <Text style={styles.label}>Electricity Availability</Text>
         <Text style={styles.helpText}>
           Please select the option that best describes the electricity
           situation at your workplace. If your case is different, kindly
@@ -126,7 +126,7 @@ export default function ExistingEnterpriseEnterpriseDetailsSection({
 
       {/* 11) Water Availability */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.label}>11) Water Availability</Text>
+        <Text style={styles.label}>Water Availability</Text>
         <Text style={styles.helpText}>
           Please select how easily water is available for your enterprise
           activities. If the situation is different, please select Others and
@@ -163,7 +163,7 @@ export default function ExistingEnterpriseEnterpriseDetailsSection({
       {/* Transport Availability */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>
-          12) What is the Transport Availability for your Enterprise?
+         What is the Transport Availability for your Enterprise?
         </Text>
         <Text style={styles.helpText}>
           Please select how easily you get transport (like tempo, bus, pickup,
@@ -203,7 +203,7 @@ export default function ExistingEnterpriseEnterpriseDetailsSection({
       {/* Can send products to Bijnor */}
       <View style={styles.fieldBlock}>
         <Text style={styles.label}>
-          13) Can you send your products to Bijnor ?
+        Can you send your products to Bijnor ?
         </Text>
         <Text style={styles.helpText}>
           Please select if you are able to send your products to Bijnor or

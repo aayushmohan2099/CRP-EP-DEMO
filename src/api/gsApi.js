@@ -338,6 +338,10 @@ export async function getRecordedBeneficiaries(params = {}) {
   return request(`/api/v1/recorded-beneficiaries/${query}`);
 }
 
+export async function getpld(parmas={}){
+  const query= buildQuery(params);
+  return request (`/api/v1/upsrlm-shg-members/${query}`);
+}
 export async function getRecordedBeneficiaryDetail(id) {
   return request(`/api/v1/recorded-beneficiaries/${id}/`);
 }

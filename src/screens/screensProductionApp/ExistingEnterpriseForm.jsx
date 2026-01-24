@@ -958,6 +958,7 @@ import {
   getCrpDetail,
 } from '../../utils/tempStore';
 
+
 // Section components
 import ExistingEnterpriseBasicInfoSection from './FormSections/ExistingEnterpriseBasicInfoSection';
 import ExistingEnterpriseProductServicesSection from './FormSections/ExistingEnterpriseProductServicesSection';
@@ -1327,6 +1328,7 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       mobile: member_mobile || null,
       email: beneficiary.email || null,
       lokos_shg_code: lokos_shg || null,
+        created_by: createdBy, 
     };
 
     if (createdBy !== null) {
@@ -1358,10 +1360,11 @@ export default function ExistingEnterpriseForm({ route, navigation }) {
       media,
       ...rest
     } = existingForm;
-
+    const createdBy = getCreatedByNumeric(); // Calculate user ID
     const payload = {
       ...rest,
       recorded_benef_id: recordedBenefId || null,
+       created_by: createdBy, 
     };
 
     return {
