@@ -3330,14 +3330,9 @@ const toggleTrainingReqType = (val) => {
     )}
   </>
 )}
-
-
-
-
 <Text style={styles.label}> {language === 'hi'
     ? 'क्या आप किसी कैडर गतिविधि में शामिल हैं?'
     : 'Are you involved in any cadre activity?'}</Text>
-
 {[
    'Lakhpati CRP',
 'Krishi Ajeevika Sakhi',
